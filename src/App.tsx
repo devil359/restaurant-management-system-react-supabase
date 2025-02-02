@@ -8,6 +8,12 @@ import Index from "./pages/Index";
 import Menu from "./pages/Menu";
 import Orders from "./pages/Orders";
 import Tables from "./pages/Tables";
+import Staff from "./pages/Staff";
+import Inventory from "./pages/Inventory";
+import Rooms from "./pages/Rooms";
+import Suppliers from "./pages/Suppliers";
+import Analytics from "./pages/Analytics";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +32,12 @@ const App = () => (
               <Route path="/menu" element={<Menu />} />
               <Route path="/orders" element={<Orders />} />
               <Route path="/tables" element={<Tables />} />
+              <Route path="/staff" element={<Staff />} />
+              <Route path="/inventory" element={<Inventory />} />
+              <Route path="/rooms" element={<Rooms />} />
+              <Route path="/suppliers" element={<Suppliers />} />
+              <Route path="/analytics" element={<Analytics />} />
+              <Route path="/settings" element={<Settings />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </main>

@@ -1,4 +1,15 @@
-import { LayoutDashboard, Menu as MenuIcon, ClipboardList, LayoutGrid } from "lucide-react";
+import { 
+  LayoutDashboard, 
+  Menu as MenuIcon, 
+  ClipboardList, 
+  LayoutGrid,
+  Users,
+  Box,
+  Hotel,
+  Truck,
+  ChartBar,
+  Settings2
+} from "lucide-react";
 import { useLocation, Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
@@ -10,6 +21,12 @@ const Sidebar = () => {
     { icon: MenuIcon, label: "Menu", path: "/menu" },
     { icon: ClipboardList, label: "Orders", path: "/orders" },
     { icon: LayoutGrid, label: "Tables", path: "/tables" },
+    { icon: Users, label: "Staff", path: "/staff" },
+    { icon: Box, label: "Inventory", path: "/inventory" },
+    { icon: Hotel, label: "Rooms", path: "/rooms" },
+    { icon: Truck, label: "Suppliers", path: "/suppliers" },
+    { icon: ChartBar, label: "Analytics", path: "/analytics" },
+    { icon: Settings2, label: "Settings", path: "/settings" },
   ];
 
   return (
@@ -20,7 +37,7 @@ const Sidebar = () => {
           Restaurant Manager
         </h1>
       </div>
-      <nav className="space-y-1">
+      <nav className="space-y-1 overflow-y-auto max-h-[calc(100vh-8rem)]">
         {menuItems.map((item) => (
           <Link
             key={item.path}
