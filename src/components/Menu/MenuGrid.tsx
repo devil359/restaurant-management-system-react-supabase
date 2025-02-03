@@ -5,15 +5,16 @@ import { Plus, Edit2, Trash2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import AddMenuItemForm from "./AddMenuItemForm";
 
 const MenuGrid = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [selectedRestaurant, setSelectedRestaurant] = useState<string | null>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
 
   // Fetch menu items
   const { data: menuItems, isLoading } = useQuery({
-    queryKey: ['menuItems', selectedRestaurant],
+    queryKey: ['menuItems'],
     queryFn: async () => {
       console.log('Fetching menu items...');
       const { data, error } = await supabase
@@ -73,7 +74,10 @@ const MenuGrid = () => {
     <div className="space-y-4 animate-fade-in">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Menu Items</h2>
-        <Button className="bg-accent hover:bg-accent/90">
+        <Button 
+          className="bg-accent hover:bg-accent/90"
+          onClick={() => setShowAddForm(true)}
+        >
           <Plus className="w-4 h-4 mr-2" />
           Add Item
         </Button>
@@ -115,6 +119,13 @@ const MenuGrid = () => {
           </Card>
         ))}
       </div>
+
+      {showAddForm && (
+        <AddMenuItemForm
+          onClose={() => setShowAddForm(false)}
+          onSuccess={() => queryClient.invalidateQueries({ queryKey: ['menuItems'] })}
+        />
+      )}
     </div>
   );
 };
