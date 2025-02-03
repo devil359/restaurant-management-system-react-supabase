@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/form";
 import { supabase } from "@/integrations/supabase/client";
 import { X } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
 interface AddMenuItemFormProps {
   onClose: () => void;
@@ -32,6 +33,27 @@ const AddMenuItemForm = ({ onClose, onSuccess }: AddMenuItemFormProps) => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Fetch user's restaurant_id from their profile
+  const { data: userProfile } = useQuery({
+    queryKey: ['userProfile'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('restaurant_id')
+        .eq('id', user.id)
+        .single();
+
+      if (error) throw error;
+      if (!profile?.restaurant_id) throw new Error('No restaurant assigned');
+
+      console.log('Fetched user profile:', profile);
+      return profile;
+    },
+  });
+
   const form = useForm<FormData>({
     defaultValues: {
       name: "",
@@ -47,6 +69,10 @@ const AddMenuItemForm = ({ onClose, onSuccess }: AddMenuItemFormProps) => {
       setIsSubmitting(true);
       console.log("Submitting menu item:", data);
 
+      if (!userProfile?.restaurant_id) {
+        throw new Error('No restaurant assigned to user');
+      }
+
       const { error } = await supabase.from("menu_items").insert([
         {
           name: data.name,
@@ -54,7 +80,7 @@ const AddMenuItemForm = ({ onClose, onSuccess }: AddMenuItemFormProps) => {
           price: parseFloat(data.price),
           category: data.category,
           image_url: data.image_url,
-          restaurant_id: "your-restaurant-id", // This should be dynamically set based on the logged-in user's restaurant
+          restaurant_id: userProfile.restaurant_id,
           is_available: true,
         },
       ]);
@@ -71,7 +97,7 @@ const AddMenuItemForm = ({ onClose, onSuccess }: AddMenuItemFormProps) => {
       console.error("Error adding menu item:", error);
       toast({
         title: "Error",
-        description: "Failed to add menu item",
+        description: error instanceof Error ? error.message : "Failed to add menu item",
         variant: "destructive",
       });
     } finally {
