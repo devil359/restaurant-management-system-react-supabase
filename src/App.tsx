@@ -2,7 +2,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import Sidebar from "./components/Layout/Sidebar";
 import Index from "./pages/Index";
 import Menu from "./pages/Menu";
@@ -15,6 +17,7 @@ import Suppliers from "./pages/Suppliers";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import Auth from "./pages/Auth";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -26,6 +29,39 @@ const queryClient = new QueryClient({
   },
 });
 
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const [session, setSession] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Check current session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoading(false);
+    });
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!session) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  return children;
+};
+
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
@@ -33,24 +69,34 @@ const App = () => {
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <div className="flex min-h-screen w-full">
-            <Sidebar />
-            <main className="flex-1 bg-muted">
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/menu" element={<Menu />} />
-                <Route path="/orders" element={<Orders />} />
-                <Route path="/tables" element={<Tables />} />
-                <Route path="/staff" element={<Staff />} />
-                <Route path="/inventory" element={<Inventory />} />
-                <Route path="/rooms" element={<Rooms />} />
-                <Route path="/suppliers" element={<Suppliers />} />
-                <Route path="/analytics" element={<Analytics />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </main>
-          </div>
+          <Routes>
+            <Route path="/auth" element={<Auth />} />
+            <Route
+              path="/*"
+              element={
+                <ProtectedRoute>
+                  <div className="flex min-h-screen w-full">
+                    <Sidebar />
+                    <main className="flex-1 bg-muted">
+                      <Routes>
+                        <Route path="/" element={<Index />} />
+                        <Route path="/menu" element={<Menu />} />
+                        <Route path="/orders" element={<Orders />} />
+                        <Route path="/tables" element={<Tables />} />
+                        <Route path="/staff" element={<Staff />} />
+                        <Route path="/inventory" element={<Inventory />} />
+                        <Route path="/rooms" element={<Rooms />} />
+                        <Route path="/suppliers" element={<Suppliers />} />
+                        <Route path="/analytics" element={<Analytics />} />
+                        <Route path="/settings" element={<Settings />} />
+                        <Route path="*" element={<NotFound />} />
+                      </Routes>
+                    </main>
+                  </div>
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
