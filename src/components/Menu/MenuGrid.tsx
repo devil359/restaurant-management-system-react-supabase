@@ -1,38 +1,73 @@
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Edit2 } from "lucide-react";
+import { Plus, Edit2, Trash2 } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 
 const MenuGrid = () => {
-  const menuItems = [
-    {
-      id: 1,
-      name: "Margherita Pizza",
-      price: 14.99,
-      category: "Pizza",
-      image: "/placeholder.svg",
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [selectedRestaurant, setSelectedRestaurant] = useState<string | null>(null);
+
+  // Fetch menu items
+  const { data: menuItems, isLoading } = useQuery({
+    queryKey: ['menuItems', selectedRestaurant],
+    queryFn: async () => {
+      console.log('Fetching menu items...');
+      const { data, error } = await supabase
+        .from('menu_items')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching menu items:', error);
+        throw error;
+      }
+
+      console.log('Fetched menu items:', data);
+      return data;
     },
-    {
-      id: 2,
-      name: "Caesar Salad",
-      price: 9.99,
-      category: "Salads",
-      image: "/placeholder.svg",
+  });
+
+  // Delete menu item mutation
+  const deleteMenuItemMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('menu_items')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
     },
-    {
-      id: 3,
-      name: "Spaghetti Carbonara",
-      price: 16.99,
-      category: "Pasta",
-      image: "/placeholder.svg",
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['menuItems'] });
+      toast({
+        title: "Success",
+        description: "Menu item deleted successfully",
+      });
     },
-    {
-      id: 4,
-      name: "Grilled Salmon",
-      price: 24.99,
-      category: "Main Course",
-      image: "/placeholder.svg",
+    onError: (error) => {
+      console.error('Error deleting menu item:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete menu item",
+        variant: "destructive",
+      });
     },
-  ];
+  });
+
+  // Handle delete
+  const handleDelete = async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this menu item?')) {
+      deleteMenuItemMutation.mutate(id);
+    }
+  };
+
+  if (isLoading) {
+    return <div className="p-8 text-center">Loading menu items...</div>;
+  }
 
   return (
     <div className="space-y-4 animate-fade-in">
@@ -44,10 +79,10 @@ const MenuGrid = () => {
         </Button>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {menuItems.map((item) => (
+        {menuItems?.map((item) => (
           <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow">
             <img
-              src={item.image}
+              src={item.image_url || "/placeholder.svg"}
               alt={item.name}
               className="w-full h-48 object-cover"
             />
@@ -56,13 +91,26 @@ const MenuGrid = () => {
                 <div>
                   <h3 className="font-semibold">{item.name}</h3>
                   <p className="text-sm text-muted-foreground">{item.category}</p>
+                  {item.description && (
+                    <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
+                  )}
                 </div>
                 <p className="font-bold">${item.price}</p>
               </div>
-              <Button variant="outline" className="w-full mt-4">
-                <Edit2 className="w-4 h-4 mr-2" />
-                Edit Item
-              </Button>
+              <div className="flex gap-2 mt-4">
+                <Button variant="outline" className="flex-1">
+                  <Edit2 className="w-4 h-4 mr-2" />
+                  Edit
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="flex-1 text-destructive hover:text-destructive"
+                  onClick={() => handleDelete(item.id)}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete
+                </Button>
+              </div>
             </div>
           </Card>
         ))}
