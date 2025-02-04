@@ -276,6 +276,7 @@ export type Database = {
           phone: string | null
           position: string | null
           restaurant_id: string
+          Shift: string | null
           updated_at: string
         }
         Insert: {
@@ -287,6 +288,7 @@ export type Database = {
           phone?: string | null
           position?: string | null
           restaurant_id: string
+          Shift?: string | null
           updated_at?: string
         }
         Update: {
@@ -298,6 +300,7 @@ export type Database = {
           phone?: string | null
           position?: string | null
           restaurant_id?: string
+          Shift?: string | null
           updated_at?: string
         }
         Relationships: [
