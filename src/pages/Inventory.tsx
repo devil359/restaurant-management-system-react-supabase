@@ -3,12 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Edit, Trash2 } from "lucide-react";
+import { Plus, Edit, Trash2, Package, AlertTriangle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface InventoryItem {
   id: string;
@@ -123,10 +124,17 @@ const Inventory = () => {
     }
   };
 
+  const commonUnits = ["kg", "g", "l", "ml", "units", "pieces", "boxes", "packs"];
+
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Inventory Management</h1>
+        <div>
+          <h1 className="text-3xl font-bold">Inventory Management</h1>
+          <p className="text-muted-foreground mt-1">
+            Manage your restaurant's inventory items
+          </p>
+        </div>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => setEditingItem(null)}>
@@ -134,7 +142,7 @@ const Inventory = () => {
               Add Item
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>
                 {editingItem ? "Edit Inventory Item" : "Add New Inventory Item"}
@@ -148,6 +156,7 @@ const Inventory = () => {
                   name="name"
                   defaultValue={editingItem?.name}
                   required
+                  placeholder="Enter item name"
                 />
               </div>
               <div>
@@ -159,16 +168,23 @@ const Inventory = () => {
                   step="0.01"
                   defaultValue={editingItem?.quantity}
                   required
+                  placeholder="Enter quantity"
                 />
               </div>
               <div>
                 <Label htmlFor="unit">Unit</Label>
-                <Input
-                  id="unit"
-                  name="unit"
-                  defaultValue={editingItem?.unit}
-                  required
-                />
+                <Select name="unit" defaultValue={editingItem?.unit || commonUnits[0]}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select unit" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {commonUnits.map((unit) => (
+                      <SelectItem key={unit} value={unit}>
+                        {unit}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label htmlFor="reorderLevel">Reorder Level</Label>
@@ -178,6 +194,7 @@ const Inventory = () => {
                   type="number"
                   step="0.01"
                   defaultValue={editingItem?.reorder_level || ""}
+                  placeholder="Enter reorder level"
                 />
               </div>
               <div>
@@ -188,6 +205,7 @@ const Inventory = () => {
                   type="number"
                   step="0.01"
                   defaultValue={editingItem?.cost_per_unit || ""}
+                  placeholder="Enter cost per unit"
                 />
               </div>
               <Button type="submit" className="w-full">
@@ -197,25 +215,33 @@ const Inventory = () => {
           </DialogContent>
         </Dialog>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {items.map((item) => (
           <Card key={item.id} className="p-4">
             <div className="flex justify-between items-start">
-              <div>
-                <h3 className="font-semibold">{item.name}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {item.quantity} {item.unit}
-                </p>
-                {item.reorder_level && item.quantity <= item.reorder_level && (
-                  <Badge variant="destructive" className="mt-2">
-                    Low Stock
-                  </Badge>
-                )}
-                {item.cost_per_unit && (
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Cost: ${item.cost_per_unit}/{item.unit}
+              <div className="flex items-start space-x-3">
+                <div className="p-2 bg-primary/10 rounded-full">
+                  <Package className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">{item.name}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {item.quantity} {item.unit}
                   </p>
-                )}
+                  {item.reorder_level && item.quantity <= item.reorder_level && (
+                    <div className="flex items-center gap-1 mt-2">
+                      <AlertTriangle className="h-4 w-4 text-destructive" />
+                      <Badge variant="destructive" className="text-xs">
+                        Low Stock
+                      </Badge>
+                    </div>
+                  )}
+                  {item.cost_per_unit && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Cost: ${item.cost_per_unit}/{item.unit}
+                    </p>
+                  )}
+                </div>
               </div>
               <div className="flex gap-2">
                 <Button
