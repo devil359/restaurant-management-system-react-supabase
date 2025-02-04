@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Edit, Trash2, Phone, Mail } from "lucide-react";
+import { Plus, Edit, Trash2, Phone, Mail, UserRound } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
@@ -15,9 +15,9 @@ interface StaffMember {
   first_name: string;
   last_name: string;
   position: string;
-  phone: string;
-  email: string;
-  Shift: string;
+  phone: string | null;
+  email: string | null;
+  Shift: string | null;
   restaurant_id: string;
 }
 
@@ -195,7 +195,7 @@ const Staff = () => {
                   id="phone"
                   name="phone"
                   type="tel"
-                  defaultValue={editingStaff?.phone}
+                  defaultValue={editingStaff?.phone || ""}
                 />
               </div>
               <div>
@@ -204,7 +204,7 @@ const Staff = () => {
                   id="email"
                   name="email"
                   type="email"
-                  defaultValue={editingStaff?.email}
+                  defaultValue={editingStaff?.email || ""}
                 />
               </div>
               <Button type="submit" className="w-full">
@@ -218,28 +218,33 @@ const Staff = () => {
         {staff.map((member) => (
           <Card key={member.id} className="p-4">
             <div className="flex justify-between items-start">
-              <div>
-                <h3 className="font-semibold">
-                  {member.first_name} {member.last_name}
-                </h3>
-                <p className="text-sm text-muted-foreground capitalize">
-                  {member.position}
-                </p>
-                <p className="text-sm text-muted-foreground capitalize">
-                  Shift: {member.Shift}
-                </p>
-                {member.phone && (
-                  <p className="text-sm flex items-center gap-1 mt-2">
-                    <Phone className="h-4 w-4" />
-                    {member.phone}
+              <div className="flex items-start space-x-3">
+                <div className="p-2 bg-primary/10 rounded-full">
+                  <UserRound className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">
+                    {member.first_name} {member.last_name}
+                  </h3>
+                  <p className="text-sm text-muted-foreground capitalize">
+                    {member.position}
                   </p>
-                )}
-                {member.email && (
-                  <p className="text-sm flex items-center gap-1">
-                    <Mail className="h-4 w-4" />
-                    {member.email}
+                  <p className="text-sm text-muted-foreground capitalize">
+                    Shift: {member.Shift || "Not set"}
                   </p>
-                )}
+                  {member.phone && (
+                    <p className="text-sm flex items-center gap-1 mt-2">
+                      <Phone className="h-4 w-4" />
+                      {member.phone}
+                    </p>
+                  )}
+                  {member.email && (
+                    <p className="text-sm flex items-center gap-1">
+                      <Mail className="h-4 w-4" />
+                      {member.email}
+                    </p>
+                  )}
+                </div>
               </div>
               <div className="flex gap-2">
                 <Button
