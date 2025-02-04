@@ -100,6 +100,47 @@ export type Database = {
           },
         ]
       }
+      orders: {
+        Row: {
+          created_at: string
+          customer_name: string
+          id: string
+          items: string[]
+          restaurant_id: string
+          status: string
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_name: string
+          id?: string
+          items: string[]
+          restaurant_id: string
+          status?: string
+          total: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_name?: string
+          id?: string
+          items?: string[]
+          restaurant_id?: string
+          status?: string
+          total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string

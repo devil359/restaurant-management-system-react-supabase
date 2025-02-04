@@ -20,10 +20,17 @@ interface AddOrderFormProps {
   onCancel: () => void;
 }
 
+interface OrderFormValues {
+  customerName: string;
+  items: string;
+  total: string;
+  status: string;
+}
+
 const AddOrderForm = ({ onSuccess, onCancel }: AddOrderFormProps) => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const form = useForm({
+  const form = useForm<OrderFormValues>({
     defaultValues: {
       customerName: "",
       items: "",
@@ -32,7 +39,7 @@ const AddOrderForm = ({ onSuccess, onCancel }: AddOrderFormProps) => {
     },
   });
 
-  const onSubmit = async (values: any) => {
+  const onSubmit = async (values: OrderFormValues) => {
     try {
       setLoading(true);
       
@@ -46,13 +53,15 @@ const AddOrderForm = ({ onSuccess, onCancel }: AddOrderFormProps) => {
         throw new Error("No restaurant found for user");
       }
 
-      const { error } = await supabase.from("orders").insert({
-        customer_name: values.customerName,
-        items: values.items.split(",").map((item: string) => item.trim()),
-        total: parseFloat(values.total),
-        status: values.status,
-        restaurant_id: profile.restaurant_id,
-      });
+      const { error } = await supabase
+        .from("orders")
+        .insert({
+          customer_name: values.customerName,
+          items: values.items.split(",").map((item: string) => item.trim()),
+          total: parseFloat(values.total),
+          status: values.status,
+          restaurant_id: profile.restaurant_id,
+        });
 
       if (error) throw error;
       

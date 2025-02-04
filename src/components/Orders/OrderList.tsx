@@ -5,15 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Clock, User, Edit, Trash } from "lucide-react";
-
-interface Order {
-  id: string;
-  customer_name: string;
-  items: string[];
-  total: number;
-  status: string;
-  created_at: string;
-}
+import type { Order } from "@/types/orders";
 
 interface OrderListProps {
   orders: Order[];

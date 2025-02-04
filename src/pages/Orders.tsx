@@ -6,6 +6,7 @@ import { Plus } from "lucide-react";
 import OrderList from "@/components/Orders/OrderList";
 import AddOrderForm from "@/components/Orders/AddOrderForm";
 import { useToast } from "@/hooks/use-toast";
+import type { Order } from "@/types/orders";
 
 const Orders = () => {
   const [showAddForm, setShowAddForm] = useState(false);
@@ -26,18 +27,12 @@ const Orders = () => {
 
       const { data, error } = await supabase
         .from("orders")
-        .select(`
-          *,
-          menu_items (
-            name,
-            price
-          )
-        `)
+        .select("*")
         .eq("restaurant_id", profile.restaurant_id)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      return data;
+      return data as Order[];
     },
   });
 
