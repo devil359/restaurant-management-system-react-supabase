@@ -1,4 +1,4 @@
-import { useState } from "react";
+
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import Stats from "@/components/Dashboard/Stats";
@@ -37,7 +37,10 @@ const Index = () => {
     <div className="p-6 space-y-6">
       <h1 className="text-3xl font-bold mb-8">Dashboard</h1>
       <Stats />
-      <OrderList orders={orders} onOrdersChange={refetch} />
+      <div className="mt-8">
+        <h2 className="text-xl font-semibold mb-4">Recent Orders</h2>
+        <OrderList orders={orders} onOrdersChange={refetch} />
+      </div>
     </div>
   );
 };
