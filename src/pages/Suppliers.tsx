@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,6 +31,7 @@ interface Supplier {
   phone: string | null;
   email: string | null;
   address: string | null;
+  restaurant_id: string;
 }
 
 interface SupplierFormData {
@@ -38,6 +40,7 @@ interface SupplierFormData {
   phone: string;
   email: string;
   address: string;
+  restaurant_id?: string;
 }
 
 const Suppliers = () => {
@@ -46,14 +49,36 @@ const Suppliers = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Fetch user profile to get restaurant_id
+  const { data: profile } = useQuery({
+    queryKey: ['profile'],
+    queryFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.id) throw new Error('No user found');
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+
+      if (error) throw error;
+      if (!data.restaurant_id) throw new Error('No restaurant assigned');
+      return data;
+    },
+  });
+
   // Fetch suppliers
   const { data: suppliers, isLoading } = useQuery({
     queryKey: ["suppliers"],
     queryFn: async () => {
+      if (!profile?.restaurant_id) return [];
+      
       console.log("Fetching suppliers...");
       const { data, error } = await supabase
         .from("suppliers")
         .select("*")
+        .eq('restaurant_id', profile.restaurant_id)
         .order("name");
 
       if (error) {
@@ -64,6 +89,7 @@ const Suppliers = () => {
       console.log("Fetched suppliers:", data);
       return data as Supplier[];
     },
+    enabled: !!profile?.restaurant_id,
   });
 
   const form = useForm<SupplierFormData>({
@@ -79,10 +105,12 @@ const Suppliers = () => {
   // Create supplier mutation
   const createSupplier = useMutation({
     mutationFn: async (data: SupplierFormData) => {
+      if (!profile?.restaurant_id) throw new Error('No restaurant assigned');
+      
       console.log("Creating new supplier:", data);
       const { data: newSupplier, error } = await supabase
         .from("suppliers")
-        .insert([data])
+        .insert([{ ...data, restaurant_id: profile.restaurant_id }])
         .select()
         .single();
 
