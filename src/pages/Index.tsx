@@ -34,11 +34,25 @@ const Index = () => {
   });
 
   return (
-    <div className="p-6 space-y-6">
-      <h1 className="text-3xl font-bold mb-8">Dashboard</h1>
-      <Stats />
-      <div className="mt-8">
-        <h2 className="text-xl font-semibold mb-4">Recent Orders</h2>
+    <div className="space-y-6 animate-fade-in">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+          Dashboard
+        </h1>
+        <div className="flex items-center gap-2">
+          <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
+          <span className="text-sm text-muted-foreground">Live Updates</span>
+        </div>
+      </div>
+      
+      <div className="rounded-xl bg-gradient-to-br from-card/50 to-background/50 backdrop-blur-xl border border-primary/10 p-4 md:p-6">
+        <Stats />
+      </div>
+      
+      <div className="rounded-xl bg-gradient-to-br from-card/50 to-background/50 backdrop-blur-xl border border-primary/10 p-4 md:p-6">
+        <h2 className="text-xl font-semibold mb-4 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+          Recent Orders
+        </h2>
         <OrderList orders={orders} onOrdersChange={refetch} />
       </div>
     </div>
