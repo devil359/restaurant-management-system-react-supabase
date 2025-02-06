@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import OrderList from "@/components/Orders/OrderList";
 import AddOrderForm from "@/components/Orders/AddOrderForm";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import type { Order } from "@/types/orders";
 
@@ -15,6 +16,7 @@ const Orders = () => {
   const { data: orders, isLoading, refetch } = useQuery({
     queryKey: ["orders"],
     queryFn: async () => {
+      console.log("Fetching orders...");
       const { data: profile } = await supabase
         .from("profiles")
         .select("restaurant_id")
@@ -32,6 +34,7 @@ const Orders = () => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
+      console.log("Fetched orders:", data);
       return data as Order[];
     },
   });
@@ -59,12 +62,14 @@ const Orders = () => {
         </Button>
       </div>
 
-      {showAddForm && (
-        <AddOrderForm
-          onSuccess={handleOrderAdded}
-          onCancel={() => setShowAddForm(false)}
-        />
-      )}
+      <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <AddOrderForm
+            onSuccess={handleOrderAdded}
+            onCancel={() => setShowAddForm(false)}
+          />
+        </DialogContent>
+      </Dialog>
 
       <OrderList orders={orders || []} onOrdersChange={refetch} />
     </div>

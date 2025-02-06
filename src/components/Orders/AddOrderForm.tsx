@@ -51,6 +51,7 @@ const AddOrderForm = ({ onSuccess, onCancel }: AddOrderFormProps) => {
   const { data: menuItems } = useQuery({
     queryKey: ['menuItems'],
     queryFn: async () => {
+      console.log("Fetching menu items...");
       const { data: profile } = await supabase
         .from("profiles")
         .select("restaurant_id")
@@ -67,6 +68,60 @@ const AddOrderForm = ({ onSuccess, onCancel }: AddOrderFormProps) => {
         .eq('restaurant_id', profile.restaurant_id);
 
       if (error) throw error;
+      console.log("Fetched menu items:", data);
+      return data;
+    },
+  });
+
+  // Fetch tables for dropdown
+  const { data: tables } = useQuery({
+    queryKey: ['tables'],
+    queryFn: async () => {
+      console.log("Fetching tables...");
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("restaurant_id")
+        .eq("id", (await supabase.auth.getUser()).data.user?.id)
+        .single();
+
+      if (!profile?.restaurant_id) {
+        throw new Error("No restaurant found for user");
+      }
+
+      const { data, error } = await supabase
+        .from('rooms')
+        .select('*')
+        .eq('restaurant_id', profile.restaurant_id)
+        .eq('status', 'available');
+
+      if (error) throw error;
+      console.log("Fetched tables:", data);
+      return data;
+    },
+  });
+
+  // Fetch staff for attendant dropdown
+  const { data: staffMembers } = useQuery({
+    queryKey: ['staff'],
+    queryFn: async () => {
+      console.log("Fetching staff members...");
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("restaurant_id")
+        .eq("id", (await supabase.auth.getUser()).data.user?.id)
+        .single();
+
+      if (!profile?.restaurant_id) {
+        throw new Error("No restaurant found for user");
+      }
+
+      const { data, error } = await supabase
+        .from('staff')
+        .select('*')
+        .eq('restaurant_id', profile.restaurant_id);
+
+      if (error) throw error;
+      console.log("Fetched staff members:", data);
       return data;
     },
   });
@@ -94,6 +149,7 @@ const AddOrderForm = ({ onSuccess, onCancel }: AddOrderFormProps) => {
   const onSubmit = async (values: OrderFormValues) => {
     try {
       setLoading(true);
+      console.log("Submitting order:", values);
       
       const { data: profile } = await supabase
         .from("profiles")
@@ -143,7 +199,7 @@ const AddOrderForm = ({ onSuccess, onCancel }: AddOrderFormProps) => {
   const categories = Array.from(new Set(menuItems?.map(item => item.category) || []));
 
   return (
-    <Card className="p-6">
+    <div className="p-6">
       <h2 className="text-2xl font-bold mb-6">New Order</h2>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -180,9 +236,20 @@ const AddOrderForm = ({ onSuccess, onCancel }: AddOrderFormProps) => {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Table Number</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="Enter table number" />
-                  </FormControl>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a table" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {tables?.map((table) => (
+                        <SelectItem key={table.id} value={table.name}>
+                          Table {table.name} (Capacity: {table.capacity})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -339,9 +406,20 @@ const AddOrderForm = ({ onSuccess, onCancel }: AddOrderFormProps) => {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Attendant</FormLabel>
-                <FormControl>
-                  <Input {...field} placeholder="Enter attendant name" />
-                </FormControl>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select attendant" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {staffMembers?.map((staff) => (
+                      <SelectItem key={staff.id} value={staff.first_name}>
+                        {staff.first_name} {staff.last_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}
@@ -358,7 +436,7 @@ const AddOrderForm = ({ onSuccess, onCancel }: AddOrderFormProps) => {
           </div>
         </form>
       </Form>
-    </Card>
+    </div>
   );
 };
 
