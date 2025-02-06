@@ -9,6 +9,47 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      daily_revenue_stats: {
+        Row: {
+          average_order_value: number
+          created_at: string
+          date: string
+          id: string
+          order_count: number
+          restaurant_id: string
+          total_revenue: number
+          updated_at: string
+        }
+        Insert: {
+          average_order_value?: number
+          created_at?: string
+          date: string
+          id?: string
+          order_count?: number
+          restaurant_id: string
+          total_revenue?: number
+          updated_at?: string
+        }
+        Update: {
+          average_order_value?: number
+          created_at?: string
+          date?: string
+          id?: string
+          order_count?: number
+          restaurant_id?: string
+          total_revenue?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_revenue_stats_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_items: {
         Row: {
           cost_per_unit: number | null
@@ -499,7 +540,26 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      customer_insights: {
+        Row: {
+          average_order_value: number | null
+          customer_name: string | null
+          first_visit: string | null
+          last_visit: string | null
+          restaurant_id: string | null
+          total_spent: number | null
+          visit_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       [_ in never]: never
