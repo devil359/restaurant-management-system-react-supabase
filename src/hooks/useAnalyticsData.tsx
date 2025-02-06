@@ -49,5 +49,9 @@ export const useAnalyticsData = () => {
         recentOrders: recentOrders || [],
       };
     },
+    // Add refetching configuration
+    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchOnWindowFocus: true, // Refetch when the window regains focus
+    staleTime: 10000, // Consider data stale after 10 seconds
   });
 };
