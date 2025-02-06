@@ -199,8 +199,8 @@ const AddOrderForm = ({ onSuccess, onCancel }: AddOrderFormProps) => {
   const categories = Array.from(new Set(menuItems?.map(item => item.category) || []));
 
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold mb-6">New Order</h2>
+    <div className="p-6 bg-[#F1F0FB] rounded-lg">
+      <h2 className="text-2xl font-bold mb-6 text-primary">New Order</h2>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <FormField
@@ -208,7 +208,7 @@ const AddOrderForm = ({ onSuccess, onCancel }: AddOrderFormProps) => {
             name="orderType"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Order Type</FormLabel>
+                <FormLabel className="text-lg font-semibold text-primary">Order Type</FormLabel>
                 <FormControl>
                   <RadioGroup
                     onValueChange={field.onChange}
@@ -216,12 +216,20 @@ const AddOrderForm = ({ onSuccess, onCancel }: AddOrderFormProps) => {
                     className="flex gap-4"
                   >
                     <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="dineIn" id="dineIn" />
-                      <label htmlFor="dineIn">Dine In</label>
+                      <RadioGroupItem 
+                        value="dineIn" 
+                        id="dineIn"
+                        className="text-accent border-accent data-[state=checked]:bg-accent"
+                      />
+                      <label htmlFor="dineIn" className="font-medium">Dine In</label>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="takeAway" id="takeAway" />
-                      <label htmlFor="takeAway">Take Away</label>
+                      <RadioGroupItem 
+                        value="takeAway" 
+                        id="takeAway"
+                        className="text-accent border-accent data-[state=checked]:bg-accent"
+                      />
+                      <label htmlFor="takeAway" className="font-medium">Take Away</label>
                     </div>
                   </RadioGroup>
                 </FormControl>
@@ -235,14 +243,14 @@ const AddOrderForm = ({ onSuccess, onCancel }: AddOrderFormProps) => {
               name="tableNumber"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Table Number</FormLabel>
+                  <FormLabel className="text-lg font-semibold text-primary">Table Number</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger className="bg-white">
                         <SelectValue placeholder="Select a table" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
+                    <SelectContent className="bg-white">
                       {tables?.map((table) => (
                         <SelectItem key={table.id} value={table.name}>
                           Table {table.name} (Capacity: {table.capacity})
@@ -258,7 +266,7 @@ const AddOrderForm = ({ onSuccess, onCancel }: AddOrderFormProps) => {
 
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="font-semibold">Order Items</h3>
+              <h3 className="text-lg font-semibold text-primary">Order Items</h3>
               <Button
                 type="button"
                 variant="outline"
@@ -270,133 +278,149 @@ const AddOrderForm = ({ onSuccess, onCancel }: AddOrderFormProps) => {
                   notes: "",
                   unitPrice: 0,
                 })}
+                className="bg-white hover:bg-accent hover:text-white"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Add Item
               </Button>
             </div>
 
-            {fields.map((field, index) => (
-              <div key={field.id} className="grid grid-cols-12 gap-4 items-start">
-                <FormField
-                  control={form.control}
-                  name={`orderItems.${index}.category`}
-                  render={({ field }) => (
-                    <FormItem className="col-span-2">
-                      <FormControl>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Category" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {categories.map((category) => (
-                              <SelectItem key={category} value={category}>
-                                {category}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
+            {/* Headers */}
+            <div className="grid grid-cols-12 gap-4 px-2 py-3 bg-secondary rounded-lg">
+              <div className="col-span-2 font-semibold text-sm">Category</div>
+              <div className="col-span-2 font-semibold text-sm">Item Name</div>
+              <div className="col-span-3 font-semibold text-sm">Notes</div>
+              <div className="col-span-1 font-semibold text-sm">Qty</div>
+              <div className="col-span-2 font-semibold text-sm">Unit Price</div>
+              <div className="col-span-1 font-semibold text-sm">Total</div>
+              <div className="col-span-1"></div>
+            </div>
 
-                <FormField
-                  control={form.control}
-                  name={`orderItems.${index}.itemName`}
-                  render={({ field }) => (
-                    <FormItem className="col-span-2">
-                      <FormControl>
-                        <Select
-                          onValueChange={(value) => {
-                            const menuItem = menuItems?.find(item => item.name === value);
-                            if (menuItem) {
-                              form.setValue(`orderItems.${index}.unitPrice`, menuItem.price);
-                            }
-                            field.onChange(value);
-                          }}
-                          defaultValue={field.value}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Item" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {menuItems
-                              ?.filter(item => item.category === form.watch(`orderItems.${index}.category`))
-                              .map((item) => (
-                                <SelectItem key={item.id} value={item.name}>
-                                  {item.name}
+            {fields.map((field, index) => (
+              <Card key={field.id} className="p-4 bg-white">
+                <div className="grid grid-cols-12 gap-4 items-start">
+                  <FormField
+                    control={form.control}
+                    name={`orderItems.${index}.category`}
+                    render={({ field }) => (
+                      <FormItem className="col-span-2">
+                        <FormControl>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <SelectTrigger className="bg-white">
+                              <SelectValue placeholder="Category" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white">
+                              {categories.map((category) => (
+                                <SelectItem key={category} value={category}>
+                                  {category}
                                 </SelectItem>
                               ))}
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name={`orderItems.${index}.notes`}
-                  render={({ field }) => (
-                    <FormItem className="col-span-3">
-                      <FormControl>
-                        <Textarea {...field} placeholder="Special instructions" />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name={`orderItems.${index}.quantity`}
-                  render={({ field }) => (
-                    <FormItem className="col-span-1">
-                      <FormControl>
-                        <Input
-                          {...field}
-                          type="number"
-                          min="1"
-                          onChange={(e) => field.onChange(parseInt(e.target.value))}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name={`orderItems.${index}.unitPrice`}
-                  render={({ field }) => (
-                    <FormItem className="col-span-2">
-                      <FormControl>
-                        <Input {...field} type="number" step="0.01" readOnly />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-
-                <div className="col-span-1">
-                  <Input
-                    value={(form.watch(`orderItems.${index}.quantity`) || 0) * 
-                           (form.watch(`orderItems.${index}.unitPrice`) || 0)}
-                    readOnly
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                      </FormItem>
+                    )}
                   />
-                </div>
 
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="col-span-1"
-                  onClick={() => remove(index)}
-                >
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
+                  <FormField
+                    control={form.control}
+                    name={`orderItems.${index}.itemName`}
+                    render={({ field }) => (
+                      <FormItem className="col-span-2">
+                        <FormControl>
+                          <Select
+                            onValueChange={(value) => {
+                              const menuItem = menuItems?.find(item => item.name === value);
+                              if (menuItem) {
+                                form.setValue(`orderItems.${index}.unitPrice`, menuItem.price);
+                              }
+                              field.onChange(value);
+                            }}
+                            defaultValue={field.value}
+                          >
+                            <SelectTrigger className="bg-white">
+                              <SelectValue placeholder="Item" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white">
+                              {menuItems
+                                ?.filter(item => item.category === form.watch(`orderItems.${index}.category`))
+                                .map((item) => (
+                                  <SelectItem key={item.id} value={item.name}>
+                                    {item.name}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name={`orderItems.${index}.notes`}
+                    render={({ field }) => (
+                      <FormItem className="col-span-3">
+                        <FormControl>
+                          <Textarea {...field} placeholder="Special instructions" className="bg-white" />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name={`orderItems.${index}.quantity`}
+                    render={({ field }) => (
+                      <FormItem className="col-span-1">
+                        <FormControl>
+                          <Input
+                            {...field}
+                            type="number"
+                            min="1"
+                            onChange={(e) => field.onChange(parseInt(e.target.value))}
+                            className="bg-white"
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name={`orderItems.${index}.unitPrice`}
+                    render={({ field }) => (
+                      <FormItem className="col-span-2">
+                        <FormControl>
+                          <Input {...field} type="number" step="0.01" readOnly className="bg-white" />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="col-span-1">
+                    <Input
+                      value={(form.watch(`orderItems.${index}.quantity`) || 0) * 
+                             (form.watch(`orderItems.${index}.unitPrice`) || 0)}
+                      readOnly
+                      className="bg-white"
+                    />
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="col-span-1"
+                    onClick={() => remove(index)}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              </Card>
             ))}
           </div>
 
@@ -405,14 +429,14 @@ const AddOrderForm = ({ onSuccess, onCancel }: AddOrderFormProps) => {
             name="attendant"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Attendant</FormLabel>
+                <FormLabel className="text-lg font-semibold text-primary">Attendant</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-white">
                       <SelectValue placeholder="Select attendant" />
                     </SelectTrigger>
                   </FormControl>
-                  <SelectContent>
+                  <SelectContent className="bg-white">
                     {staffMembers?.map((staff) => (
                       <SelectItem key={staff.id} value={staff.first_name}>
                         {staff.first_name} {staff.last_name}
@@ -426,10 +450,19 @@ const AddOrderForm = ({ onSuccess, onCancel }: AddOrderFormProps) => {
           />
 
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={onCancel}>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={onCancel}
+              className="bg-white hover:bg-gray-100"
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button 
+              type="submit" 
+              disabled={loading}
+              className="bg-accent hover:bg-accent/90 text-white"
+            >
               {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Submit Order
             </Button>
