@@ -47,12 +47,12 @@ const WeeklySalesChart = () => {
   });
 
   if (isLoading) {
-    return <Skeleton className="w-full h-[300px]" />;
+    return <Skeleton className="w-full h-[300px] rounded-lg bg-secondary/50" />;
   }
 
   return (
     <ResponsiveContainer width="100%" height={300}>
-      <BarChart data={weeklyData}>
+      <BarChart data={weeklyData} className="mt-4">
         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
         <XAxis 
           dataKey="day"
@@ -62,20 +62,22 @@ const WeeklySalesChart = () => {
         <YAxis 
           tick={{ fill: '#888888' }}
           axisLine={{ stroke: '#e5e7eb' }}
-          tickFormatter={(value) => `$${value}`}
+          tickFormatter={(value) => `₹${value}`}
         />
         <Tooltip 
-          formatter={(value) => [`$${value}`, 'Revenue']}
+          formatter={(value) => [`₹${value}`, 'Revenue']}
           contentStyle={{ 
             backgroundColor: 'white',
             border: '1px solid #e5e7eb',
-            borderRadius: '8px'
+            borderRadius: '8px',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
           }}
+          cursor={{ fill: 'rgba(155, 135, 245, 0.1)' }}
         />
         <Bar 
           dataKey="amount" 
           fill="#9b87f5"
-          radius={[4, 4, 0, 0]}
+          radius={[6, 6, 0, 0]}
         />
       </BarChart>
     </ResponsiveContainer>
