@@ -1,9 +1,10 @@
+
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Edit, Trash2, Package, AlertTriangle, Vegetable, Apple, ShoppingBag } from "lucide-react";
+import { Plus, Edit, Trash2, Package, AlertTriangle, Carrot, Apple, ShoppingBag } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
@@ -57,7 +58,7 @@ const Inventory = () => {
   const getCategoryIcon = (category: string) => {
     switch (category.toLowerCase()) {
       case 'vegetables':
-        return <Vegetable className="h-6 w-6 text-green-500" />;
+        return <Carrot className="h-6 w-6 text-green-500" />;
       case 'fruits':
         return <Apple className="h-6 w-6 text-orange-500" />;
       case 'groceries':
@@ -76,6 +77,7 @@ const Inventory = () => {
       unit: formData.get("unit") as string,
       reorder_level: formData.get("reorderLevel") ? parseFloat(formData.get("reorderLevel") as string) : null,
       cost_per_unit: formData.get("costPerUnit") ? parseFloat(formData.get("costPerUnit") as string) : null,
+      category: formData.get("category") as string || "Other",
     };
 
     try {
@@ -148,6 +150,7 @@ const Inventory = () => {
   }, {} as Record<string, InventoryItem[]>);
 
   const commonUnits = ["kg", "g", "l", "ml", "units", "pieces", "boxes", "packs"];
+  const categories = ["Vegetables", "Fruits", "Groceries", "Other"];
 
   return (
     <div className="p-6 space-y-6 bg-gradient-to-br from-purple-50 to-white dark:from-gray-900 dark:to-gray-800">
@@ -187,6 +190,21 @@ const Inventory = () => {
                   placeholder="Enter item name"
                   className="bg-gray-50"
                 />
+              </div>
+              <div>
+                <Label htmlFor="category">Category</Label>
+                <Select name="category" defaultValue={editingItem?.category || "Other"}>
+                  <SelectTrigger className="bg-gray-50">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {category}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label htmlFor="quantity">Quantity</Label>
