@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -5,11 +6,12 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { LogOut, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 const Settings = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
 
   // Fetch user and profile data
@@ -33,7 +35,22 @@ const Settings = () => {
         .single();
 
       if (error) throw error;
-      console.log('Fetched profile:', data);
+      return data;
+    },
+  });
+
+  // Fetch restaurant data
+  const { data: restaurant, isLoading: restaurantLoading } = useQuery({
+    queryKey: ['restaurant', profile?.restaurant_id],
+    enabled: !!profile?.restaurant_id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('restaurants')
+        .select('*')
+        .eq('id', profile?.restaurant_id)
+        .single();
+
+      if (error) throw error;
       return data;
     },
   });
@@ -44,6 +61,9 @@ const Settings = () => {
       setLoading(true);
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+      
+      // Clear all queries from the cache on logout
+      queryClient.clear();
       
       toast({
         title: "Success",
@@ -62,7 +82,7 @@ const Settings = () => {
     }
   };
 
-  if (profileLoading) {
+  if (profileLoading || restaurantLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="w-8 h-8 animate-spin" />
@@ -88,7 +108,7 @@ const Settings = () => {
         </Button>
       </div>
 
-      <Card className="p-6">
+      <Card className="p-6 bg-white">
         <h2 className="text-xl font-semibold mb-4">Profile Information</h2>
         <div className="space-y-4">
           <div>
@@ -100,16 +120,34 @@ const Settings = () => {
             <p className="font-medium capitalize">{profile?.role || 'N/A'}</p>
           </div>
           <div>
-            <p className="text-sm text-muted-foreground">Restaurant ID</p>
-            <p className="font-medium">{profile?.restaurant_id || 'N/A'}</p>
-          </div>
-          <div>
             <p className="text-sm text-muted-foreground">First Name</p>
             <p className="font-medium">{profile?.first_name || 'N/A'}</p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Last Name</p>
             <p className="font-medium">{profile?.last_name || 'N/A'}</p>
+          </div>
+        </div>
+      </Card>
+
+      <Card className="p-6 bg-white">
+        <h2 className="text-xl font-semibold mb-4">Restaurant Information</h2>
+        <div className="space-y-4">
+          <div>
+            <p className="text-sm text-muted-foreground">Restaurant Name</p>
+            <p className="font-medium">{restaurant?.name || 'N/A'}</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Address</p>
+            <p className="font-medium">{restaurant?.address || 'N/A'}</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Phone Number</p>
+            <p className="font-medium">{restaurant?.phone || 'N/A'}</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Email</p>
+            <p className="font-medium">{restaurant?.email || 'N/A'}</p>
           </div>
         </div>
       </Card>
