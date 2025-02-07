@@ -15,6 +15,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface AddMenuItemFormProps {
   onClose: () => void;
@@ -105,9 +106,11 @@ const AddMenuItemForm = ({ onClose, onSuccess }: AddMenuItemFormProps) => {
     }
   };
 
+  const categories = ["Main Course", "Appetizers", "Desserts", "Beverages", "Non-Veg", "Other"];
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-background p-6 rounded-lg w-full max-w-md relative">
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg w-full max-w-md relative animate-fade-in">
         <Button
           variant="ghost"
           size="icon"
@@ -126,7 +129,7 @@ const AddMenuItemForm = ({ onClose, onSuccess }: AddMenuItemFormProps) => {
                 <FormItem>
                   <FormLabel>Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Item name" {...field} />
+                    <Input placeholder="Item name" className="bg-gray-50" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -140,26 +143,7 @@ const AddMenuItemForm = ({ onClose, onSuccess }: AddMenuItemFormProps) => {
                 <FormItem>
                   <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Item description" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="price"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Price</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
-                      {...field}
-                    />
+                    <Textarea placeholder="Item description" className="bg-gray-50" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -172,8 +156,42 @@ const AddMenuItemForm = ({ onClose, onSuccess }: AddMenuItemFormProps) => {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Category</FormLabel>
+                  <Select 
+                    onValueChange={field.onChange} 
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="bg-gray-50">
+                        <SelectValue placeholder="Select a category" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {categories.map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {category}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="price"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Price (₹)</FormLabel>
                   <FormControl>
-                    <Input placeholder="Item category" {...field} />
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      className="bg-gray-50"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -187,7 +205,7 @@ const AddMenuItemForm = ({ onClose, onSuccess }: AddMenuItemFormProps) => {
                 <FormItem>
                   <FormLabel>Image URL</FormLabel>
                   <FormControl>
-                    <Input placeholder="Image URL" {...field} />
+                    <Input placeholder="Image URL" className="bg-gray-50" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -198,7 +216,11 @@ const AddMenuItemForm = ({ onClose, onSuccess }: AddMenuItemFormProps) => {
               <Button variant="outline" onClick={onClose}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button 
+                type="submit" 
+                disabled={isSubmitting}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
                 {isSubmitting ? "Adding..." : "Add Item"}
               </Button>
             </div>
