@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import Stats from "@/components/Dashboard/Stats";
 import OrderList from "@/components/Orders/OrderList";
+import WeeklySalesChart from "@/components/Dashboard/WeeklySalesChart";
+import QuickStats from "@/components/Dashboard/QuickStats";
 import type { Order } from "@/types/orders";
 
 const Index = () => {
@@ -37,12 +39,19 @@ const Index = () => {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-          Dashboard
+          Dashboard Overview
         </h1>
         <div className="flex items-center gap-2">
           <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
           <span className="text-sm text-muted-foreground">Live Updates</span>
         </div>
+      </div>
+      
+      <QuickStats />
+      
+      <div className="rounded-xl bg-gradient-to-br from-card/50 to-background/50 backdrop-blur-xl border border-primary/10 p-4 md:p-6">
+        <h2 className="text-xl font-semibold mb-4">Weekly Sales Overview</h2>
+        <WeeklySalesChart />
       </div>
       
       <div className="rounded-xl bg-gradient-to-br from-card/50 to-background/50 backdrop-blur-xl border border-primary/10 p-4 md:p-6">
