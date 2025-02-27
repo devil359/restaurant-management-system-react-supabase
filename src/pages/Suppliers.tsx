@@ -25,6 +25,7 @@ interface Supplier {
   restaurant_id: string;
 }
 
+// Update the SupplierOrder interface to match the data structure returned by Supabase
 interface SupplierOrder {
   id: string;
   supplier_id: string;
@@ -33,7 +34,11 @@ interface SupplierOrder {
   status: string;
   total_amount: number;
   notes: string;
-  supplier?: Supplier;
+  created_at: string;
+  updated_at: string;
+  supplier?: {
+    name: string;
+  };
 }
 
 const Suppliers = () => {
@@ -88,6 +93,7 @@ const Suppliers = () => {
         .eq("restaurant_id", restaurantId);
 
       if (error) throw error;
+      // Cast to the updated SupplierOrder interface
       return data as SupplierOrder[];
     },
   });
