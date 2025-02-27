@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, User, Trash2, Edit } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -146,6 +146,9 @@ const Staff = () => {
               <DialogTitle>
                 {editingStaff ? "Edit Staff Member" : "Add New Staff Member"}
               </DialogTitle>
+              <DialogDescription>
+                {editingStaff ? "Update the staff member's details below." : "Fill in the details below to add a new staff member."}
+              </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -196,12 +199,12 @@ const Staff = () => {
               </div>
               <div>
                 <Label htmlFor="shift">Shift</Label>
-                <Select name="shift" defaultValue={editingStaff?.Shift || ""}>
+                <Select name="shift" defaultValue={editingStaff?.Shift || "none"}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select shift" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No Shift</SelectItem>
+                    <SelectItem value="none">No Shift</SelectItem>
                     <SelectItem value="Morning">Morning</SelectItem>
                     <SelectItem value="Afternoon">Afternoon</SelectItem>
                     <SelectItem value="Evening">Evening</SelectItem>
