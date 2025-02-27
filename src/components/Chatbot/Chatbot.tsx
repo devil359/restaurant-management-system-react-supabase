@@ -41,14 +41,23 @@ const Chatbot = () => {
     setIsLoading(true);
 
     try {
+      console.log("Calling chat-with-ai function with messages:", [...messages, userMessage]);
+      
       const { data, error } = await supabase.functions.invoke('chat-with-ai', {
         body: { messages: [...messages, userMessage].map(m => ({ role: m.role, content: m.content })) },
       });
 
       if (error) {
-        throw new Error(error.message);
+        console.error("Supabase function error:", error);
+        throw new Error(`Function error: ${error.message}`);
       }
 
+      if (!data) {
+        throw new Error("No data returned from function");
+      }
+
+      console.log("Response data:", data);
+      
       const response = data.choices?.[0]?.message;
       
       if (response) {
@@ -56,14 +65,26 @@ const Chatbot = () => {
           ...prev,
           { role: "assistant", content: response.content },
         ]);
+      } else if (data.error) {
+        throw new Error(`API error: ${data.error}`);
       } else {
-        throw new Error("Invalid response from AI");
+        throw new Error("Invalid response format from AI");
       }
     } catch (error) {
       console.error("Error calling AI:", error);
+      
+      // Show error message to user
+      setMessages((prev) => [
+        ...prev,
+        { 
+          role: "assistant", 
+          content: "I'm sorry, I encountered an error. The restaurant admin should check that the API keys are configured correctly in the Supabase Edge Function secrets." 
+        },
+      ]);
+      
       toast({
         title: "Error",
-        description: "Failed to get response from AI. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to get response from AI. Please try again.",
         variant: "destructive",
       });
     } finally {
