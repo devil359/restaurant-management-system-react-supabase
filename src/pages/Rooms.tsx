@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
-import { format, addHours, isAfter, parseISO, addDays } from "date-fns";
+import { format, addHours, isAfter, parseISO, addDays, differenceInDays } from "date-fns";
 import { Plus, Calendar as CalendarIcon, Clock, Edit, Trash2, Users, DoorOpen, Check, X } from "lucide-react";
 import {
   Popover,
@@ -60,16 +60,18 @@ const Rooms = () => {
   const [deletingReservationId, setDeletingReservationId] = useState<string | null>(null);
   
   // Date and time state for reservation
-  const [date, setDate] = useState<Date | undefined>(new Date());
-  const [startTime, setStartTime] = useState<string>("10:00");
-  const [endTime, setEndTime] = useState<string>("12:00");
+  const [startDate, setStartDate] = useState<Date | undefined>(new Date());
+  const [endDate, setEndDate] = useState<Date | undefined>(addDays(new Date(), 1));
+  const [startTime, setStartTime] = useState<string>("14:00"); // 2:00 PM (check-in)
+  const [endTime, setEndTime] = useState<string>("12:00"); // 12:00 PM (check-out)
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
-  const [timeError, setTimeError] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
   
   // Popover states
   const [isStartTimeOpen, setIsStartTimeOpen] = useState(false);
   const [isEndTimeOpen, setIsEndTimeOpen] = useState(false);
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [isStartDateOpen, setIsStartDateOpen] = useState(false);
+  const [isEndDateOpen, setIsEndDateOpen] = useState(false);
   
   // Form data state
   const [formData, setFormData] = useState({
@@ -258,33 +260,36 @@ const Rooms = () => {
     });
   };
 
-  // Validate time selection
-  const validateTimeSelection = (): boolean => {
-    if (!date) {
-      setTimeError("Please select a date");
+  // Validate reservation
+  const validateReservation = (): boolean => {
+    if (!startDate || !endDate) {
+      setValidationError("Please select both start and end dates");
       return false;
     }
 
-    // Create date objects for start and end times
-    const startTimeHours = parseInt(startTime.split(":")[0]);
-    const startTimeMinutes = parseInt(startTime.split(":")[1]);
+    if (!selectedRoomId) {
+      setValidationError("Please select a room");
+      return false;
+    }
+
+    // Create full date-time objects for validation
+    const startDateTime = new Date(startDate);
+    const startHours = parseInt(startTime.split(":")[0]);
+    const startMinutes = parseInt(startTime.split(":")[1]);
+    startDateTime.setHours(startHours, startMinutes, 0, 0);
     
-    const endTimeHours = parseInt(endTime.split(":")[0]);
-    const endTimeMinutes = parseInt(endTime.split(":")[1]);
+    const endDateTime = new Date(endDate);
+    const endHours = parseInt(endTime.split(":")[0]);
+    const endMinutes = parseInt(endTime.split(":")[1]);
+    endDateTime.setHours(endHours, endMinutes, 0, 0);
     
-    const startDateTime = new Date(date);
-    startDateTime.setHours(startTimeHours, startTimeMinutes);
-    
-    const endDateTime = new Date(date);
-    endDateTime.setHours(endTimeHours, endTimeMinutes);
-    
-    // Check if end time is after start time
+    // Check if end date is after start date
     if (!isAfter(endDateTime, startDateTime)) {
-      setTimeError("End time must be after start time");
+      setValidationError("End date/time must be after start date/time");
       return false;
     }
     
-    setTimeError(null);
+    setValidationError(null);
     return true;
   };
 
@@ -292,39 +297,30 @@ const Rooms = () => {
   const handleStartTimeSelect = (time: string) => {
     setStartTime(time);
     setIsStartTimeOpen(false);
-    validateTimeSelection();
+    validateReservation();
   };
 
   const handleEndTimeSelect = (time: string) => {
     setEndTime(time);
     setIsEndTimeOpen(false);
-    validateTimeSelection();
+    validateReservation();
   };
 
   // Handle reservation submission
   const handleReservationSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
-    if (!validateTimeSelection()) {
-      return;
-    }
-    
-    if (!selectedRoomId) {
-      toast({
-        title: "Error",
-        description: "Please select a room",
-        variant: "destructive",
-      });
+    if (!validateReservation()) {
       return;
     }
 
     // Create date objects for start and end times
-    const startDateTime = new Date(date!);
+    const startDateTime = new Date(startDate!);
     const startHours = parseInt(startTime.split(":")[0]);
     const startMinutes = parseInt(startTime.split(":")[1]);
     startDateTime.setHours(startHours, startMinutes, 0, 0);
 
-    const endDateTime = new Date(date!);
+    const endDateTime = new Date(endDate!);
     const endHours = parseInt(endTime.split(":")[0]);
     const endMinutes = parseInt(endTime.split(":")[1]);
     endDateTime.setHours(endHours, endMinutes, 0, 0);
@@ -364,7 +360,8 @@ const Rooms = () => {
     const endMinutes = endDate.getMinutes().toString().padStart(2, '0');
     
     // Set form state
-    setDate(startDate);
+    setStartDate(startDate);
+    setEndDate(endDate);
     setStartTime(`${startHours}:${startMinutes}`);
     setEndTime(`${endHours}:${endMinutes}`);
     setSelectedRoomId(reservation.room_id);
@@ -393,8 +390,9 @@ const Rooms = () => {
 
   // Reset reservation form
   const resetReservationForm = () => {
-    setDate(new Date());
-    setStartTime("10:00");
+    setStartDate(new Date());
+    setEndDate(addDays(new Date(), 1));
+    setStartTime("14:00");
     setEndTime("12:00");
     setSelectedRoomId(null);
     setFormData({
@@ -404,7 +402,7 @@ const Rooms = () => {
       notes: ""
     });
     setEditingReservation(null);
-    setTimeError(null);
+    setValidationError(null);
   };
 
   // Open Add Reservation dialog
@@ -438,6 +436,14 @@ const Rooms = () => {
     return room ? room.name : 'Unknown Room';
   };
 
+  // Get duration in days
+  const getDurationInDays = (startTime: string, endTime: string) => {
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+    // Add 1 because we count both the start and end days
+    return differenceInDays(end, start) + 1;
+  };
+
   if (roomsLoading || reservationsLoading) {
     return <div className="p-8 text-center">Loading...</div>;
   }
@@ -464,7 +470,7 @@ const Rooms = () => {
                 New Reservation
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="sm:max-w-[500px] bg-white">
               <DialogHeader>
                 <DialogTitle>{editingReservation ? "Edit Reservation" : "Add New Reservation"}</DialogTitle>
                 <DialogDescription>
@@ -481,7 +487,7 @@ const Rooms = () => {
                     id="room"
                     value={selectedRoomId || ""}
                     onChange={(e) => setSelectedRoomId(e.target.value)}
-                    className="w-full border rounded-md p-2"
+                    className="w-full border rounded-md p-2 bg-white"
                     required
                   >
                     <option value="">Select a room</option>
@@ -493,48 +499,83 @@ const Rooms = () => {
                   </select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Date</Label>
-                  <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start text-left font-normal"
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {date ? format(date, "PPP") : "Pick a date"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={date}
-                        onSelect={(date) => {
-                          setDate(date);
-                          setIsCalendarOpen(false);
-                        }}
-                        disabled={(date) => date < addDays(new Date(), -1)}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Check-In Date</Label>
+                    <Popover open={isStartDateOpen} onOpenChange={setIsStartDateOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start text-left font-normal bg-white"
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {startDate ? format(startDate, "MMM dd, yyyy") : "Select date"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0 bg-white" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={startDate}
+                          onSelect={(date) => {
+                            setStartDate(date);
+                            // Update end date if it's earlier than start date
+                            if (endDate && date && isAfter(date, endDate)) {
+                              setEndDate(addDays(date, 1));
+                            }
+                            setIsStartDateOpen(false);
+                          }}
+                          disabled={(date) => date < addDays(new Date(), -1)}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Check-Out Date</Label>
+                    <Popover open={isEndDateOpen} onOpenChange={setIsEndDateOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start text-left font-normal bg-white"
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {endDate ? format(endDate, "MMM dd, yyyy") : "Select date"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0 bg-white" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={endDate}
+                          onSelect={(date) => {
+                            setEndDate(date);
+                            setIsEndDateOpen(false);
+                          }}
+                          disabled={(date) => 
+                            date < addDays(new Date(), -1) || 
+                            (startDate && date < startDate)
+                          }
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="startTime">Start Time</Label>
+                    <Label>Check-In Time</Label>
                     <Popover open={isStartTimeOpen} onOpenChange={setIsStartTimeOpen}>
                       <PopoverTrigger asChild>
                         <Button
-                          id="startTime"
                           variant="outline"
-                          className="w-full justify-start text-left font-normal"
+                          className="w-full justify-start text-left font-normal bg-white"
                         >
                           <Clock className="mr-2 h-4 w-4" />
                           {startTime}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-[200px] p-2" align="start">
+                      <PopoverContent className="w-[200px] p-2 bg-white" align="start">
                         <div className="space-y-1 max-h-[300px] overflow-y-auto">
                           {timeOptions.map((time) => (
                             <Button
@@ -555,19 +596,18 @@ const Rooms = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="endTime">End Time</Label>
+                    <Label>Check-Out Time</Label>
                     <Popover open={isEndTimeOpen} onOpenChange={setIsEndTimeOpen}>
                       <PopoverTrigger asChild>
                         <Button
-                          id="endTime"
                           variant="outline"
-                          className="w-full justify-start text-left font-normal"
+                          className="w-full justify-start text-left font-normal bg-white"
                         >
                           <Clock className="mr-2 h-4 w-4" />
                           {endTime}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-[200px] p-2" align="start">
+                      <PopoverContent className="w-[200px] p-2 bg-white" align="start">
                         <div className="space-y-1 max-h-[300px] overflow-y-auto">
                           {timeOptions.map((time) => (
                             <Button
@@ -588,8 +628,16 @@ const Rooms = () => {
                   </div>
                 </div>
 
-                {timeError && (
-                  <div className="text-red-500 text-sm">{timeError}</div>
+                {validationError && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-600 text-sm">
+                    {validationError}
+                  </div>
+                )}
+
+                {startDate && endDate && (
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-md text-blue-700 text-sm">
+                    Duration: {differenceInDays(endDate, startDate) + 1} days
+                  </div>
                 )}
 
                 <div className="space-y-2">
@@ -599,6 +647,7 @@ const Rooms = () => {
                     name="customerName"
                     value={formData.customerName}
                     onChange={handleInputChange}
+                    className="bg-white"
                     required
                   />
                 </div>
@@ -612,6 +661,7 @@ const Rooms = () => {
                       type="email"
                       value={formData.customerEmail}
                       onChange={handleInputChange}
+                      className="bg-white"
                     />
                   </div>
 
@@ -622,6 +672,7 @@ const Rooms = () => {
                       name="customerPhone"
                       value={formData.customerPhone}
                       onChange={handleInputChange}
+                      className="bg-white"
                     />
                   </div>
                 </div>
@@ -633,7 +684,7 @@ const Rooms = () => {
                     name="notes"
                     value={formData.notes}
                     onChange={handleInputChange}
-                    className="min-h-[80px]"
+                    className="min-h-[80px] bg-white"
                   />
                 </div>
 
@@ -663,7 +714,7 @@ const Rooms = () => {
                 Add Room
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[425px] bg-white">
               <DialogHeader>
                 <DialogTitle>Add New Room</DialogTitle>
                 <DialogDescription>
@@ -674,7 +725,7 @@ const Rooms = () => {
               <form onSubmit={handleRoomSubmit} className="space-y-4 mt-4">
                 <div className="space-y-2">
                   <Label htmlFor="roomName">Room Name</Label>
-                  <Input id="roomName" name="roomName" required />
+                  <Input id="roomName" name="roomName" className="bg-white" required />
                 </div>
 
                 <div className="space-y-2">
@@ -684,6 +735,7 @@ const Rooms = () => {
                     name="roomCapacity"
                     type="number"
                     min="1"
+                    className="bg-white"
                     required
                   />
                 </div>
@@ -711,7 +763,7 @@ const Rooms = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {rooms.map((room) => (
-          <Card key={room.id} className="hover:shadow-md transition-shadow">
+          <Card key={room.id} className="hover:shadow-md transition-shadow bg-white">
             <CardHeader className="pb-2">
               <div className="flex justify-between items-start">
                 <CardTitle className="text-lg font-medium">{room.name}</CardTitle>
@@ -751,7 +803,7 @@ const Rooms = () => {
       </div>
 
       <Tabs defaultValue="upcoming" className="w-full mt-8">
-        <TabsList className="mb-4">
+        <TabsList className="mb-4 bg-white">
           <TabsTrigger value="upcoming" className="flex gap-2 items-center">
             <CalendarIcon className="h-4 w-4" />
             Upcoming Reservations
@@ -767,7 +819,7 @@ const Rooms = () => {
         </TabsList>
 
         <TabsContent value="upcoming">
-          <Card>
+          <Card className="bg-white">
             <CardHeader>
               <CardTitle>Upcoming Reservations</CardTitle>
             </CardHeader>
@@ -778,8 +830,9 @@ const Rooms = () => {
                     <TableRow>
                       <TableHead>Room</TableHead>
                       <TableHead>Customer</TableHead>
-                      <TableHead>Date & Time</TableHead>
-                      <TableHead>Contact</TableHead>
+                      <TableHead>Check-In</TableHead>
+                      <TableHead>Check-Out</TableHead>
+                      <TableHead>Duration</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -790,23 +843,31 @@ const Rooms = () => {
                         <TableCell className="font-medium">
                           {getRoomName(reservation.room_id)}
                         </TableCell>
-                        <TableCell>{reservation.customer_name}</TableCell>
                         <TableCell>
-                          <div>
-                            {format(new Date(reservation.start_time), "MMM dd, yyyy")}
+                          <div>{reservation.customer_name}</div>
+                          {reservation.customer_email && (
+                            <div className="text-xs text-muted-foreground">{reservation.customer_email}</div>
+                          )}
+                          {reservation.customer_phone && (
+                            <div className="text-xs text-muted-foreground">{reservation.customer_phone}</div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div>{format(new Date(reservation.start_time), "MMM dd, yyyy")}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {format(new Date(reservation.start_time), "h:mm a")}
                           </div>
-                          <div className="text-sm text-muted-foreground">
-                            {format(new Date(reservation.start_time), "h:mm a")} -{" "}
+                        </TableCell>
+                        <TableCell>
+                          <div>{format(new Date(reservation.end_time), "MMM dd, yyyy")}</div>
+                          <div className="text-xs text-muted-foreground">
                             {format(new Date(reservation.end_time), "h:mm a")}
                           </div>
                         </TableCell>
                         <TableCell>
-                          {reservation.customer_email && (
-                            <div className="text-sm">{reservation.customer_email}</div>
-                          )}
-                          {reservation.customer_phone && (
-                            <div className="text-sm">{reservation.customer_phone}</div>
-                          )}
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                            {getDurationInDays(reservation.start_time, reservation.end_time)} days
+                          </Badge>
                         </TableCell>
                         <TableCell>
                           <Badge
@@ -854,7 +915,7 @@ const Rooms = () => {
         </TabsContent>
 
         <TabsContent value="past">
-          <Card>
+          <Card className="bg-white">
             <CardHeader>
               <CardTitle>Past Reservations</CardTitle>
             </CardHeader>
@@ -865,8 +926,9 @@ const Rooms = () => {
                     <TableRow>
                       <TableHead>Room</TableHead>
                       <TableHead>Customer</TableHead>
-                      <TableHead>Date & Time</TableHead>
-                      <TableHead>Contact</TableHead>
+                      <TableHead>Check-In</TableHead>
+                      <TableHead>Check-Out</TableHead>
+                      <TableHead>Duration</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -876,23 +938,31 @@ const Rooms = () => {
                         <TableCell className="font-medium">
                           {getRoomName(reservation.room_id)}
                         </TableCell>
-                        <TableCell>{reservation.customer_name}</TableCell>
                         <TableCell>
-                          <div>
-                            {format(new Date(reservation.start_time), "MMM dd, yyyy")}
+                          <div>{reservation.customer_name}</div>
+                          {reservation.customer_email && (
+                            <div className="text-xs text-muted-foreground">{reservation.customer_email}</div>
+                          )}
+                          {reservation.customer_phone && (
+                            <div className="text-xs text-muted-foreground">{reservation.customer_phone}</div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div>{format(new Date(reservation.start_time), "MMM dd, yyyy")}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {format(new Date(reservation.start_time), "h:mm a")}
                           </div>
-                          <div className="text-sm text-muted-foreground">
-                            {format(new Date(reservation.start_time), "h:mm a")} -{" "}
+                        </TableCell>
+                        <TableCell>
+                          <div>{format(new Date(reservation.end_time), "MMM dd, yyyy")}</div>
+                          <div className="text-xs text-muted-foreground">
                             {format(new Date(reservation.end_time), "h:mm a")}
                           </div>
                         </TableCell>
                         <TableCell>
-                          {reservation.customer_email && (
-                            <div className="text-sm">{reservation.customer_email}</div>
-                          )}
-                          {reservation.customer_phone && (
-                            <div className="text-sm">{reservation.customer_phone}</div>
-                          )}
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                            {getDurationInDays(reservation.start_time, reservation.end_time)} days
+                          </Badge>
                         </TableCell>
                         <TableCell>
                           <Badge
@@ -920,7 +990,7 @@ const Rooms = () => {
         </TabsContent>
 
         <TabsContent value="rooms">
-          <Card>
+          <Card className="bg-white">
             <CardHeader>
               <CardTitle>All Rooms</CardTitle>
             </CardHeader>
@@ -977,7 +1047,7 @@ const Rooms = () => {
 
       {/* Confirmation Dialog for Deleting Reservation */}
       <Dialog open={isConfirmDeleteOpen} onOpenChange={setIsConfirmDeleteOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[425px] bg-white">
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
