@@ -126,27 +126,17 @@ const AddMenuItemForm = ({ onClose, onSuccess }: AddMenuItemFormProps) => {
       
       setUploadProgress(30);
       
-      // Prepare form data for API call
-      const formData = new FormData();
-      formData.append('key', '6d207e02198a847aa98d0a2a901485a5');
-      formData.append('source', base64String);
-      formData.append('format', 'json');
-      
-      setUploadProgress(50);
-      
-      // Make API call to freeimage.host
-      const response = await fetch('https://freeimage.host/api/1/upload', {
-        method: 'POST',
-        body: formData,
+      // Use our Supabase Edge Function as a proxy to bypass CORS
+      const { data, error } = await supabase.functions.invoke('upload-image', {
+        body: { base64Image: base64String }
       });
+      
+      if (error) {
+        throw new Error(`Upload proxy failed: ${error.message}`);
+      }
       
       setUploadProgress(80);
       
-      if (!response.ok) {
-        throw new Error(`Upload failed with status: ${response.status}`);
-      }
-      
-      const data = await response.json();
       console.log('Image upload response:', data);
       
       setUploadProgress(100);
