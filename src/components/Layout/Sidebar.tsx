@@ -43,13 +43,15 @@ const Sidebar = () => {
       
       return data;
     },
-    onSuccess: (data) => {
-      if (data && (data.first_name || data.last_name)) {
-        const name = [data.first_name, data.last_name].filter(Boolean).join(' ');
-        setStaffName(name);
-      }
-    }
   });
+
+  // Update staff name when profile data changes
+  useEffect(() => {
+    if (profile && (profile.first_name || profile.last_name)) {
+      const name = [profile.first_name, profile.last_name].filter(Boolean).join(' ');
+      setStaffName(name);
+    }
+  }, [profile]);
   
   const menuItems = [
     { icon: LayoutDashboard, label: "Dashboard", path: "/" },
