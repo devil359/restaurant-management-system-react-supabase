@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
-import { format, addHours, isAfter, parseISO } from "date-fns";
+import { format, addHours, isAfter, parseISO, addDays } from "date-fns";
 import { Plus, Calendar as CalendarIcon, Clock, Edit, Trash2, Users, DoorOpen, Check, X } from "lucide-react";
 import {
   Popover,
@@ -65,6 +65,11 @@ const Rooms = () => {
   const [endTime, setEndTime] = useState<string>("12:00");
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const [timeError, setTimeError] = useState<string | null>(null);
+  
+  // Popover states
+  const [isStartTimeOpen, setIsStartTimeOpen] = useState(false);
+  const [isEndTimeOpen, setIsEndTimeOpen] = useState(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   
   // Form data state
   const [formData, setFormData] = useState({
@@ -283,6 +288,19 @@ const Rooms = () => {
     return true;
   };
 
+  // Handle time selection
+  const handleStartTimeSelect = (time: string) => {
+    setStartTime(time);
+    setIsStartTimeOpen(false);
+    validateTimeSelection();
+  };
+
+  const handleEndTimeSelect = (time: string) => {
+    setEndTime(time);
+    setIsEndTimeOpen(false);
+    validateTimeSelection();
+  };
+
   // Handle reservation submission
   const handleReservationSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -477,7 +495,7 @@ const Rooms = () => {
 
                 <div className="space-y-2">
                   <Label>Date</Label>
-                  <Popover>
+                  <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
@@ -487,11 +505,15 @@ const Rooms = () => {
                         {date ? format(date, "PPP") : "Pick a date"}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
+                    <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
                         mode="single"
                         selected={date}
-                        onSelect={setDate}
+                        onSelect={(date) => {
+                          setDate(date);
+                          setIsCalendarOpen(false);
+                        }}
+                        disabled={(date) => date < addDays(new Date(), -1)}
                         initialFocus
                       />
                     </PopoverContent>
@@ -501,9 +523,10 @@ const Rooms = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="startTime">Start Time</Label>
-                    <Popover>
+                    <Popover open={isStartTimeOpen} onOpenChange={setIsStartTimeOpen}>
                       <PopoverTrigger asChild>
                         <Button
+                          id="startTime"
                           variant="outline"
                           className="w-full justify-start text-left font-normal"
                         >
@@ -511,8 +534,8 @@ const Rooms = () => {
                           {startTime}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-2 h-60 overflow-y-auto">
-                        <div className="space-y-1">
+                      <PopoverContent className="w-[200px] p-2" align="start">
+                        <div className="space-y-1 max-h-[300px] overflow-y-auto">
                           {timeOptions.map((time) => (
                             <Button
                               key={time}
@@ -521,10 +544,7 @@ const Rooms = () => {
                                 "w-full justify-start font-normal",
                                 startTime === time && "bg-accent text-accent-foreground"
                               )}
-                              onClick={() => {
-                                setStartTime(time);
-                                validateTimeSelection();
-                              }}
+                              onClick={() => handleStartTimeSelect(time)}
                             >
                               {time}
                             </Button>
@@ -536,9 +556,10 @@ const Rooms = () => {
 
                   <div className="space-y-2">
                     <Label htmlFor="endTime">End Time</Label>
-                    <Popover>
+                    <Popover open={isEndTimeOpen} onOpenChange={setIsEndTimeOpen}>
                       <PopoverTrigger asChild>
                         <Button
+                          id="endTime"
                           variant="outline"
                           className="w-full justify-start text-left font-normal"
                         >
@@ -546,8 +567,8 @@ const Rooms = () => {
                           {endTime}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-2 h-60 overflow-y-auto">
-                        <div className="space-y-1">
+                      <PopoverContent className="w-[200px] p-2" align="start">
+                        <div className="space-y-1 max-h-[300px] overflow-y-auto">
                           {timeOptions.map((time) => (
                             <Button
                               key={time}
@@ -556,10 +577,7 @@ const Rooms = () => {
                                 "w-full justify-start font-normal",
                                 endTime === time && "bg-accent text-accent-foreground"
                               )}
-                              onClick={() => {
-                                setEndTime(time);
-                                validateTimeSelection();
-                              }}
+                              onClick={() => handleEndTimeSelect(time)}
                             >
                               {time}
                             </Button>
