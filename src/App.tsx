@@ -19,6 +19,8 @@ import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
+import { checkSubscriptionStatus } from "@/utils/subscriptionUtils";
+import SubscriptionPlans from "@/components/SubscriptionPlans";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -32,17 +34,61 @@ const queryClient = new QueryClient({
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [hasActiveSubscription, setHasActiveSubscription] = useState<boolean | null>(null);
+  const [restaurantId, setRestaurantId] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    async function checkSession() {
+      const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
+      
+      if (session) {
+        // Get user's profile to fetch restaurant_id
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("restaurant_id")
+          .eq("id", session.user.id)
+          .single();
+
+        if (profile?.restaurant_id) {
+          setRestaurantId(profile.restaurant_id);
+          const subscriptionActive = await checkSubscriptionStatus(profile.restaurant_id);
+          setHasActiveSubscription(subscriptionActive);
+        } else {
+          setHasActiveSubscription(false);
+        }
+      }
+      
       setLoading(false);
-    });
+    }
+
+    checkSession();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
+      setLoading(true);
+      
+      if (session) {
+        // Get user's profile to fetch restaurant_id
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("restaurant_id")
+          .eq("id", session.user.id)
+          .single();
+
+        if (profile?.restaurant_id) {
+          setRestaurantId(profile.restaurant_id);
+          const subscriptionActive = await checkSubscriptionStatus(profile.restaurant_id);
+          setHasActiveSubscription(subscriptionActive);
+        } else {
+          setHasActiveSubscription(false);
+        }
+      } else {
+        setHasActiveSubscription(null);
+      }
+      
       setLoading(false);
     });
 
@@ -59,6 +105,11 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   if (!session) {
     return <Navigate to="/auth" replace />;
+  }
+
+  // If subscription status has been checked and there's no active subscription, show subscription plans
+  if (hasActiveSubscription === false) {
+    return <SubscriptionPlans restaurantId={restaurantId} />;
   }
 
   return children;
