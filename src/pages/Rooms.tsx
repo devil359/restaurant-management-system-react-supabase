@@ -524,8 +524,10 @@ const Rooms = () => {
                             }
                             setIsStartDateOpen(false);
                           }}
-                          disabled={(date) => date < addDays(new Date(), -1)}
                           initialFocus
+                          captionLayout="dropdown-buttons"
+                          fromYear={2022}
+                          toYear={2030}
                         />
                       </PopoverContent>
                     </Popover>
@@ -552,10 +554,12 @@ const Rooms = () => {
                             setIsEndDateOpen(false);
                           }}
                           disabled={(date) => 
-                            date < addDays(new Date(), -1) || 
                             (startDate && date < startDate)
                           }
                           initialFocus
+                          captionLayout="dropdown-buttons"
+                          fromYear={2022}
+                          toYear={2030}
                         />
                       </PopoverContent>
                     </Popover>
