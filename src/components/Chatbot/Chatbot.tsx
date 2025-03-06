@@ -1,12 +1,13 @@
 
 import React, { useState, useRef, useEffect } from "react";
-import { X, MessageSquare, Loader2 } from "lucide-react";
+import { X, MessageSquare, Loader2, Maximize2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import ChatMessage from "./ChatMessage";
 import ChatInput from "./ChatInput";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 
 type Message = {
   role: "user" | "assistant";
@@ -15,6 +16,7 @@ type Message = {
 
 const Chatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isMaximized, setIsMaximized] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
@@ -22,7 +24,9 @@ const Chatbot = () => {
     },
   ]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -100,6 +104,121 @@ const Chatbot = () => {
     }
   };
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    
+    try {
+      // Convert file to base64
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => {
+          if (typeof reader.result === 'string') {
+            // Extract the base64 part (remove the data:*/*;base64, prefix)
+            const base64Data = reader.result.split(',')[1];
+            resolve(base64Data);
+          } else {
+            reject(new Error('Failed to read file as base64'));
+          }
+        };
+        reader.onerror = reject;
+      });
+
+      // Send file to upload-image function
+      const { data, error } = await supabase.functions.invoke('upload-image', {
+        body: { base64Image: base64 },
+      });
+
+      if (error) {
+        throw new Error(`Function error: ${error.message}`);
+      }
+
+      if (!data || !data.image) {
+        throw new Error("Failed to upload image");
+      }
+
+      // Add message with uploaded file info
+      setMessages(prev => [
+        ...prev,
+        { 
+          role: "user", 
+          content: `I've uploaded a file named "${file.name}" for analysis.` 
+        }
+      ]);
+
+      // Now send a message to the AI to analyze the file
+      const imageUrl = data.image.url;
+      
+      setIsLoading(true);
+      const analysisMessage = {
+        role: "user" as const,
+        content: `Please analyze this uploaded file: ${file.name}. The image is available at ${imageUrl}. Provide insights and a brief report for the restaurant owner.`
+      };
+
+      const { data: analysisData, error: analysisError } = await supabase.functions.invoke('chat-with-api', {
+        body: { 
+          messages: [...messages, analysisMessage].map(m => ({ 
+            role: m.role, 
+            content: m.content 
+          })) 
+        },
+      });
+
+      if (analysisError) {
+        throw new Error(`Analysis error: ${analysisError.message}`);
+      }
+
+      const assistantMessage = analysisData.choices?.[0]?.message;
+      
+      if (assistantMessage && assistantMessage.content) {
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: assistantMessage.content },
+        ]);
+      } else {
+        throw new Error("Invalid analysis response from API");
+      }
+
+      toast({
+        title: "File Uploaded",
+        description: "Your file has been uploaded and analyzed successfully.",
+      });
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      toast({
+        title: "Upload Failed",
+        description: error instanceof Error ? error.message : "Failed to upload and analyze file.",
+        variant: "destructive",
+      });
+      
+      setMessages(prev => [
+        ...prev,
+        { 
+          role: "assistant", 
+          content: "I'm sorry, I couldn't process your uploaded file. Please try again with a different file." 
+        }
+      ]);
+    } finally {
+      setIsUploading(false);
+      setIsLoading(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const toggleMaximize = () => {
+    setIsMaximized(!isMaximized);
+  };
+
+  const chatWindowClasses = isMaximized 
+    ? "fixed inset-4 md:inset-10 h-auto w-auto max-w-none shadow-xl flex flex-col z-50 animate-in fade-in"
+    : "fixed bottom-6 right-6 w-80 sm:w-96 h-[500px] shadow-xl flex flex-col z-50 animate-in fade-in slide-in-from-bottom-10";
+
   return (
     <>
       {/* Chat bubble button */}
@@ -113,17 +232,27 @@ const Chatbot = () => {
 
       {/* Chat window */}
       {isOpen && (
-        <Card className="fixed bottom-6 right-6 w-80 sm:w-96 h-[500px] shadow-xl flex flex-col z-50 animate-in fade-in slide-in-from-bottom-10">
+        <Card className={chatWindowClasses}>
           <div className="flex items-center justify-between border-b p-3 bg-purple-600 text-white rounded-t-lg">
             <h3 className="font-semibold">Restaurant Assistant</h3>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsOpen(false)}
-              className="text-white hover:bg-purple-700"
-            >
-              <X className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleMaximize}
+                className="text-white hover:bg-purple-700"
+              >
+                <Maximize2 className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsOpen(false)}
+                className="text-white hover:bg-purple-700"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
           
           <div className="flex-1 overflow-y-auto p-3 space-y-3">
@@ -136,10 +265,42 @@ const Chatbot = () => {
                 <p className="text-sm text-muted-foreground">Assistant is typing...</p>
               </div>
             )}
+            {isUploading && (
+              <div className="flex items-center gap-2 py-2">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">Uploading and analyzing file...</p>
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </div>
           
-          <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} />
+          <div className="border-t p-2 bg-background">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mb-2 text-xs"
+                >
+                  <Upload className="h-3 w-3 mr-1" /> Upload File for Analysis
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-2">
+                <div className="text-sm text-muted-foreground mb-2">
+                  Upload a file for AI analysis
+                </div>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  className="text-xs w-full"
+                  accept="image/*,.csv,.xlsx,.pdf"
+                  disabled={isUploading || isLoading}
+                />
+              </PopoverContent>
+            </Popover>
+            <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading || isUploading} />
+          </div>
         </Card>
       )}
     </>

@@ -53,7 +53,7 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: "You are a restaurant assistant bot. You help answer questions about restaurant operations, menu items, and general restaurant management advice."
+            content: "You are a restaurant assistant bot. You help answer questions about restaurant operations, menu items, and general restaurant management advice. When provided with data files like images, CSV, Excel, or PDF files, you will analyze them and provide insights and recommendations for the restaurant owner."
           },
           ...messages
         ]
