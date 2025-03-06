@@ -49,9 +49,12 @@ const Sidebar = () => {
           return;
         }
 
-        // Get the name from the profile object, falling back to user email if not available
-        const name = profile?.name || profile?.full_name || user.email?.split('@')[0] || 'User';
-        setStaffName(name);
+        // Get the name from the profile object, using first_name and last_name fields
+        const displayName = profile?.first_name 
+          ? `${profile.first_name} ${profile.last_name || ''}`
+          : user.email?.split('@')[0] || 'User';
+        
+        setStaffName(displayName.trim());
       }
     } catch (error) {
       console.error("Profile fetch error:", error);
