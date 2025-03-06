@@ -26,20 +26,22 @@ serve(async (req) => {
       );
     }
 
+    // Get API key and base URL from environment variables
     const apiKey = Deno.env.get('API_KEY');
-    const baseUrl = Deno.env.get('BASE_URL');
+    const baseUrl = Deno.env.get('BASE_URL') || 'https://api.sree.shop/v1';
 
-    if (!apiKey || !baseUrl) {
+    if (!apiKey) {
+      console.error("API_KEY environment variable is not set");
       return new Response(
-        JSON.stringify({ error: 'API configuration missing' }),
+        JSON.stringify({ error: 'API key is not configured' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       );
     }
 
-    // Format the message content
-    const content = messages.map(msg => `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`).join('\n');
+    console.log(`Using base URL: ${baseUrl}`);
+    console.log(`Making request with ${messages.length} messages`);
 
-    // Make the API request
+    // Make the API request to your custom server
     const response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -47,7 +49,7 @@ serve(async (req) => {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: "mistral-7b-instruct",
+        model: "mistral-7b-instruct", // Use your preferred model
         messages: [
           {
             role: "system",
@@ -60,12 +62,12 @@ serve(async (req) => {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('API error:', errorText);
+      console.error(`API error: Status ${response.status}`, errorText);
       throw new Error(`API returned error: ${response.status} ${errorText}`);
     }
 
     const data = await response.json();
-    console.log('API response:', data);
+    console.log('Received successful API response');
 
     return new Response(
       JSON.stringify(data),
@@ -75,7 +77,10 @@ serve(async (req) => {
     console.error('Error in chat function:', error);
     
     return new Response(
-      JSON.stringify({ error: error.message || 'An error occurred during chat request' }),
+      JSON.stringify({ 
+        error: error.message || 'An error occurred during chat request',
+        details: error.stack
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }

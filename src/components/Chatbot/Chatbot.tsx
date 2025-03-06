@@ -32,6 +32,8 @@ const Chatbot = () => {
   }, [messages]);
 
   const handleSendMessage = async (message: string) => {
+    if (!message.trim()) return;
+    
     const userMessage: Message = {
       role: "user",
       content: message,
@@ -44,7 +46,12 @@ const Chatbot = () => {
       console.log("Calling chat-with-api function with messages:", [...messages, userMessage]);
       
       const { data, error } = await supabase.functions.invoke('chat-with-api', {
-        body: { messages: [...messages, userMessage].map(m => ({ role: m.role, content: m.content })) },
+        body: { 
+          messages: [...messages, userMessage].map(m => ({ 
+            role: m.role, 
+            content: m.content 
+          })) 
+        },
       });
 
       if (error) {
