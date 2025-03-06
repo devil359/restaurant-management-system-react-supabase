@@ -49,7 +49,7 @@ serve(async (req) => {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: "mistral-7b-instruct", // Use your preferred model
+        model: "gpt-4o", // Updated to use gpt-4o model
         messages: [
           {
             role: "system",
