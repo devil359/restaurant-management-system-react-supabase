@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { ThemeProvider } from "@/hooks/useTheme";
 import Sidebar from "./components/Layout/Sidebar";
 import Index from "./pages/Index";
 import Menu from "./pages/Menu";
@@ -197,44 +198,46 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 const App = () => {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/auth" element={<Auth />} />
-            <Route
-              path="/*"
-              element={
-                <ProtectedRoute>
-                  <div className="flex min-h-screen w-full bg-gradient-to-br from-background to-muted">
-                    <Sidebar />
-                    <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">
-                      <div className="max-w-7xl mx-auto">
-                        <Routes>
-                          <Route path="/" element={<Index />} />
-                          <Route path="/menu" element={<Menu />} />
-                          <Route path="/orders" element={<Orders />} />
-                          <Route path="/tables" element={<Tables />} />
-                          <Route path="/staff" element={<Staff />} />
-                          <Route path="/inventory" element={<Inventory />} />
-                          <Route path="/rooms" element={<Rooms />} />
-                          <Route path="/suppliers" element={<Suppliers />} />
-                          <Route path="/analytics" element={<Analytics />} />
-                          <Route path="/settings" element={<Settings />} />
-                          <Route path="*" element={<NotFound />} />
-                        </Routes>
-                      </div>
-                    </main>
-                  </div>
-                </ProtectedRoute>
-              }
-            />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <ThemeProvider defaultTheme="light">
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/auth" element={<Auth />} />
+              <Route
+                path="/*"
+                element={
+                  <ProtectedRoute>
+                    <div className="flex min-h-screen w-full bg-gradient-pattern">
+                      <Sidebar />
+                      <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">
+                        <div className="max-w-7xl mx-auto">
+                          <Routes>
+                            <Route path="/" element={<Index />} />
+                            <Route path="/menu" element={<Menu />} />
+                            <Route path="/orders" element={<Orders />} />
+                            <Route path="/tables" element={<Tables />} />
+                            <Route path="/staff" element={<Staff />} />
+                            <Route path="/inventory" element={<Inventory />} />
+                            <Route path="/rooms" element={<Rooms />} />
+                            <Route path="/suppliers" element={<Suppliers />} />
+                            <Route path="/analytics" element={<Analytics />} />
+                            <Route path="/settings" element={<Settings />} />
+                            <Route path="*" element={<NotFound />} />
+                          </Routes>
+                        </div>
+                      </main>
+                    </div>
+                  </ProtectedRoute>
+                }
+              />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 };
 
