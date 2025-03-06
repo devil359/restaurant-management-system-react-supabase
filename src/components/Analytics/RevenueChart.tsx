@@ -2,6 +2,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { format } from "date-fns";
+import { useTheme } from "@/hooks/useTheme";
 
 interface RevenueChartProps {
   data: {
@@ -13,6 +14,9 @@ interface RevenueChartProps {
 }
 
 const RevenueChart = ({ data }: RevenueChartProps) => {
+  const { theme } = useTheme();
+  const isDarkMode = theme === 'dark';
+  
   const chartData = data
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     .map(item => ({
@@ -22,34 +26,42 @@ const RevenueChart = ({ data }: RevenueChartProps) => {
       average: Number(item.average_order_value),
     }));
 
+  // Theme-aware colors
+  const textColor = isDarkMode ? '#e2e8f0' : '#333333';
+  const gridColor = isDarkMode ? '#383e4a' : '#E5E7EB';
+  const backgroundColor = isDarkMode ? 'rgba(30, 41, 59, 0.8)' : 'rgba(255, 255, 255, 0.8)';
+  const tooltipBackgroundColor = isDarkMode ? '#1e293b' : '#ffffff';
+  const tooltipBorderColor = isDarkMode ? '#475569' : '#E5E7EB';
+
   return (
-    <Card className="col-span-4 shadow-md hover:shadow-lg transition-shadow">
+    <Card variant="glass" className="col-span-4 shadow-md hover:shadow-lg transition-shadow">
       <CardHeader>
         <CardTitle className="text-lg font-medium">Revenue Trends Over Time</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-[400px]">
+        <div className="h-[400px] chart-container">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 10 }}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200" />
+              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" stroke={gridColor} />
               <XAxis 
                 dataKey="date"
-                tick={{ fill: '#666666' }}
-                axisLine={{ stroke: '#E5E7EB' }}
+                tick={{ fill: textColor }}
+                axisLine={{ stroke: gridColor }}
               />
               <YAxis 
-                tick={{ fill: '#666666' }}
-                axisLine={{ stroke: '#E5E7EB' }}
+                tick={{ fill: textColor }}
+                axisLine={{ stroke: gridColor }}
                 tickFormatter={(value) => `₹${value}`}
               />
               <Tooltip 
                 formatter={(value) => [`₹${value}`, '']}
                 labelFormatter={(value) => `Date: ${value}`}
                 contentStyle={{ 
-                  backgroundColor: 'white',
-                  border: '1px solid #E5E7EB',
+                  backgroundColor: tooltipBackgroundColor,
+                  border: `1px solid ${tooltipBorderColor}`,
                   borderRadius: '8px',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                  color: textColor
                 }}
                 cursor={{ stroke: '#9B87F5', strokeWidth: 1, strokeDasharray: '5 5' }}
               />
@@ -57,6 +69,7 @@ const RevenueChart = ({ data }: RevenueChartProps) => {
                 verticalAlign="top" 
                 height={36}
                 wrapperStyle={{ paddingTop: '10px' }}
+                formatter={(value) => <span style={{ color: textColor }}>{value}</span>}
               />
               <Line 
                 type="monotone" 

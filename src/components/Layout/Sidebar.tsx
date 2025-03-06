@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -28,33 +29,34 @@ const Sidebar = () => {
   const { toast } = useToast();
 
   const getProfileData = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
 
-    if (user) {
-      const { data: profile, error } = await supabase
-        .from("profiles")
-        .select("full_name")
-        .eq("id", user.id)
-        .single();
+      if (user) {
+        const { data: profile, error } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", user.id)
+          .single();
 
-      if (error) {
-        toast({
-          title: "Error",
-          description: "Failed to load profile data.",
-          variant: "destructive",
-        });
+        if (error) {
+          console.error("Error fetching profile:", error);
+          toast({
+            title: "Error",
+            description: "Failed to load profile data.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Get the name from the profile object, falling back to user email if not available
+        const name = profile?.name || profile?.full_name || user.email?.split('@')[0] || 'User';
+        setStaffName(name);
       }
-
-      if (profile) {
-        setStaffName(profile.full_name);
-      }
+    } catch (error) {
+      console.error("Profile fetch error:", error);
     }
   };
-
-  const { data: profile } = useQuery({
-    queryKey: ["profile"],
-    queryFn: getProfileData,
-  });
 
   useEffect(() => {
     getProfileData();
@@ -162,7 +164,7 @@ const Sidebar = () => {
       {/* Backdrop */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-20 lg:hidden"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-20 lg:hidden"
           onClick={() => setIsOpen(false)}
         />
       )}

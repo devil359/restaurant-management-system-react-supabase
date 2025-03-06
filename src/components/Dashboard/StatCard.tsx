@@ -14,7 +14,8 @@ interface StatCardProps {
 const StatCard = ({ title, value, icon: Icon, trend, color, onClick }: StatCardProps) => {
   return (
     <Card 
-      className="hover:shadow-lg transition-shadow cursor-pointer"
+      variant="glass"
+      className="hover:shadow-lg transition-shadow cursor-pointer transform hover:scale-[1.02] transition-all duration-200"
       onClick={onClick}
     >
       <CardHeader className="flex flex-row items-center justify-between pb-2">

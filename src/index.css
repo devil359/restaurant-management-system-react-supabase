@@ -10,6 +10,12 @@
 
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
+    
+    --card-glass: 0 0% 100%;
+    --card-glass-foreground: 222.2 84% 4.9%;
+    
+    --card-accent: 262 83% 98%;
+    --card-accent-foreground: 222.2 47.4% 11.2%;
 
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
@@ -32,6 +38,8 @@
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 262 83% 58%;
+    
+    --toast-background: 0 0% 100%;
 
     --radius: 0.5rem;
 
@@ -51,6 +59,12 @@
 
     --card: 222.2 84% 4.9%;
     --card-foreground: 210 40% 98%;
+    
+    --card-glass: 222.2 84% 4.9%;
+    --card-glass-foreground: 210 40% 98%;
+    
+    --card-accent: 263 70% 15%;
+    --card-accent-foreground: 210 40% 98%;
 
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
@@ -73,6 +87,8 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 263 70% 50%;
+    
+    --toast-background: 217.2 32.6% 17.5%;
 
     --sidebar-background: 222.2 84% 4.9%;
     --sidebar-foreground: 210 40% 98%;
@@ -102,5 +118,21 @@
   
   .bg-glass {
     @apply backdrop-blur-sm bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10;
+  }
+  
+  .card-fancy {
+    @apply bg-card/80 backdrop-blur-sm border border-border/50 shadow-md hover:shadow-lg transition-all duration-200;
+  }
+  
+  .card-glass {
+    @apply bg-card-glass/30 backdrop-blur-md border border-white/20 dark:border-white/5 shadow-lg;
+  }
+  
+  .card-accent {
+    @apply bg-card-accent/80 backdrop-blur-sm border border-primary/20 shadow-md;
+  }
+  
+  .chart-container {
+    @apply bg-card/90 backdrop-blur-sm border border-border/50 rounded-lg p-4 shadow-md;
   }
 }

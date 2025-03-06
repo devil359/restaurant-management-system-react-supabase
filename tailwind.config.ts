@@ -49,6 +49,16 @@ export default {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
         },
+        // New card styles for different themes
+        "card-glass": {
+          DEFAULT: "hsl(var(--card-glass))",
+          foreground: "hsl(var(--card-glass-foreground))",
+        },
+        "card-accent": {
+          DEFAULT: "hsl(var(--card-accent))",
+          foreground: "hsl(var(--card-accent-foreground))",
+        },
+        "toast-background": "hsl(var(--toast-background))",
       },
       borderRadius: {
         lg: "var(--radius)",
