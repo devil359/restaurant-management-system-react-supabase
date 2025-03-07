@@ -41,6 +41,35 @@ serve(async (req) => {
     console.log(`Using base URL: ${baseUrl}`);
     console.log(`Making request with ${messages.length} messages`);
 
+    // Check if any message contains a file URL
+    const hasFileForAnalysis = messages.some(msg => 
+      typeof msg.content === 'string' && 
+      (msg.content.includes('.xlsx') || 
+       msg.content.includes('.csv') || 
+       msg.content.includes('.pdf') || 
+       msg.content.includes('image'))
+    );
+
+    let systemPrompt = "You are a restaurant assistant bot. You help answer questions about restaurant operations, menu items, and general restaurant management advice.";
+    
+    if (hasFileForAnalysis) {
+      systemPrompt += " When provided with data files like images, CSV, Excel, or PDF files, analyze them and provide insights and recommendations for the restaurant owner. For Excel/CSV files, assume they contain restaurant data like sales, inventory, or customer information and provide relevant analysis.";
+    }
+
+    // Create the payload for the API request
+    const payload = {
+      model: "gpt-4o", // Explicitly set to gpt-4o
+      messages: [
+        {
+          role: "system",
+          content: systemPrompt
+        },
+        ...messages
+      ]
+    };
+
+    console.log("Sending API request with payload:", JSON.stringify(payload));
+
     // Make the API request to your custom server
     const response = await fetch(`${baseUrl}/chat/completions`, {
       method: 'POST',
@@ -48,16 +77,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`
       },
-      body: JSON.stringify({
-        model: "gpt-4o", // Explicitly set to gpt-4o
-        messages: [
-          {
-            role: "system",
-            content: "You are a restaurant assistant bot. You help answer questions about restaurant operations, menu items, and general restaurant management advice. When provided with data files like images, CSV, Excel, or PDF files, you will analyze them and provide insights and recommendations for the restaurant owner."
-          },
-          ...messages
-        ]
-      })
+      body: JSON.stringify(payload)
     });
 
     if (!response.ok) {
@@ -79,9 +99,17 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         error: error.message || 'An error occurred during chat request',
-        details: error.stack
+        details: error.stack,
+        choices: [
+          {
+            message: {
+              role: "assistant",
+              content: "I'm sorry, I encountered an error processing your file. Please try uploading a different file format or contact support if the issue persists."
+            }
+          }
+        ]
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     );
   }
 });

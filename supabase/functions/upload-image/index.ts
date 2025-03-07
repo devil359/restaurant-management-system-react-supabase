@@ -66,10 +66,33 @@ serve(async (req) => {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     } 
-    // For non-image files (PDFs, CSV, etc.), create a URL that references the base64 data
+    // Handle Excel/CSV files - store as data URLs for now
+    else if (fileType && (
+      fileType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || 
+      fileType === 'application/vnd.ms-excel' ||
+      fileType === 'text/csv' ||
+      fileType === 'application/pdf' ||
+      fileType === 'application/vnd.ms-powerpoint' ||
+      fileType === 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+    )) {
+      console.log(`Creating data URL for file type: ${fileType}`);
+      const fileUrl = `data:${fileType};base64,${base64Image}`;
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          image: {
+            url: fileUrl,
+            display_url: fileUrl,
+            title: fileName || 'Uploaded file'
+          }
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    // For other file types, create a simple data URL
     else {
-      console.log("Creating data URL for non-image file");
-      // Create a mock response for file uploads
+      console.log("Creating data URL for non-supported file type");
       const fileUrl = `data:${fileType || 'application/octet-stream'};base64,${base64Image}`;
       
       return new Response(

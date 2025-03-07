@@ -129,8 +129,10 @@ const Chatbot = () => {
 
       toast({
         title: "Processing",
-        description: "Uploading and analyzing your file...",
+        description: `Uploading ${file.name}...`,
       });
+
+      console.log(`Uploading file: ${file.name}, type: ${file.type}`);
 
       // Send file to upload-image function with additional metadata
       const { data, error } = await supabase.functions.invoke('upload-image', {
@@ -155,11 +157,28 @@ const Chatbot = () => {
       console.log("Upload response:", data);
 
       // Add message with uploaded file info
+      const fileExtension = file.name.split('.').pop()?.toLowerCase();
+      let fileTypeDescription = '';
+      
+      if (fileExtension === 'csv') {
+        fileTypeDescription = 'CSV';
+      } else if (['xlsx', 'xls'].includes(fileExtension || '')) {
+        fileTypeDescription = 'Excel';
+      } else if (fileExtension === 'pdf') {
+        fileTypeDescription = 'PDF';
+      } else if (['ppt', 'pptx'].includes(fileExtension || '')) {
+        fileTypeDescription = 'PowerPoint';
+      } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExtension || '')) {
+        fileTypeDescription = 'image';
+      } else {
+        fileTypeDescription = 'file';
+      }
+
       setMessages(prev => [
         ...prev,
         { 
           role: "user", 
-          content: `I've uploaded a file named "${file.name}" for analysis.` 
+          content: `I've uploaded a ${fileTypeDescription} file named "${file.name}" for analysis.` 
         }
       ]);
 
@@ -169,12 +188,20 @@ const Chatbot = () => {
       setIsLoading(true);
       const analysisMessage = {
         role: "user" as const,
-        content: `Please analyze this uploaded file: ${file.name}. The image is available at ${imageUrl}. Provide insights and a brief report for the restaurant owner.`
+        content: `Please analyze this uploaded ${fileTypeDescription} file: ${file.name}. The file is available at ${imageUrl}. Provide insights and recommendations based on the file content.`
       };
+
+      toast({
+        title: "Analyzing",
+        description: `Analyzing ${file.name}...`,
+      });
 
       const { data: analysisData, error: analysisError } = await supabase.functions.invoke('chat-with-api', {
         body: { 
-          messages: [...messages, analysisMessage].map(m => ({ 
+          messages: [...messages, 
+            { role: "user", content: `I've uploaded a ${fileTypeDescription} file named "${file.name}" for analysis.` },
+            analysisMessage
+          ].map(m => ({ 
             role: m.role, 
             content: m.content 
           })) 
@@ -185,6 +212,10 @@ const Chatbot = () => {
         throw new Error(`Analysis error: ${analysisError.message}`);
       }
 
+      if (!analysisData) {
+        throw new Error("No analysis data returned");
+      }
+
       const assistantMessage = analysisData.choices?.[0]?.message;
       
       if (assistantMessage && assistantMessage.content) {
@@ -192,14 +223,16 @@ const Chatbot = () => {
           ...prev,
           { role: "assistant", content: assistantMessage.content },
         ]);
+        
+        toast({
+          title: "Success",
+          description: "Your file has been analyzed successfully.",
+        });
+      } else if (analysisData.error) {
+        throw new Error(`Analysis error: ${analysisData.error}`);
       } else {
-        throw new Error("Invalid analysis response from API");
+        throw new Error("Invalid analysis response format");
       }
-
-      toast({
-        title: "Success",
-        description: "Your file has been uploaded and analyzed successfully.",
-      });
     } catch (error) {
       console.error("Error uploading file:", error);
       toast({
@@ -212,7 +245,7 @@ const Chatbot = () => {
         ...prev,
         { 
           role: "assistant", 
-          content: "I'm sorry, I couldn't process your uploaded file. Please try again with a different file." 
+          content: "I'm sorry, I couldn't process your uploaded file. Please try again with a different file format (CSV, Excel, PDF, or image files work best)." 
         }
       ]);
     } finally {
@@ -276,13 +309,13 @@ const Chatbot = () => {
             {isLoading && (
               <div className="flex items-center gap-2 py-2">
                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">Assistant is typing...</p>
+                <p className="text-sm text-muted-foreground">Assistant is thinking...</p>
               </div>
             )}
             {isUploading && (
               <div className="flex items-center gap-2 py-2">
                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">Uploading and analyzing file...</p>
+                <p className="text-sm text-muted-foreground">Uploading and processing file...</p>
               </div>
             )}
             <div ref={messagesEndRef} />
@@ -301,14 +334,14 @@ const Chatbot = () => {
               </PopoverTrigger>
               <PopoverContent className="w-auto p-2">
                 <div className="text-sm text-muted-foreground mb-2">
-                  Upload a file for AI analysis
+                  Upload a file for AI analysis (CSV, Excel, PDF, images)
                 </div>
                 <input
                   type="file"
                   ref={fileInputRef}
                   onChange={handleFileUpload}
                   className="text-xs w-full"
-                  accept="image/*,.csv,.xlsx,.pdf"
+                  accept="image/*,.csv,.xlsx,.xls,.pdf,.ppt,.pptx"
                   disabled={isUploading || isLoading}
                 />
               </PopoverContent>
