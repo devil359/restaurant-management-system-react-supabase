@@ -43,7 +43,7 @@ serve(async (req) => {
 
     let restaurantData = null;
     
-    // Create Supabase client with service role key if restaurant data access is needed
+    // Create Supabase client with service role key for database access
     if (restaurantId && supabaseUrl && supabaseServiceKey) {
       try {
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -84,7 +84,7 @@ serve(async (req) => {
           inventoryItems: inventoryItems || [],
         };
         
-        console.log(`Successfully fetched restaurant data. Found ${revenueStats?.length || 0} revenue records, ${recentOrders?.length || 0} orders`);
+        console.log(`Successfully fetched restaurant data. Found ${revenueStats?.length || 0} revenue records, ${recentOrders?.length || 0} orders, ${inventoryItems?.length || 0} inventory items`);
       } catch (error) {
         console.error("Error fetching restaurant data:", error);
       }
@@ -99,18 +99,20 @@ serve(async (req) => {
        msg.content.includes('image'))
     );
 
-    let systemPrompt = "You are a restaurant assistant bot. You help answer questions about restaurant operations, menu items, and general restaurant management advice.";
+    let systemPrompt = "You are a restaurant assistant bot. You help answer questions about restaurant operations, menu items, and general restaurant management advice. NEVER mention that you're looking at data unless specifically asked about data source. Do not start responses with phrases like 'Based on the data provided'; instead, be conversational and direct.";
     
     if (restaurantData) {
-      systemPrompt += " You have access to the restaurant's data and can provide specific insights based on their sales, orders, customers, menu, and inventory information.";
+      systemPrompt += " You have access to the restaurant's data and should provide specific insights based on this actual data. Always analyze the data provided to you when answering questions - don't provide generic or theoretical answers when restaurant-specific data is available.";
       
-      // Add a summary of available data
-      systemPrompt += `\n\nAvailable data summary:
-- Revenue Stats: ${restaurantData.revenueStats.length} records
-- Customer Insights: ${restaurantData.customerInsights.length} records 
-- Recent Orders: ${restaurantData.recentOrders.length} records
-- Menu Items: ${restaurantData.menuItems.length} items
-- Inventory Items: ${restaurantData.inventoryItems.length} items`;
+      // Flag for empty data
+      const hasNoData = 
+        (!restaurantData.inventoryItems || restaurantData.inventoryItems.length === 0) &&
+        (!restaurantData.revenueStats || restaurantData.revenueStats.length === 0) &&
+        (!restaurantData.recentOrders || restaurantData.recentOrders.length === 0);
+      
+      if (hasNoData) {
+        systemPrompt += " Note: There appears to be no data for this restaurant yet. If the user asks about their specific data, kindly mention that there is no data available yet and suggest they add some inventory items, complete some orders, etc.";
+      }
     }
     
     if (hasFileForAnalysis) {
@@ -136,6 +138,9 @@ serve(async (req) => {
         role: "system",
         content: `Here is the restaurant data to inform your answers:
         
+INVENTORY ITEMS (${restaurantData.inventoryItems?.length || 0} items):
+${JSON.stringify(restaurantData.inventoryItems, null, 2)}
+
 REVENUE STATS (last 30 days):
 ${JSON.stringify(restaurantData.revenueStats, null, 2)}
 
@@ -148,10 +153,7 @@ ${JSON.stringify(restaurantData.customerInsights, null, 2)}
 MENU ITEMS:
 ${JSON.stringify(restaurantData.menuItems, null, 2)}
 
-INVENTORY ITEMS:
-${JSON.stringify(restaurantData.inventoryItems, null, 2)}
-
-Use this data to provide specific, data-driven answers to the user's questions about their restaurant business. Refer to specific metrics when relevant.`
+Use this data to provide specific, data-driven answers to the user's questions about their restaurant business. For inventory-related queries, analyze the actual inventory data to provide insights about stock levels, items that need reordering, and inventory optimization suggestions. For revenue and sales questions, use the actual revenue data to give accurate trends and insights.`
       });
     }
 

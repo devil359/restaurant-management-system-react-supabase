@@ -50,6 +50,7 @@ export const useChatWithApi = () => {
 
     try {
       console.log("Calling chat-with-api function with messages:", [...messages, userMessage]);
+      console.log("Using restaurant ID:", restaurantId);
       
       const { data, error } = await supabase.functions.invoke('chat-with-api', {
         body: { 
