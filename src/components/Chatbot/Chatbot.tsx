@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from "react";
-import { X, MessageSquare, Loader2, Maximize2, Upload } from "lucide-react";
+import { X, MessageSquare, Loader2, Maximize2, Minimize2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
@@ -127,18 +127,32 @@ const Chatbot = () => {
         reader.onerror = reject;
       });
 
-      // Send file to upload-image function
+      toast({
+        title: "Processing",
+        description: "Uploading and analyzing your file...",
+      });
+
+      // Send file to upload-image function with additional metadata
       const { data, error } = await supabase.functions.invoke('upload-image', {
-        body: { base64Image: base64 },
+        body: { 
+          base64Image: base64,
+          fileName: file.name,
+          fileType: file.type
+        },
       });
 
       if (error) {
+        console.error("Supabase upload function error:", error);
         throw new Error(`Function error: ${error.message}`);
       }
 
-      if (!data || !data.image) {
-        throw new Error("Failed to upload image");
+      if (!data || !data.success) {
+        const errorMsg = data?.error || "Failed to upload file";
+        console.error("Upload failed:", errorMsg);
+        throw new Error(errorMsg);
       }
+
+      console.log("Upload response:", data);
 
       // Add message with uploaded file info
       setMessages(prev => [
@@ -183,7 +197,7 @@ const Chatbot = () => {
       }
 
       toast({
-        title: "File Uploaded",
+        title: "Success",
         description: "Your file has been uploaded and analyzed successfully.",
       });
     } catch (error) {
@@ -242,7 +256,7 @@ const Chatbot = () => {
                 onClick={toggleMaximize}
                 className="text-white hover:bg-purple-700"
               >
-                <Maximize2 className="h-4 w-4" />
+                {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
               </Button>
               <Button
                 variant="ghost"

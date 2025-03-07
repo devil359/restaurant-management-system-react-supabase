@@ -49,7 +49,7 @@ serve(async (req) => {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: "gpt-4o", // Updated to use gpt-4o model
+        model: "gpt-4o", // Explicitly set to gpt-4o
         messages: [
           {
             role: "system",
