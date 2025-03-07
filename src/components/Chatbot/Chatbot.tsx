@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import ChatMessage from "./ChatMessage";
 import ChatInput from "./ChatInput";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { useQuery } from "@tanstack/react-query";
 
 type Message = {
   role: "user" | "assistant";
@@ -28,6 +29,23 @@ const Chatbot = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  
+  // Fetch the restaurant ID for the current user
+  const { data: restaurantId } = useQuery({
+    queryKey: ["restaurant-id"],
+    queryFn: async () => {
+      const { data: profile } = await supabase.auth.getUser();
+      if (!profile.user) throw new Error("No user found");
+
+      const { data: userProfile } = await supabase
+        .from("profiles")
+        .select("restaurant_id")
+        .eq("id", profile.user.id)
+        .single();
+
+      return userProfile?.restaurant_id || null;
+    },
+  });
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -54,7 +72,8 @@ const Chatbot = () => {
           messages: [...messages, userMessage].map(m => ({ 
             role: m.role, 
             content: m.content 
-          })) 
+          })),
+          restaurantId // Pass the restaurant ID to the Edge Function
         },
       });
 
@@ -204,7 +223,8 @@ const Chatbot = () => {
           ].map(m => ({ 
             role: m.role, 
             content: m.content 
-          })) 
+          })),
+          restaurantId // Pass the restaurant ID for context
         },
       });
 
@@ -332,7 +352,7 @@ const Chatbot = () => {
                   <Upload className="h-3 w-3 mr-1" /> Upload File for Analysis
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-2">
+              <PopoverContent className="w-auto p-2 bg-white dark:bg-slate-800 border shadow-md">
                 <div className="text-sm text-muted-foreground mb-2">
                   Upload a file for AI analysis (CSV, Excel, PDF, images)
                 </div>
