@@ -1,26 +1,25 @@
 
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import React, { useState, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
-import { Calendar } from "@/components/ui/calendar";
-import { Textarea } from "@/components/ui/textarea";
-import { format, addHours, isAfter, parseISO, addDays, differenceInDays } from "date-fns";
-import { Plus, Calendar as CalendarIcon, Clock, Edit, Trash2, Users, DoorOpen, Check, X, RefreshCw } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -28,1257 +27,683 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import RoomCheckout from "@/components/Rooms/RoomCheckout";
+import BillingHistory from "@/components/Rooms/BillingHistory";
 
 interface Room {
   id: string;
   name: string;
   capacity: number;
   status: string;
+  price: number;
+  restaurant_id: string;
 }
 
 interface Reservation {
   id: string;
+  customer_name: string;
+  customer_email: string | null;
+  customer_phone: string | null;
   room_id: string;
   start_time: string;
   end_time: string;
-  customer_name: string;
-  customer_email: string;
-  customer_phone: string;
-  notes: string;
-  status: string;
+  status: string | null;
+  notes: string | null;
 }
 
-const timeOptions = [];
-for (let hour = 0; hour < 24; hour++) {
-  for (let minute = 0; minute < 60; minute += 30) {
-    const formattedHour = hour.toString().padStart(2, '0');
-    const formattedMinute = minute.toString().padStart(2, '0');
-    timeOptions.push(`${formattedHour}:${formattedMinute}`);
-  }
-}
+const statusColors = {
+  available: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+  occupied: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+  cleaning: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+  maintenance: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+};
 
 const Rooms = () => {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [isAddRoomOpen, setIsAddRoomOpen] = useState(false);
-  const [isAddReservationOpen, setIsAddReservationOpen] = useState(false);
-  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
-  const [isEditRoomOpen, setIsEditRoomOpen] = useState(false);
-  const [editingRoom, setEditingRoom] = useState<Room | null>(null);
-  const [editingReservation, setEditingReservation] = useState<Reservation | null>(null);
-  const [deletingReservationId, setDeletingReservationId] = useState<string | null>(null);
-  
-  // Date and time state for reservation
-  const [startDate, setStartDate] = useState<Date | undefined>(new Date());
-  const [endDate, setEndDate] = useState<Date | undefined>(addDays(new Date(), 1));
-  const [startTime, setStartTime] = useState<string>("14:00"); // 2:00 PM (check-in)
-  const [endTime, setEndTime] = useState<string>("12:00"); // 12:00 PM (check-out)
-  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
-  const [validationError, setValidationError] = useState<string | null>(null);
-  
-  // Popover states
-  const [isStartTimeOpen, setIsStartTimeOpen] = useState(false);
-  const [isEndTimeOpen, setIsEndTimeOpen] = useState(false);
-  const [isStartDateOpen, setIsStartDateOpen] = useState(false);
-  const [isEndDateOpen, setIsEndDateOpen] = useState(false);
-  
-  // Form data state
-  const [formData, setFormData] = useState({
-    customerName: "",
-    customerEmail: "",
-    customerPhone: "",
-    notes: ""
-  });
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [openAddRoom, setOpenAddRoom] = useState(false);
+  const [openEditRoom, setOpenEditRoom] = useState(false);
+  const [openReservation, setOpenReservation] = useState(false);
+  const [activeTab, setActiveTab] = useState("rooms");
+  const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
+  const [checkoutRoom, setCheckoutRoom] = useState<{ roomId: string, reservationId: string } | null>(null);
 
-  // New room form state
-  const [roomForm, setRoomForm] = useState({
+  // Form states
+  const [newRoom, setNewRoom] = useState({
     name: "",
     capacity: 1,
-    status: "available"
+    price: 0,
+    status: "available",
+  });
+  const [editRoom, setEditRoom] = useState({
+    id: "",
+    name: "",
+    capacity: 1,
+    price: 0,
+    status: "available",
+  });
+  const [reservation, setReservation] = useState({
+    customer_name: "",
+    customer_email: "",
+    customer_phone: "",
+    start_date: new Date(),
+    end_date: new Date(),
+    notes: "",
   });
 
-  // Get restaurant ID
-  const { data: restaurantId } = useQuery({
-    queryKey: ["restaurant-id"],
-    queryFn: async () => {
-      const { data: profile } = await supabase.auth.getUser();
-      if (!profile.user) throw new Error("No user found");
-
-      const { data: userProfile } = await supabase
-        .from("profiles")
-        .select("restaurant_id")
-        .eq("id", profile.user.id)
-        .single();
-
-      return userProfile?.restaurant_id;
-    },
-  });
+  const { toast } = useToast();
+  const restaurantId = "123e4567-e89b-12d3-a456-426614174000"; // Replace with dynamic ID in production
 
   // Fetch rooms
-  const { data: rooms = [], isLoading: roomsLoading } = useQuery({
-    queryKey: ["rooms", restaurantId],
-    enabled: !!restaurantId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("rooms")
-        .select("*")
-        .eq("restaurant_id", restaurantId)
-        .order("name");
+  useEffect(() => {
+    const fetchRooms = async () => {
+      try {
+        let { data, error } = await supabase
+          .from("rooms")
+          .select("*")
+          .eq("restaurant_id", restaurantId);
+
+        if (error) throw error;
+        setRooms(data || []);
+      } catch (error) {
+        console.error("Error fetching rooms:", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to fetch rooms. Please try again.",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRooms();
+  }, [restaurantId, toast]);
+
+  // Add new room
+  const handleAddRoom = async () => {
+    try {
+      const { data, error } = await supabase.from("rooms").insert([
+        {
+          name: newRoom.name,
+          capacity: newRoom.capacity,
+          price: newRoom.price,
+          status: newRoom.status,
+          restaurant_id: restaurantId,
+        },
+      ]).select();
 
       if (error) throw error;
-      return data as Room[];
-    },
-  });
 
-  // Fetch reservations
-  const { data: reservations = [], isLoading: reservationsLoading } = useQuery({
-    queryKey: ["reservations", restaurantId],
-    enabled: !!restaurantId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("reservations")
-        .select("*")
-        .eq("restaurant_id", restaurantId)
-        .order("start_time", { ascending: true });
-
-      if (error) throw error;
-      return data as Reservation[];
-    },
-  });
-
-  // Mutations
-  const addRoomMutation = useMutation({
-    mutationFn: async (roomData: any) => {
-      const { data, error } = await supabase
-        .from("rooms")
-        .insert([{ ...roomData, restaurant_id: restaurantId }]);
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["rooms"] });
-      setIsAddRoomOpen(false);
-      setRoomForm({
+      setRooms([...rooms, data[0]]);
+      setOpenAddRoom(false);
+      setNewRoom({
         name: "",
         capacity: 1,
-        status: "available"
+        price: 0,
+        status: "available",
       });
+
       toast({
-        title: "Success",
-        description: "Room added successfully",
+        title: "Room Added",
+        description: "New room has been added successfully.",
       });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: "Failed to add room",
-        variant: "destructive",
-      });
+    } catch (error) {
       console.error("Error adding room:", error);
-    },
-  });
-
-  const updateRoomMutation = useMutation({
-    mutationFn: async (roomData: any) => {
-      const { id, ...updateData } = roomData;
-      const { data, error } = await supabase
-        .from("rooms")
-        .update(updateData)
-        .eq("id", id);
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["rooms"] });
-      setIsEditRoomOpen(false);
-      setEditingRoom(null);
       toast({
-        title: "Success",
-        description: "Room updated successfully",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: "Failed to update room",
         variant: "destructive",
-      });
-      console.error("Error updating room:", error);
-    },
-  });
-
-  const addReservationMutation = useMutation({
-    mutationFn: async (reservationData: any) => {
-      const { data, error } = await supabase
-        .from("reservations")
-        .insert([{ ...reservationData, restaurant_id: restaurantId }]);
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["reservations"] });
-      queryClient.invalidateQueries({ queryKey: ["rooms"] });
-      resetReservationForm();
-      setIsAddReservationOpen(false);
-      toast({
-        title: "Success",
-        description: "Reservation added successfully",
-      });
-    },
-    onError: (error) => {
-      toast({
         title: "Error",
-        description: "Failed to add reservation",
-        variant: "destructive",
+        description: "Failed to add room. Please try again.",
       });
-      console.error("Error adding reservation:", error);
-    },
-  });
-
-  const updateReservationMutation = useMutation({
-    mutationFn: async (reservationData: any) => {
-      const { id, ...updateData } = reservationData;
-      const { data, error } = await supabase
-        .from("reservations")
-        .update(updateData)
-        .eq("id", id);
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["reservations"] });
-      queryClient.invalidateQueries({ queryKey: ["rooms"] });
-      resetReservationForm();
-      setIsAddReservationOpen(false);
-      toast({
-        title: "Success",
-        description: "Reservation updated successfully",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: "Failed to update reservation",
-        variant: "destructive",
-      });
-      console.error("Error updating reservation:", error);
-    },
-  });
-
-  const deleteReservationMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from("reservations")
-        .delete()
-        .eq("id", id);
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["reservations"] });
-      queryClient.invalidateQueries({ queryKey: ["rooms"] });
-      setIsConfirmDeleteOpen(false);
-      toast({
-        title: "Success",
-        description: "Reservation deleted successfully",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: "Failed to delete reservation",
-        variant: "destructive",
-      });
-      console.error("Error deleting reservation:", error);
-    },
-  });
-
-  // Handle room submission
-  const handleRoomSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    addRoomMutation.mutate({
-      name: roomForm.name,
-      capacity: parseInt(roomForm.capacity.toString()),
-      status: roomForm.status,
-    });
-  };
-
-  // Handle room update
-  const handleRoomUpdate = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!editingRoom) return;
-    
-    updateRoomMutation.mutate({
-      id: editingRoom.id,
-      name: roomForm.name,
-      capacity: parseInt(roomForm.capacity.toString()),
-      status: roomForm.status,
-    });
+    }
   };
 
   // Edit room
-  const handleEditRoom = (room: Room) => {
-    setEditingRoom(room);
-    setRoomForm({
+  const openEditDialog = (room: Room) => {
+    setEditRoom({
+      id: room.id,
       name: room.name,
       capacity: room.capacity,
-      status: room.status
+      price: room.price,
+      status: room.status,
     });
-    setIsEditRoomOpen(true);
+    setOpenEditRoom(true);
   };
 
-  // Validate reservation
-  const validateReservation = (): boolean => {
-    if (!startDate || !endDate) {
-      setValidationError("Please select both start and end dates");
-      return false;
-    }
+  const handleEditRoom = async () => {
+    try {
+      const { error } = await supabase
+        .from("rooms")
+        .update({
+          name: editRoom.name,
+          capacity: editRoom.capacity,
+          price: editRoom.price,
+          status: editRoom.status,
+        })
+        .eq("id", editRoom.id);
 
-    if (!selectedRoomId) {
-      setValidationError("Please select a room");
-      return false;
-    }
+      if (error) throw error;
 
-    // Create full date-time objects for validation
-    const startDateTime = new Date(startDate);
-    const startHours = parseInt(startTime.split(":")[0]);
-    const startMinutes = parseInt(startTime.split(":")[1]);
-    startDateTime.setHours(startHours, startMinutes, 0, 0);
-    
-    const endDateTime = new Date(endDate);
-    const endHours = parseInt(endTime.split(":")[0]);
-    const endMinutes = parseInt(endTime.split(":")[1]);
-    endDateTime.setHours(endHours, endMinutes, 0, 0);
-    
-    // Check if end date is after start date
-    if (!isAfter(endDateTime, startDateTime)) {
-      setValidationError("End date/time must be after start date/time");
-      return false;
-    }
-    
-    setValidationError(null);
-    return true;
-  };
+      setRooms(
+        rooms.map((room) =>
+          room.id === editRoom.id ? { ...room, ...editRoom } : room
+        )
+      );
+      setOpenEditRoom(false);
 
-  // Handle time selection
-  const handleStartTimeSelect = (time: string) => {
-    setStartTime(time);
-    setIsStartTimeOpen(false);
-    validateReservation();
-  };
-
-  const handleEndTimeSelect = (time: string) => {
-    setEndTime(time);
-    setIsEndTimeOpen(false);
-    validateReservation();
-  };
-
-  // Handle reservation submission
-  const handleReservationSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    
-    if (!validateReservation()) {
-      return;
-    }
-
-    // Create date objects for start and end times
-    const startDateTime = new Date(startDate!);
-    const startHours = parseInt(startTime.split(":")[0]);
-    const startMinutes = parseInt(startTime.split(":")[1]);
-    startDateTime.setHours(startHours, startMinutes, 0, 0);
-
-    const endDateTime = new Date(endDate!);
-    const endHours = parseInt(endTime.split(":")[0]);
-    const endMinutes = parseInt(endTime.split(":")[1]);
-    endDateTime.setHours(endHours, endMinutes, 0, 0);
-
-    const reservationData = {
-      room_id: selectedRoomId,
-      start_time: startDateTime.toISOString(),
-      end_time: endDateTime.toISOString(),
-      customer_name: formData.customerName,
-      customer_email: formData.customerEmail || null,
-      customer_phone: formData.customerPhone || null,
-      notes: formData.notes || null,
-      status: "confirmed",
-    };
-
-    if (editingReservation) {
-      updateReservationMutation.mutate({
-        id: editingReservation.id,
-        ...reservationData,
+      toast({
+        title: "Room Updated",
+        description: "Room details have been updated successfully.",
       });
-    } else {
-      addReservationMutation.mutate(reservationData);
+    } catch (error) {
+      console.error("Error updating room:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update room. Please try again.",
+      });
     }
   };
 
-  // Edit reservation
-  const handleEditReservation = (reservation: Reservation) => {
-    setEditingReservation(reservation);
+  // Open reservation dialog
+  const openReservationDialog = (room: Room) => {
+    setCurrentRoom(room);
+    setOpenReservation(true);
+  };
+
+  // Create reservation
+  const handleCreateReservation = async () => {
+    try {
+      if (!currentRoom) return;
+
+      const startTime = new Date(reservation.start_date);
+      startTime.setHours(12, 0, 0, 0); // Check-in at 12 PM
+
+      const endTime = new Date(reservation.end_date);
+      endTime.setHours(11, 0, 0, 0); // Check-out at 11 AM
+
+      const { data, error } = await supabase.from("reservations").insert([
+        {
+          customer_name: reservation.customer_name,
+          customer_email: reservation.customer_email || null,
+          customer_phone: reservation.customer_phone || null,
+          room_id: currentRoom.id,
+          start_time: startTime.toISOString(),
+          end_time: endTime.toISOString(),
+          notes: reservation.notes || null,
+          status: "confirmed",
+          restaurant_id: restaurantId,
+        },
+      ]).select();
+
+      if (error) throw error;
+
+      // Update room status
+      const { error: roomError } = await supabase
+        .from("rooms")
+        .update({ status: "occupied" })
+        .eq("id", currentRoom.id);
+
+      if (roomError) throw roomError;
+
+      setOpenReservation(false);
+      setReservation({
+        customer_name: "",
+        customer_email: "",
+        customer_phone: "",
+        start_date: new Date(),
+        end_date: new Date(),
+        notes: "",
+      });
+
+      // Update rooms in state
+      setRooms(
+        rooms.map((room) =>
+          room.id === currentRoom.id
+            ? { ...room, status: "occupied" }
+            : room
+        )
+      );
+
+      toast({
+        title: "Reservation Created",
+        description: "Room reservation has been created successfully.",
+      });
+    } catch (error) {
+      console.error("Error creating reservation:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to create reservation. Please try again.",
+      });
+    }
+  };
+
+  // Get active reservations for a room
+  const handleCheckout = async (roomId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("reservations")
+        .select("*")
+        .eq("room_id", roomId)
+        .eq("status", "confirmed")
+        .order("start_time", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error) {
+        toast({
+          variant: "destructive",
+          title: "No Active Reservation",
+          description: "There is no active reservation for this room.",
+        });
+        return;
+      }
+
+      setCheckoutRoom({
+        roomId,
+        reservationId: data.id,
+      });
+    } catch (error) {
+      console.error("Error fetching reservation for checkout:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to prepare checkout. Please try again.",
+      });
+    }
+  };
+
+  const handleCheckoutComplete = async () => {
+    setCheckoutRoom(null);
     
-    // Parse date and time
-    const startDate = new Date(reservation.start_time);
-    const startHours = startDate.getHours().toString().padStart(2, '0');
-    const startMinutes = startDate.getMinutes().toString().padStart(2, '0');
-    
-    const endDate = new Date(reservation.end_time);
-    const endHours = endDate.getHours().toString().padStart(2, '0');
-    const endMinutes = endDate.getMinutes().toString().padStart(2, '0');
-    
-    // Set form state
-    setStartDate(startDate);
-    setEndDate(endDate);
-    setStartTime(`${startHours}:${startMinutes}`);
-    setEndTime(`${endHours}:${endMinutes}`);
-    setSelectedRoomId(reservation.room_id);
-    setFormData({
-      customerName: reservation.customer_name,
-      customerEmail: reservation.customer_email || "",
-      customerPhone: reservation.customer_phone || "",
-      notes: reservation.notes || ""
-    });
-    
-    setIsAddReservationOpen(true);
-  };
+    // Refresh rooms
+    try {
+      const { data, error } = await supabase
+        .from("rooms")
+        .select("*")
+        .eq("restaurant_id", restaurantId);
 
-  // Handle delete reservation
-  const handleDeleteReservation = (id: string) => {
-    setDeletingReservationId(id);
-    setIsConfirmDeleteOpen(true);
-  };
-
-  // Confirm delete reservation
-  const confirmDeleteReservation = () => {
-    if (deletingReservationId) {
-      deleteReservationMutation.mutate(deletingReservationId);
+      if (error) throw error;
+      setRooms(data || []);
+    } catch (error) {
+      console.error("Error refreshing rooms:", error);
     }
   };
 
-  // Reset reservation form
-  const resetReservationForm = () => {
-    setStartDate(new Date());
-    setEndDate(addDays(new Date(), 1));
-    setStartTime("14:00");
-    setEndTime("12:00");
-    setSelectedRoomId(null);
-    setFormData({
-      customerName: "",
-      customerEmail: "",
-      customerPhone: "",
-      notes: ""
-    });
-    setEditingReservation(null);
-    setValidationError(null);
+  // Get status badge class
+  const getStatusClass = (status: string) => {
+    return statusColors[status as keyof typeof statusColors] || "bg-gray-100 text-gray-800";
   };
 
-  // Open Add Reservation dialog
-  const openAddReservation = (roomId?: string) => {
-    resetReservationForm();
-    if (roomId) {
-      setSelectedRoomId(roomId);
-    }
-    setIsAddReservationOpen(true);
-  };
+  if (loading) {
+    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+  }
 
-  // Handle input changes
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  // Handle room form input changes
-  const handleRoomFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setRoomForm(prev => ({ ...prev, [name]: value }));
-  };
-
-  // Handle room status change
-  const handleRoomStatusChange = (status: string) => {
-    setRoomForm(prev => ({ ...prev, status }));
-  };
-
-  // Filter upcoming reservations
-  const upcomingReservations = reservations.filter(
-    reservation => new Date(reservation.start_time) >= new Date()
-  ).sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
-
-  // Filter past reservations
-  const pastReservations = reservations.filter(
-    reservation => new Date(reservation.start_time) < new Date()
-  ).sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime());
-
-  // Get room name by ID
-  const getRoomName = (roomId: string) => {
-    const room = rooms.find(room => room.id === roomId);
-    return room ? room.name : 'Unknown Room';
-  };
-
-  // Get duration in days
-  const getDurationInDays = (startTime: string, endTime: string) => {
-    const start = new Date(startTime);
-    const end = new Date(endTime);
-    // Add 1 because we count both the start and end days
-    return differenceInDays(end, start) + 1;
-  };
-
-  // Get status badge color
-  const getStatusBadgeClass = (status: string) => {
-    switch(status) {
-      case 'available':
-        return 'bg-green-50 text-green-700 border-green-200';
-      case 'occupied':
-        return 'bg-red-50 text-red-700 border-red-200';
-      case 'cleaning':
-        return 'bg-amber-50 text-amber-700 border-amber-200';
-      default:
-        return 'bg-gray-50 text-gray-700 border-gray-200';
-    }
-  };
-
-  // Get status icon
-  const getStatusIcon = (status: string) => {
-    switch(status) {
-      case 'available':
-        return <Check className="h-3 w-3 mr-1" />;
-      case 'occupied':
-        return <X className="h-3 w-3 mr-1" />;
-      case 'cleaning':
-        return <RefreshCw className="h-3 w-3 mr-1" />;
-      default:
-        return null;
-    }
-  };
-
-  if (roomsLoading || reservationsLoading) {
-    return <div className="p-8 text-center">Loading...</div>;
+  if (checkoutRoom) {
+    return (
+      <RoomCheckout 
+        roomId={checkoutRoom.roomId}
+        reservationId={checkoutRoom.reservationId}
+        onComplete={handleCheckoutComplete}
+      />
+    );
   }
 
   return (
-    <div className="p-6 space-y-6 bg-gradient-to-br from-purple-50 to-white dark:from-gray-900 dark:to-gray-800">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
-            Room Management
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Manage your rooms and reservations
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Dialog open={isAddReservationOpen} onOpenChange={setIsAddReservationOpen}>
-            <DialogTrigger asChild>
-              <Button 
-                onClick={() => openAddReservation()}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                New Reservation
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px] bg-white dark:bg-gray-800 pointer-events-auto">
-              <DialogHeader>
-                <DialogTitle>{editingReservation ? "Edit Reservation" : "Add New Reservation"}</DialogTitle>
-                <DialogDescription>
-                  {editingReservation 
-                    ? "Update the reservation details below" 
-                    : "Fill in the details to create a new reservation"}
-                </DialogDescription>
-              </DialogHeader>
-
-              <form onSubmit={handleReservationSubmit} className="space-y-4 mt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="room">Room</Label>
-                  <select
-                    id="room"
-                    value={selectedRoomId || ""}
-                    onChange={(e) => setSelectedRoomId(e.target.value)}
-                    className="w-full border rounded-md p-2 bg-white dark:bg-gray-700 dark:text-white"
-                    required
-                  >
-                    <option value="">Select a room</option>
-                    {rooms.map((room) => (
-                      <option key={room.id} value={room.id}>
-                        {room.name} (Capacity: {room.capacity})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Check-In Date</Label>
-                    <Popover open={isStartDateOpen} onOpenChange={setIsStartDateOpen}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start text-left font-normal bg-white dark:bg-gray-700"
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {startDate ? format(startDate, "MMM dd, yyyy") : "Select date"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0 bg-white dark:bg-gray-700" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={startDate}
-                          onSelect={(date) => {
-                            setStartDate(date);
-                            // Update end date if it's earlier than start date
-                            if (endDate && date && isAfter(date, endDate)) {
-                              setEndDate(addDays(date, 1));
-                            }
-                            setIsStartDateOpen(false);
-                          }}
-                          initialFocus
-                          captionLayout="dropdown-buttons"
-                          fromYear={2022}
-                          toYear={2030}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Check-Out Date</Label>
-                    <Popover open={isEndDateOpen} onOpenChange={setIsEndDateOpen}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start text-left font-normal bg-white dark:bg-gray-700"
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {endDate ? format(endDate, "MMM dd, yyyy") : "Select date"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0 bg-white dark:bg-gray-700" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={endDate}
-                          onSelect={(date) => {
-                            setEndDate(date);
-                            setIsEndDateOpen(false);
-                          }}
-                          disabled={(date) => 
-                            (startDate && date < startDate)
-                          }
-                          initialFocus
-                          captionLayout="dropdown-buttons"
-                          fromYear={2022}
-                          toYear={2030}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Check-In Time</Label>
-                    <Popover open={isStartTimeOpen} onOpenChange={setIsStartTimeOpen}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start text-left font-normal bg-white dark:bg-gray-700"
-                        >
-                          <Clock className="mr-2 h-4 w-4" />
-                          {startTime}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[200px] p-2 bg-white dark:bg-gray-700 pointer-events-auto" align="start">
-                        <div className="space-y-1 max-h-[300px] overflow-y-auto">
-                          {timeOptions.map((time) => (
-                            <Button
-                              key={time}
-                              variant="ghost"
-                              className={cn(
-                                "w-full justify-start font-normal",
-                                startTime === time && "bg-accent text-accent-foreground"
-                              )}
-                              onClick={() => handleStartTimeSelect(time)}
-                            >
-                              {time}
-                            </Button>
-                          ))}
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Check-Out Time</Label>
-                    <Popover open={isEndTimeOpen} onOpenChange={setIsEndTimeOpen}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start text-left font-normal bg-white dark:bg-gray-700"
-                        >
-                          <Clock className="mr-2 h-4 w-4" />
-                          {endTime}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[200px] p-2 bg-white dark:bg-gray-700 pointer-events-auto" align="start">
-                        <div className="space-y-1 max-h-[300px] overflow-y-auto">
-                          {timeOptions.map((time) => (
-                            <Button
-                              key={time}
-                              variant="ghost"
-                              className={cn(
-                                "w-full justify-start font-normal",
-                                endTime === time && "bg-accent text-accent-foreground"
-                              )}
-                              onClick={() => handleEndTimeSelect(time)}
-                            >
-                              {time}
-                            </Button>
-                          ))}
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
-
-                {validationError && (
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-600 text-sm">
-                    {validationError}
-                  </div>
-                )}
-
-                {startDate && endDate && (
-                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-md text-blue-700 text-sm">
-                    Duration: {differenceInDays(endDate, startDate) + 1} days
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  <Label htmlFor="customerName">Customer Name</Label>
-                  <Input
-                    id="customerName"
-                    name="customerName"
-                    value={formData.customerName}
-                    onChange={handleInputChange}
-                    className="bg-white dark:bg-gray-700"
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="customerEmail">Email (Optional)</Label>
-                    <Input
-                      id="customerEmail"
-                      name="customerEmail"
-                      type="email"
-                      value={formData.customerEmail}
-                      onChange={handleInputChange}
-                      className="bg-white dark:bg-gray-700"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="customerPhone">Phone (Optional)</Label>
-                    <Input
-                      id="customerPhone"
-                      name="customerPhone"
-                      value={formData.customerPhone}
-                      onChange={handleInputChange}
-                      className="bg-white dark:bg-gray-700"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Notes (Optional)</Label>
-                  <Textarea
-                    id="notes"
-                    name="notes"
-                    value={formData.notes}
-                    onChange={handleInputChange}
-                    className="min-h-[80px] bg-white dark:bg-gray-700"
-                  />
-                </div>
-
-                <DialogFooter>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => setIsAddReservationOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    type="submit"
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    {editingReservation ? "Update Reservation" : "Add Reservation"}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
-
-          <Dialog open={isAddRoomOpen} onOpenChange={setIsAddRoomOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-purple-600 hover:bg-purple-700 text-white">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Room
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px] bg-white dark:bg-gray-800">
-              <DialogHeader>
-                <DialogTitle>Add New Room</DialogTitle>
-                <DialogDescription>
-                  Fill in the room details below
-                </DialogDescription>
-              </DialogHeader>
-
-              <form onSubmit={handleRoomSubmit} className="space-y-4 mt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="roomName">Room Name</Label>
-                  <Input 
-                    id="roomName" 
-                    name="name" 
-                    value={roomForm.name}
-                    onChange={handleRoomFormChange}
-                    className="bg-white dark:bg-gray-700" 
-                    required 
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="roomCapacity">Capacity</Label>
-                  <Input
-                    id="roomCapacity"
-                    name="capacity"
-                    type="number"
-                    min="1"
-                    value={roomForm.capacity}
-                    onChange={handleRoomFormChange}
-                    className="bg-white dark:bg-gray-700"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="roomStatus">Status</Label>
-                  <Select 
-                    value={roomForm.status} 
-                    onValueChange={handleRoomStatusChange}
-                  >
-                    <SelectTrigger className="bg-white dark:bg-gray-700">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white dark:bg-gray-700">
-                      <SelectItem value="available">Available</SelectItem>
-                      <SelectItem value="occupied">Occupied</SelectItem>
-                      <SelectItem value="cleaning">Cleaning</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <DialogFooter>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => setIsAddRoomOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    type="submit"
-                    className="bg-purple-600 hover:bg-purple-700"
-                  >
-                    Add Room
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
-
-          <Dialog open={isEditRoomOpen} onOpenChange={setIsEditRoomOpen}>
-            <DialogContent className="sm:max-w-[425px] bg-white dark:bg-gray-800">
-              <DialogHeader>
-                <DialogTitle>Edit Room</DialogTitle>
-                <DialogDescription>
-                  Update the room details below
-                </DialogDescription>
-              </DialogHeader>
-
-              <form onSubmit={handleRoomUpdate} className="space-y-4 mt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="editRoomName">Room Name</Label>
-                  <Input 
-                    id="editRoomName" 
-                    name="name" 
-                    value={roomForm.name}
-                    onChange={handleRoomFormChange}
-                    className="bg-white dark:bg-gray-700" 
-                    required 
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="editRoomCapacity">Capacity</Label>
-                  <Input
-                    id="editRoomCapacity"
-                    name="capacity"
-                    type="number"
-                    min="1"
-                    value={roomForm.capacity}
-                    onChange={handleRoomFormChange}
-                    className="bg-white dark:bg-gray-700"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="editRoomStatus">Status</Label>
-                  <Select 
-                    value={roomForm.status} 
-                    onValueChange={handleRoomStatusChange}
-                  >
-                    <SelectTrigger className="bg-white dark:bg-gray-700">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white dark:bg-gray-700 pointer-events-auto">
-                      <SelectItem value="available">Available</SelectItem>
-                      <SelectItem value="occupied">Occupied</SelectItem>
-                      <SelectItem value="cleaning">Cleaning</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <DialogFooter>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => setIsEditRoomOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    type="submit"
-                    className="bg-purple-600 hover:bg-purple-700"
-                  >
-                    Update Room
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
+    <div className="container mx-auto py-8">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Rooms Management</h1>
+        <Button onClick={() => setOpenAddRoom(true)}>Add New Room</Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {rooms.map((room) => (
-          <Card key={room.id} className="hover:shadow-md transition-shadow bg-white dark:bg-gray-800">
-            <CardHeader className="pb-2">
-              <div className="flex justify-between items-start">
-                <CardTitle className="text-lg font-medium">{room.name}</CardTitle>
-                <Badge
-                  variant="outline"
-                  className={getStatusBadgeClass(room.status)}
-                >
-                  {getStatusIcon(room.status)}
-                  {room.status.charAt(0).toUpperCase() + room.status.slice(1)}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2 mb-4">
-                <Users className="h-4 w-4 text-muted-foreground" />
-                <span>Capacity: {room.capacity}</span>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => openAddReservation(room.id)}
-                  variant="outline"
-                  className="flex-1"
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  Reserve
-                </Button>
-                <Button
-                  onClick={() => handleEditRoom(room)}
-                  variant="outline"
-                  size="icon"
-                  className="h-10 w-10"
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <Tabs defaultValue="upcoming" className="w-full mt-8">
-        <TabsList className="mb-4 bg-white dark:bg-gray-800">
-          <TabsTrigger value="upcoming" className="flex gap-2 items-center">
-            <CalendarIcon className="h-4 w-4" />
-            Upcoming Reservations
-          </TabsTrigger>
-          <TabsTrigger value="past" className="flex gap-2 items-center">
-            <Clock className="h-4 w-4" />
-            Past Reservations
-          </TabsTrigger>
-          <TabsTrigger value="rooms" className="flex gap-2 items-center">
-            <DoorOpen className="h-4 w-4" />
-            All Rooms
-          </TabsTrigger>
+      <Tabs 
+        defaultValue="rooms" 
+        value={activeTab} 
+        onValueChange={setActiveTab} 
+        className="w-full"
+      >
+        <TabsList className="mb-6">
+          <TabsTrigger value="rooms">Rooms</TabsTrigger>
+          <TabsTrigger value="billing">Billing History</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="upcoming">
-          <Card className="bg-white dark:bg-gray-800">
-            <CardHeader>
-              <CardTitle>Upcoming Reservations</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {upcomingReservations.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Room</TableHead>
-                      <TableHead>Customer</TableHead>
-                      <TableHead>Check-In</TableHead>
-                      <TableHead>Check-Out</TableHead>
-                      <TableHead>Duration</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {upcomingReservations.map((reservation) => (
-                      <TableRow key={reservation.id}>
-                        <TableCell className="font-medium">
-                          {getRoomName(reservation.room_id)}
-                        </TableCell>
-                        <TableCell>
-                          <div>{reservation.customer_name}</div>
-                          {reservation.customer_email && (
-                            <div className="text-xs text-muted-foreground">{reservation.customer_email}</div>
-                          )}
-                          {reservation.customer_phone && (
-                            <div className="text-xs text-muted-foreground">{reservation.customer_phone}</div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div>{format(new Date(reservation.start_time), "MMM dd, yyyy")}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {format(new Date(reservation.start_time), "h:mm a")}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div>{format(new Date(reservation.end_time), "MMM dd, yyyy")}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {format(new Date(reservation.end_time), "h:mm a")}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                            {getDurationInDays(reservation.start_time, reservation.end_time)} days
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant="outline"
-                            className={`${
-                              reservation.status === "confirmed"
-                                ? "bg-green-50 text-green-700 border-green-200"
-                                : "bg-amber-50 text-amber-700 border-amber-200"
-                            }`}
-                          >
-                            {reservation.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditReservation(reservation)}
-                              className="h-8 w-8 p-0"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteReservation(reservation.id)}
-                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  No upcoming reservations found
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="past">
-          <Card className="bg-white dark:bg-gray-800">
-            <CardHeader>
-              <CardTitle>Past Reservations</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {pastReservations.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Room</TableHead>
-                      <TableHead>Customer</TableHead>
-                      <TableHead>Check-In</TableHead>
-                      <TableHead>Check-Out</TableHead>
-                      <TableHead>Duration</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {pastReservations.map((reservation) => (
-                      <TableRow key={reservation.id}>
-                        <TableCell className="font-medium">
-                          {getRoomName(reservation.room_id)}
-                        </TableCell>
-                        <TableCell>
-                          <div>{reservation.customer_name}</div>
-                          {reservation.customer_email && (
-                            <div className="text-xs text-muted-foreground">{reservation.customer_email}</div>
-                          )}
-                          {reservation.customer_phone && (
-                            <div className="text-xs text-muted-foreground">{reservation.customer_phone}</div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div>{format(new Date(reservation.start_time), "MMM dd, yyyy")}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {format(new Date(reservation.start_time), "h:mm a")}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div>{format(new Date(reservation.end_time), "MMM dd, yyyy")}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {format(new Date(reservation.end_time), "h:mm a")}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                            {getDurationInDays(reservation.start_time, reservation.end_time)} days
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant="outline"
-                            className={`${
-                              reservation.status === "confirmed"
-                                ? "bg-green-50 text-green-700 border-green-200"
-                                : "bg-amber-50 text-amber-700 border-amber-200"
-                            }`}
-                          >
-                            {reservation.status}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  No past reservations found
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
         <TabsContent value="rooms">
-          <Card className="bg-white dark:bg-gray-800">
-            <CardHeader>
-              <CardTitle>All Rooms</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Capacity</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rooms.map((room) => (
-                    <TableRow key={room.id}>
-                      <TableCell className="font-medium">{room.name}</TableCell>
-                      <TableCell>{room.capacity}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={getStatusBadgeClass(room.status)}
-                        >
-                          {getStatusIcon(room.status)}
-                          {room.status.charAt(0).toUpperCase() + room.status.slice(1)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button
-                            onClick={() => openAddReservation(room.id)}
-                            variant="outline"
-                            size="sm"
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            Reserve
-                          </Button>
-                          <Button
-                            onClick={() => handleEditRoom(room)}
-                            variant="outline"
-                            size="sm"
-                          >
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+          {rooms.length === 0 ? (
+            <p className="text-center py-8">No rooms found. Add your first room to get started.</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {rooms.map((room) => (
+                <Card key={room.id}>
+                  <CardHeader>
+                    <CardTitle className="flex justify-between items-center">
+                      {room.name}
+                      <span
+                        className={`px-2 py-1 text-xs rounded-full ${getStatusClass(room.status)}`}
+                      >
+                        {room.status}
+                      </span>
+                    </CardTitle>
+                    <CardDescription>
+                      Capacity: {room.capacity} {room.capacity === 1 ? "person" : "people"}
+                      <div>Price: ₹{room.price} / night</div>
+                    </CardDescription>
+                  </CardHeader>
+                  <CardFooter className="flex justify-between">
+                    <Button variant="outline" onClick={() => openEditDialog(room)}>
+                      Edit
+                    </Button>
+                    {room.status === "available" ? (
+                      <Button
+                        onClick={() => openReservationDialog(room)}
+                      >
+                        Reserve
+                      </Button>
+                    ) : room.status === "occupied" ? (
+                      <Button
+                        variant="secondary"
+                        onClick={() => handleCheckout(room.id)}
+                      >
+                        Checkout
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        disabled={room.status !== "available"}
+                      >
+                        {room.status === "cleaning" ? "Cleaning" : "Maintenance"}
+                      </Button>
+                    )}
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="billing">
+          <BillingHistory restaurantId={restaurantId} />
         </TabsContent>
       </Tabs>
 
-      {/* Confirmation Dialog for Deleting Reservation */}
-      <Dialog open={isConfirmDeleteOpen} onOpenChange={setIsConfirmDeleteOpen}>
-        <DialogContent className="sm:max-w-[425px] bg-white dark:bg-gray-800">
+      {/* Add Room Dialog */}
+      <Dialog open={openAddRoom} onOpenChange={setOpenAddRoom}>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogTitle>Add New Room</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this reservation? This action cannot be undone.
+              Create a new room for your property.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="flex space-x-2 justify-end">
-            <Button variant="outline" onClick={() => setIsConfirmDeleteOpen(false)}>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="name">Room Name</Label>
+              <Input
+                id="name"
+                value={newRoom.name}
+                onChange={(e) =>
+                  setNewRoom({ ...newRoom, name: e.target.value })
+                }
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="capacity">Capacity</Label>
+              <Input
+                id="capacity"
+                type="number"
+                min="1"
+                value={newRoom.capacity}
+                onChange={(e) =>
+                  setNewRoom({
+                    ...newRoom,
+                    capacity: parseInt(e.target.value) || 1,
+                  })
+                }
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="price">Price per Night (₹)</Label>
+              <Input
+                id="price"
+                type="number"
+                min="0"
+                value={newRoom.price}
+                onChange={(e) =>
+                  setNewRoom({
+                    ...newRoom,
+                    price: parseFloat(e.target.value) || 0,
+                  })
+                }
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="status">Status</Label>
+              <Select
+                value={newRoom.status}
+                onValueChange={(value) =>
+                  setNewRoom({ ...newRoom, status: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="available">Available</SelectItem>
+                  <SelectItem value="occupied">Occupied</SelectItem>
+                  <SelectItem value="cleaning">Cleaning</SelectItem>
+                  <SelectItem value="maintenance">Maintenance</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenAddRoom(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddRoom}>Add Room</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Room Dialog */}
+      <Dialog open={openEditRoom} onOpenChange={setOpenEditRoom}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Room</DialogTitle>
+            <DialogDescription>
+              Update room details and status.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="edit-name">Room Name</Label>
+              <Input
+                id="edit-name"
+                value={editRoom.name}
+                onChange={(e) =>
+                  setEditRoom({ ...editRoom, name: e.target.value })
+                }
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-capacity">Capacity</Label>
+              <Input
+                id="edit-capacity"
+                type="number"
+                min="1"
+                value={editRoom.capacity}
+                onChange={(e) =>
+                  setEditRoom({
+                    ...editRoom,
+                    capacity: parseInt(e.target.value) || 1,
+                  })
+                }
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-price">Price per Night (₹)</Label>
+              <Input
+                id="edit-price"
+                type="number"
+                min="0"
+                value={editRoom.price}
+                onChange={(e) =>
+                  setEditRoom({
+                    ...editRoom,
+                    price: parseFloat(e.target.value) || 0,
+                  })
+                }
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-status">Status</Label>
+              <Select
+                value={editRoom.status}
+                onValueChange={(value) =>
+                  setEditRoom({ ...editRoom, status: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="available">Available</SelectItem>
+                  <SelectItem value="occupied">Occupied</SelectItem>
+                  <SelectItem value="cleaning">Cleaning</SelectItem>
+                  <SelectItem value="maintenance">Maintenance</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenEditRoom(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditRoom}>Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reservation Dialog */}
+      <Dialog open={openReservation} onOpenChange={setOpenReservation}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>
+              New Reservation for {currentRoom?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Create a new reservation for this room.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="customer-name">Guest Name</Label>
+              <Input
+                id="customer-name"
+                value={reservation.customer_name}
+                onChange={(e) =>
+                  setReservation({
+                    ...reservation,
+                    customer_name: e.target.value,
+                  })
+                }
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="customer-email">Guest Email (Optional)</Label>
+              <Input
+                id="customer-email"
+                type="email"
+                value={reservation.customer_email}
+                onChange={(e) =>
+                  setReservation({
+                    ...reservation,
+                    customer_email: e.target.value,
+                  })
+                }
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="customer-phone">Guest Phone (Optional)</Label>
+              <Input
+                id="customer-phone"
+                value={reservation.customer_phone}
+                onChange={(e) =>
+                  setReservation({
+                    ...reservation,
+                    customer_phone: e.target.value,
+                  })
+                }
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Check-in Date</Label>
+                <div className="border rounded-md p-2">
+                  <Calendar
+                    mode="single"
+                    selected={reservation.start_date}
+                    onSelect={(date) =>
+                      date && setReservation({ ...reservation, start_date: date })
+                    }
+                    disabled={(date) => date < new Date()}
+                    initialFocus
+                  />
+                </div>
+              </div>
+              <div className="grid gap-2">
+                <Label>Check-out Date</Label>
+                <div className="border rounded-md p-2">
+                  <Calendar
+                    mode="single"
+                    selected={reservation.end_date}
+                    onSelect={(date) =>
+                      date && setReservation({ ...reservation, end_date: date })
+                    }
+                    disabled={(date) =>
+                      date < new Date() || date <= reservation.start_date
+                    }
+                    initialFocus
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="notes">Notes (Optional)</Label>
+              <Input
+                id="notes"
+                value={reservation.notes}
+                onChange={(e) =>
+                  setReservation({ ...reservation, notes: e.target.value })
+                }
+              />
+            </div>
+            <div className="pt-2">
+              <p className="text-sm">
+                Reservation summary: Check-in on{" "}
+                <strong>{format(reservation.start_date, "PPP")}</strong> and
+                check-out on{" "}
+                <strong>{format(reservation.end_date, "PPP")}</strong>
+              </p>
+              <p className="text-sm mt-1">
+                Total cost: <strong>₹{(currentRoom?.price || 0) * Math.max(1, Math.ceil((reservation.end_date.getTime() - reservation.start_date.getTime()) / (1000 * 60 * 60 * 24)))}</strong>
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenReservation(false)}>
               Cancel
             </Button>
             <Button
-              variant="destructive"
-              onClick={confirmDeleteReservation}
+              onClick={handleCreateReservation}
+              disabled={!reservation.customer_name}
             >
-              Delete
+              Create Reservation
             </Button>
           </DialogFooter>
         </DialogContent>
