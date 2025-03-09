@@ -8,11 +8,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
 import { format, addHours, isAfter, parseISO, addDays, differenceInDays } from "date-fns";
-import { Plus, Calendar as CalendarIcon, Clock, Edit, Trash2, Users, DoorOpen, Check, X } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, Clock, Edit, Trash2, Users, DoorOpen, Check, X, RefreshCw } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -21,6 +21,13 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Room {
   id: string;
@@ -56,6 +63,8 @@ const Rooms = () => {
   const [isAddRoomOpen, setIsAddRoomOpen] = useState(false);
   const [isAddReservationOpen, setIsAddReservationOpen] = useState(false);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
+  const [isEditRoomOpen, setIsEditRoomOpen] = useState(false);
+  const [editingRoom, setEditingRoom] = useState<Room | null>(null);
   const [editingReservation, setEditingReservation] = useState<Reservation | null>(null);
   const [deletingReservationId, setDeletingReservationId] = useState<string | null>(null);
   
@@ -79,6 +88,13 @@ const Rooms = () => {
     customerEmail: "",
     customerPhone: "",
     notes: ""
+  });
+
+  // New room form state
+  const [roomForm, setRoomForm] = useState({
+    name: "",
+    capacity: 1,
+    status: "available"
   });
 
   // Get restaurant ID
@@ -143,6 +159,11 @@ const Rooms = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["rooms"] });
       setIsAddRoomOpen(false);
+      setRoomForm({
+        name: "",
+        capacity: 1,
+        status: "available"
+      });
       toast({
         title: "Success",
         description: "Room added successfully",
@@ -155,6 +176,36 @@ const Rooms = () => {
         variant: "destructive",
       });
       console.error("Error adding room:", error);
+    },
+  });
+
+  const updateRoomMutation = useMutation({
+    mutationFn: async (roomData: any) => {
+      const { id, ...updateData } = roomData;
+      const { data, error } = await supabase
+        .from("rooms")
+        .update(updateData)
+        .eq("id", id);
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["rooms"] });
+      setIsEditRoomOpen(false);
+      setEditingRoom(null);
+      toast({
+        title: "Success",
+        description: "Room updated successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update room",
+        variant: "destructive",
+      });
+      console.error("Error updating room:", error);
     },
   });
 
@@ -249,15 +300,35 @@ const Rooms = () => {
   // Handle room submission
   const handleRoomSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const roomName = formData.get("roomName") as string;
-    const roomCapacity = parseInt(formData.get("roomCapacity") as string);
-
     addRoomMutation.mutate({
-      name: roomName,
-      capacity: roomCapacity,
-      status: "available",
+      name: roomForm.name,
+      capacity: parseInt(roomForm.capacity.toString()),
+      status: roomForm.status,
     });
+  };
+
+  // Handle room update
+  const handleRoomUpdate = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingRoom) return;
+    
+    updateRoomMutation.mutate({
+      id: editingRoom.id,
+      name: roomForm.name,
+      capacity: parseInt(roomForm.capacity.toString()),
+      status: roomForm.status,
+    });
+  };
+
+  // Edit room
+  const handleEditRoom = (room: Room) => {
+    setEditingRoom(room);
+    setRoomForm({
+      name: room.name,
+      capacity: room.capacity,
+      status: room.status
+    });
+    setIsEditRoomOpen(true);
   };
 
   // Validate reservation
@@ -420,6 +491,17 @@ const Rooms = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  // Handle room form input changes
+  const handleRoomFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setRoomForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Handle room status change
+  const handleRoomStatusChange = (status: string) => {
+    setRoomForm(prev => ({ ...prev, status }));
+  };
+
   // Filter upcoming reservations
   const upcomingReservations = reservations.filter(
     reservation => new Date(reservation.start_time) >= new Date()
@@ -442,6 +524,34 @@ const Rooms = () => {
     const end = new Date(endTime);
     // Add 1 because we count both the start and end days
     return differenceInDays(end, start) + 1;
+  };
+
+  // Get status badge color
+  const getStatusBadgeClass = (status: string) => {
+    switch(status) {
+      case 'available':
+        return 'bg-green-50 text-green-700 border-green-200';
+      case 'occupied':
+        return 'bg-red-50 text-red-700 border-red-200';
+      case 'cleaning':
+        return 'bg-amber-50 text-amber-700 border-amber-200';
+      default:
+        return 'bg-gray-50 text-gray-700 border-gray-200';
+    }
+  };
+
+  // Get status icon
+  const getStatusIcon = (status: string) => {
+    switch(status) {
+      case 'available':
+        return <Check className="h-3 w-3 mr-1" />;
+      case 'occupied':
+        return <X className="h-3 w-3 mr-1" />;
+      case 'cleaning':
+        return <RefreshCw className="h-3 w-3 mr-1" />;
+      default:
+        return null;
+    }
   };
 
   if (roomsLoading || reservationsLoading) {
@@ -470,7 +580,7 @@ const Rooms = () => {
                 New Reservation
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px] bg-white">
+            <DialogContent className="sm:max-w-[500px] bg-white dark:bg-gray-800 pointer-events-auto">
               <DialogHeader>
                 <DialogTitle>{editingReservation ? "Edit Reservation" : "Add New Reservation"}</DialogTitle>
                 <DialogDescription>
@@ -487,7 +597,7 @@ const Rooms = () => {
                     id="room"
                     value={selectedRoomId || ""}
                     onChange={(e) => setSelectedRoomId(e.target.value)}
-                    className="w-full border rounded-md p-2 bg-white"
+                    className="w-full border rounded-md p-2 bg-white dark:bg-gray-700 dark:text-white"
                     required
                   >
                     <option value="">Select a room</option>
@@ -506,13 +616,13 @@ const Rooms = () => {
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
-                          className="w-full justify-start text-left font-normal bg-white"
+                          className="w-full justify-start text-left font-normal bg-white dark:bg-gray-700"
                         >
                           <CalendarIcon className="mr-2 h-4 w-4" />
                           {startDate ? format(startDate, "MMM dd, yyyy") : "Select date"}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0 bg-white" align="start">
+                      <PopoverContent className="w-auto p-0 bg-white dark:bg-gray-700" align="start">
                         <Calendar
                           mode="single"
                           selected={startDate}
@@ -539,13 +649,13 @@ const Rooms = () => {
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
-                          className="w-full justify-start text-left font-normal bg-white"
+                          className="w-full justify-start text-left font-normal bg-white dark:bg-gray-700"
                         >
                           <CalendarIcon className="mr-2 h-4 w-4" />
                           {endDate ? format(endDate, "MMM dd, yyyy") : "Select date"}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0 bg-white" align="start">
+                      <PopoverContent className="w-auto p-0 bg-white dark:bg-gray-700" align="start">
                         <Calendar
                           mode="single"
                           selected={endDate}
@@ -573,13 +683,13 @@ const Rooms = () => {
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
-                          className="w-full justify-start text-left font-normal bg-white"
+                          className="w-full justify-start text-left font-normal bg-white dark:bg-gray-700"
                         >
                           <Clock className="mr-2 h-4 w-4" />
                           {startTime}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-[200px] p-2 bg-white" align="start">
+                      <PopoverContent className="w-[200px] p-2 bg-white dark:bg-gray-700 pointer-events-auto" align="start">
                         <div className="space-y-1 max-h-[300px] overflow-y-auto">
                           {timeOptions.map((time) => (
                             <Button
@@ -605,13 +715,13 @@ const Rooms = () => {
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
-                          className="w-full justify-start text-left font-normal bg-white"
+                          className="w-full justify-start text-left font-normal bg-white dark:bg-gray-700"
                         >
                           <Clock className="mr-2 h-4 w-4" />
                           {endTime}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-[200px] p-2 bg-white" align="start">
+                      <PopoverContent className="w-[200px] p-2 bg-white dark:bg-gray-700 pointer-events-auto" align="start">
                         <div className="space-y-1 max-h-[300px] overflow-y-auto">
                           {timeOptions.map((time) => (
                             <Button
@@ -651,7 +761,7 @@ const Rooms = () => {
                     name="customerName"
                     value={formData.customerName}
                     onChange={handleInputChange}
-                    className="bg-white"
+                    className="bg-white dark:bg-gray-700"
                     required
                   />
                 </div>
@@ -665,7 +775,7 @@ const Rooms = () => {
                       type="email"
                       value={formData.customerEmail}
                       onChange={handleInputChange}
-                      className="bg-white"
+                      className="bg-white dark:bg-gray-700"
                     />
                   </div>
 
@@ -676,7 +786,7 @@ const Rooms = () => {
                       name="customerPhone"
                       value={formData.customerPhone}
                       onChange={handleInputChange}
-                      className="bg-white"
+                      className="bg-white dark:bg-gray-700"
                     />
                   </div>
                 </div>
@@ -688,7 +798,7 @@ const Rooms = () => {
                     name="notes"
                     value={formData.notes}
                     onChange={handleInputChange}
-                    className="min-h-[80px] bg-white"
+                    className="min-h-[80px] bg-white dark:bg-gray-700"
                   />
                 </div>
 
@@ -718,7 +828,7 @@ const Rooms = () => {
                 Add Room
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px] bg-white">
+            <DialogContent className="sm:max-w-[425px] bg-white dark:bg-gray-800">
               <DialogHeader>
                 <DialogTitle>Add New Room</DialogTitle>
                 <DialogDescription>
@@ -729,19 +839,45 @@ const Rooms = () => {
               <form onSubmit={handleRoomSubmit} className="space-y-4 mt-4">
                 <div className="space-y-2">
                   <Label htmlFor="roomName">Room Name</Label>
-                  <Input id="roomName" name="roomName" className="bg-white" required />
+                  <Input 
+                    id="roomName" 
+                    name="name" 
+                    value={roomForm.name}
+                    onChange={handleRoomFormChange}
+                    className="bg-white dark:bg-gray-700" 
+                    required 
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="roomCapacity">Capacity</Label>
                   <Input
                     id="roomCapacity"
-                    name="roomCapacity"
+                    name="capacity"
                     type="number"
                     min="1"
-                    className="bg-white"
+                    value={roomForm.capacity}
+                    onChange={handleRoomFormChange}
+                    className="bg-white dark:bg-gray-700"
                     required
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="roomStatus">Status</Label>
+                  <Select 
+                    value={roomForm.status} 
+                    onValueChange={handleRoomStatusChange}
+                  >
+                    <SelectTrigger className="bg-white dark:bg-gray-700">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white dark:bg-gray-700">
+                      <SelectItem value="available">Available</SelectItem>
+                      <SelectItem value="occupied">Occupied</SelectItem>
+                      <SelectItem value="cleaning">Cleaning</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <DialogFooter>
@@ -762,29 +898,93 @@ const Rooms = () => {
               </form>
             </DialogContent>
           </Dialog>
+
+          <Dialog open={isEditRoomOpen} onOpenChange={setIsEditRoomOpen}>
+            <DialogContent className="sm:max-w-[425px] bg-white dark:bg-gray-800">
+              <DialogHeader>
+                <DialogTitle>Edit Room</DialogTitle>
+                <DialogDescription>
+                  Update the room details below
+                </DialogDescription>
+              </DialogHeader>
+
+              <form onSubmit={handleRoomUpdate} className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="editRoomName">Room Name</Label>
+                  <Input 
+                    id="editRoomName" 
+                    name="name" 
+                    value={roomForm.name}
+                    onChange={handleRoomFormChange}
+                    className="bg-white dark:bg-gray-700" 
+                    required 
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="editRoomCapacity">Capacity</Label>
+                  <Input
+                    id="editRoomCapacity"
+                    name="capacity"
+                    type="number"
+                    min="1"
+                    value={roomForm.capacity}
+                    onChange={handleRoomFormChange}
+                    className="bg-white dark:bg-gray-700"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="editRoomStatus">Status</Label>
+                  <Select 
+                    value={roomForm.status} 
+                    onValueChange={handleRoomStatusChange}
+                  >
+                    <SelectTrigger className="bg-white dark:bg-gray-700">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white dark:bg-gray-700 pointer-events-auto">
+                      <SelectItem value="available">Available</SelectItem>
+                      <SelectItem value="occupied">Occupied</SelectItem>
+                      <SelectItem value="cleaning">Cleaning</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <DialogFooter>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setIsEditRoomOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    type="submit"
+                    className="bg-purple-600 hover:bg-purple-700"
+                  >
+                    Update Room
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {rooms.map((room) => (
-          <Card key={room.id} className="hover:shadow-md transition-shadow bg-white">
+          <Card key={room.id} className="hover:shadow-md transition-shadow bg-white dark:bg-gray-800">
             <CardHeader className="pb-2">
               <div className="flex justify-between items-start">
                 <CardTitle className="text-lg font-medium">{room.name}</CardTitle>
                 <Badge
-                  variant={room.status === "available" ? "outline" : "destructive"}
-                  className={`${
-                    room.status === "available"
-                      ? "bg-green-50 text-green-700 border-green-200"
-                      : "bg-red-50 text-red-700 border-red-200"
-                  }`}
+                  variant="outline"
+                  className={getStatusBadgeClass(room.status)}
                 >
-                  {room.status === "available" ? (
-                    <Check className="h-3 w-3 mr-1" />
-                  ) : (
-                    <X className="h-3 w-3 mr-1" />
-                  )}
-                  {room.status === "available" ? "Available" : "Occupied"}
+                  {getStatusIcon(room.status)}
+                  {room.status.charAt(0).toUpperCase() + room.status.slice(1)}
                 </Badge>
               </div>
             </CardHeader>
@@ -793,21 +993,31 @@ const Rooms = () => {
                 <Users className="h-4 w-4 text-muted-foreground" />
                 <span>Capacity: {room.capacity}</span>
               </div>
-              <Button
-                onClick={() => openAddReservation(room.id)}
-                className="w-full"
-                variant="outline"
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                Make Reservation
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => openAddReservation(room.id)}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  Reserve
+                </Button>
+                <Button
+                  onClick={() => handleEditRoom(room)}
+                  variant="outline"
+                  size="icon"
+                  className="h-10 w-10"
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
       <Tabs defaultValue="upcoming" className="w-full mt-8">
-        <TabsList className="mb-4 bg-white">
+        <TabsList className="mb-4 bg-white dark:bg-gray-800">
           <TabsTrigger value="upcoming" className="flex gap-2 items-center">
             <CalendarIcon className="h-4 w-4" />
             Upcoming Reservations
@@ -823,7 +1033,7 @@ const Rooms = () => {
         </TabsList>
 
         <TabsContent value="upcoming">
-          <Card className="bg-white">
+          <Card className="bg-white dark:bg-gray-800">
             <CardHeader>
               <CardTitle>Upcoming Reservations</CardTitle>
             </CardHeader>
@@ -919,7 +1129,7 @@ const Rooms = () => {
         </TabsContent>
 
         <TabsContent value="past">
-          <Card className="bg-white">
+          <Card className="bg-white dark:bg-gray-800">
             <CardHeader>
               <CardTitle>Past Reservations</CardTitle>
             </CardHeader>
@@ -994,7 +1204,7 @@ const Rooms = () => {
         </TabsContent>
 
         <TabsContent value="rooms">
-          <Card className="bg-white">
+          <Card className="bg-white dark:bg-gray-800">
             <CardHeader>
               <CardTitle>All Rooms</CardTitle>
             </CardHeader>
@@ -1005,7 +1215,7 @@ const Rooms = () => {
                     <TableHead>Name</TableHead>
                     <TableHead>Capacity</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Action</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1015,30 +1225,32 @@ const Rooms = () => {
                       <TableCell>{room.capacity}</TableCell>
                       <TableCell>
                         <Badge
-                          variant={room.status === "available" ? "outline" : "destructive"}
-                          className={`${
-                            room.status === "available"
-                              ? "bg-green-50 text-green-700 border-green-200"
-                              : "bg-red-50 text-red-700 border-red-200"
-                          }`}
+                          variant="outline"
+                          className={getStatusBadgeClass(room.status)}
                         >
-                          {room.status === "available" ? (
-                            <Check className="h-3 w-3 mr-1" />
-                          ) : (
-                            <X className="h-3 w-3 mr-1" />
-                          )}
-                          {room.status === "available" ? "Available" : "Occupied"}
+                          {getStatusIcon(room.status)}
+                          {room.status.charAt(0).toUpperCase() + room.status.slice(1)}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Button
-                          onClick={() => openAddReservation(room.id)}
-                          variant="outline"
-                          size="sm"
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          Reserve
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={() => openAddReservation(room.id)}
+                            variant="outline"
+                            size="sm"
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            Reserve
+                          </Button>
+                          <Button
+                            onClick={() => handleEditRoom(room)}
+                            variant="outline"
+                            size="sm"
+                          >
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -1051,7 +1263,7 @@ const Rooms = () => {
 
       {/* Confirmation Dialog for Deleting Reservation */}
       <Dialog open={isConfirmDeleteOpen} onOpenChange={setIsConfirmDeleteOpen}>
-        <DialogContent className="sm:max-w-[425px] bg-white">
+        <DialogContent className="sm:max-w-[425px] bg-white dark:bg-gray-800">
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
