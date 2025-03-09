@@ -99,10 +99,10 @@ serve(async (req) => {
        msg.content.includes('image'))
     );
 
-    let systemPrompt = "You are a restaurant assistant bot. You help answer questions about restaurant operations, menu items, and general restaurant management advice. NEVER mention that you're looking at data unless specifically asked about data source. Do not start responses with phrases like 'Based on the data provided'; instead, be conversational and direct.";
+    let systemPrompt = "You are a restaurant assistant bot that provides SPECIFIC DATA-DRIVEN ANSWERS based on the restaurant's actual database records. You must ALWAYS analyze the provided restaurant data for insights rather than providing generic information. When asked about sales, inventory, customers, etc., respond with precise numbers and specifics from the data you have access to. DO NOT provide generic overviews that could apply to any restaurant.";
     
     if (restaurantData) {
-      systemPrompt += " You have access to the restaurant's data and should provide specific insights based on this actual data. Always analyze the data provided to you when answering questions - don't provide generic or theoretical answers when restaurant-specific data is available.";
+      systemPrompt += " You have direct access to the restaurant's database records. Analyze this specific data carefully and provide precise insights. Format your responses in a visually appealing way with proper spacing, bullet points, and sections where appropriate. Be sure to use actual numbers and metrics from the data provided.";
       
       // Flag for empty data
       const hasNoData = 
@@ -113,6 +113,8 @@ serve(async (req) => {
       if (hasNoData) {
         systemPrompt += " Note: There appears to be no data for this restaurant yet. If the user asks about their specific data, kindly mention that there is no data available yet and suggest they add some inventory items, complete some orders, etc.";
       }
+    } else {
+      systemPrompt += " WARNING: I don't have access to your restaurant data at the moment. Please ensure your restaurant ID is properly configured in your profile settings.";
     }
     
     if (hasFileForAnalysis) {
@@ -136,7 +138,7 @@ serve(async (req) => {
       // Add a hidden context message with the restaurant data
       payload.messages.splice(1, 0, {
         role: "system",
-        content: `Here is the restaurant data to inform your answers:
+        content: `Here is the restaurant's actual database records to inform your answers. When giving sales overviews or inventory analysis, ALWAYS use this specific data:
         
 INVENTORY ITEMS (${restaurantData.inventoryItems?.length || 0} items):
 ${JSON.stringify(restaurantData.inventoryItems, null, 2)}
@@ -153,11 +155,11 @@ ${JSON.stringify(restaurantData.customerInsights, null, 2)}
 MENU ITEMS:
 ${JSON.stringify(restaurantData.menuItems, null, 2)}
 
-Use this data to provide specific, data-driven answers to the user's questions about their restaurant business. For inventory-related queries, analyze the actual inventory data to provide insights about stock levels, items that need reordering, and inventory optimization suggestions. For revenue and sales questions, use the actual revenue data to give accurate trends and insights.`
+ALWAYS base your answers on this specific data. When asked for a sales overview, calculate totals, trends, and metrics from the REVENUE STATS and ORDERS data. When asked about inventory, analyze the actual INVENTORY ITEMS data. Your answers should NEVER be generic - they should directly reflect the numbers and patterns in this data.`
       });
     }
 
-    console.log("Sending API request with payload:", JSON.stringify(payload));
+    console.log("Sending API request with restaurant data included in context");
 
     // Make the API request to your custom server
     const response = await fetch(`${baseUrl}/chat/completions`, {

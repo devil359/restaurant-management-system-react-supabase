@@ -31,7 +31,13 @@ export const useChatWithApi = () => {
         .from("profiles")
         .select("restaurant_id")
         .eq("id", profile.user.id)
-        .single();
+        .maybeSingle();
+
+      if (!userProfile?.restaurant_id) {
+        console.warn("No restaurant ID found for current user");
+      } else {
+        console.log("Using restaurant ID:", userProfile.restaurant_id);
+      }
 
       return userProfile?.restaurant_id || null;
     },
@@ -51,6 +57,10 @@ export const useChatWithApi = () => {
     try {
       console.log("Calling chat-with-api function with messages:", [...messages, userMessage]);
       console.log("Using restaurant ID:", restaurantId);
+      
+      if (!restaurantId) {
+        console.warn("Warning: No restaurant ID available. The chatbot won't be able to access restaurant-specific data.");
+      }
       
       const { data, error } = await supabase.functions.invoke('chat-with-api', {
         body: { 
