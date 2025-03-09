@@ -21,7 +21,7 @@ export function ThemeToggle() {
     toast({
       title: `${newTheme.charAt(0).toUpperCase() + newTheme.slice(1)} Theme Activated`,
       description: `The application is now in ${newTheme} mode.`,
-      duration: 2000,
+      // Removed explicit duration since we now have a default of 3 seconds
       className: "toast-card",
     });
   };
