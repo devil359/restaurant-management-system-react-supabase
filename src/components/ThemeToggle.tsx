@@ -22,6 +22,7 @@ export function ThemeToggle() {
       title: `${newTheme.charAt(0).toUpperCase() + newTheme.slice(1)} Theme Activated`,
       description: `The application is now in ${newTheme} mode.`,
       duration: 2000,
+      className: "toast-card",
     });
   };
 
@@ -35,13 +36,13 @@ export function ThemeToggle() {
       size="icon"
       onClick={toggleTheme}
       aria-label="Toggle theme"
-      className="rounded-full w-9 h-9 transition-all duration-300 hover:bg-secondary"
+      className="rounded-full w-9 h-9 transition-all duration-300 hover:bg-secondary/20"
     >
       {theme === "dark" ? (
-        <Sun className="h-5 w-5 text-yellow-300 transition-transform duration-300 hover:rotate-45" />
+        <Sun className="h-5 w-5 text-brand-warm-orange transition-transform duration-300 hover:rotate-45" />
       ) : (
-        <Moon className="h-5 w-5 text-purple-700 transition-transform duration-300 hover:-rotate-12" />
+        <Moon className="h-5 w-5 text-brand-deep-blue transition-transform duration-300 hover:-rotate-12" />
       )}
     </Button>
   );
-}
+};

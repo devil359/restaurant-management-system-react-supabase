@@ -18,16 +18,16 @@ const StatDetails = ({ title, data, type, onClose }: StatDetailsProps) => {
   const formatCurrency = (value: number) => `₹${value.toFixed(2)}`;
 
   // Theme-aware colors
-  const textColor = isDarkMode ? '#e2e8f0' : '#666666';
-  const gridColor = isDarkMode ? '#383e4a' : '#e5e7eb';
-  const tooltipBg = isDarkMode ? '#1e293b' : 'white';
-  const tooltipBorder = isDarkMode ? '#475569' : '#e5e7eb';
+  const textColor = isDarkMode ? '#F7FAFC' : '#2D3748';
+  const gridColor = isDarkMode ? '#4A5568' : '#E2E8F0';
+  const tooltipBg = isDarkMode ? '#2D3748' : 'white';
+  const tooltipBorder = isDarkMode ? '#4A5568' : '#E2E8F0';
   
   // Line colors based on stat type
   const getLineColor = () => {
-    if (type === "sales") return isDarkMode ? "#6366f1" : "#4C51BF";
-    if (type === "revenue") return isDarkMode ? "#f97316" : "#ED8936";
-    return "#9b87f5";
+    if (type === "sales") return "#2D3748";
+    if (type === "revenue") return "#F6AD55";
+    return "#48BB78";
   };
 
   const renderContent = () => {
@@ -41,12 +41,12 @@ const StatDetails = ({ title, data, type, onClose }: StatDetailsProps) => {
                 <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
                 <XAxis 
                   dataKey={type === "sales" ? "date" : "time"} 
-                  tick={{ fill: textColor }}
+                  tick={{ fill: textColor, fontSize: 12, fontWeight: 500 }}
                   axisLine={{ stroke: gridColor }}
                 />
                 <YAxis 
                   tickFormatter={formatCurrency} 
-                  tick={{ fill: textColor }}
+                  tick={{ fill: textColor, fontSize: 12, fontWeight: 500 }}
                   axisLine={{ stroke: gridColor }}
                 />
                 <Tooltip 
@@ -55,8 +55,9 @@ const StatDetails = ({ title, data, type, onClose }: StatDetailsProps) => {
                     backgroundColor: tooltipBg,
                     border: `1px solid ${tooltipBorder}`,
                     borderRadius: '8px',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                    color: isDarkMode ? '#e2e8f0' : '#333'
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                    color: isDarkMode ? '#F7FAFC' : '#2D3748',
+                    fontWeight: 500
                   }}
                 />
                 <Line 
@@ -66,6 +67,7 @@ const StatDetails = ({ title, data, type, onClose }: StatDetailsProps) => {
                   strokeWidth={2}
                   dot={{ strokeWidth: 2, r: 4 }}
                   activeDot={{ r: 6, strokeWidth: 2 }}
+                  animationDuration={1000}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -77,19 +79,29 @@ const StatDetails = ({ title, data, type, onClose }: StatDetailsProps) => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Customer</TableHead>
-                <TableHead>Items</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="font-semibold">Customer</TableHead>
+                <TableHead className="font-semibold">Items</TableHead>
+                <TableHead className="font-semibold">Total</TableHead>
+                <TableHead className="font-semibold">Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {data.data.map((order: any) => (
-                <TableRow key={order.id}>
-                  <TableCell>{order.customer_name}</TableCell>
+                <TableRow key={order.id} className="hover:bg-muted/50 transition-colors">
+                  <TableCell className="font-medium">{order.customer_name}</TableCell>
                   <TableCell>{order.items.join(", ")}</TableCell>
                   <TableCell>{formatCurrency(order.total)}</TableCell>
-                  <TableCell>{order.status}</TableCell>
+                  <TableCell>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      order.status === 'completed' 
+                        ? 'bg-green-100 text-green-800 dark:bg-green-800/30 dark:text-green-300' 
+                        : order.status === 'pending'
+                        ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800/30 dark:text-yellow-300'
+                        : 'bg-blue-100 text-blue-800 dark:bg-blue-800/30 dark:text-blue-300'
+                    }`}>
+                      {order.status}
+                    </span>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -101,15 +113,15 @@ const StatDetails = ({ title, data, type, onClose }: StatDetailsProps) => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Customer Name</TableHead>
-                <TableHead>Orders</TableHead>
-                <TableHead>Total Spent</TableHead>
+                <TableHead className="font-semibold">Customer Name</TableHead>
+                <TableHead className="font-semibold">Orders</TableHead>
+                <TableHead className="font-semibold">Total Spent</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {data.data.map((customer: any, index: number) => (
-                <TableRow key={index}>
-                  <TableCell>{customer.name}</TableCell>
+                <TableRow key={index} className="hover:bg-muted/50 transition-colors">
+                  <TableCell className="font-medium">{customer.name}</TableCell>
                   <TableCell>{customer.orders}</TableCell>
                   <TableCell>{formatCurrency(customer.total)}</TableCell>
                 </TableRow>
@@ -125,9 +137,9 @@ const StatDetails = ({ title, data, type, onClose }: StatDetailsProps) => {
 
   return (
     <Dialog open={!!title} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl card-glass">
+      <DialogContent className="max-w-4xl bg-white dark:bg-brand-deep-blue/90 border border-border/30 shadow-card">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle className="text-xl font-semibold text-brand-dark-grey dark:text-brand-light-grey">{title}</DialogTitle>
         </DialogHeader>
         {renderContent()}
       </DialogContent>

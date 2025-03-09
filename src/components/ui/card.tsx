@@ -8,7 +8,7 @@ const Card = React.forwardRef<
   React.HTMLAttributes<HTMLDivElement> & { variant?: "default" | "glass" | "accent" }
 >(({ className, variant = "default", ...props }, ref) => {
   const variantClasses = {
-    default: "bg-card text-card-foreground border shadow-sm",
+    default: "bg-white dark:bg-brand-deep-blue/80 text-card-foreground shadow-card border border-border/30",
     glass: "card-glass",
     accent: "card-accent"
   };
@@ -46,7 +46,7 @@ const CardTitle = React.forwardRef<
   <h3
     ref={ref}
     className={cn(
-      "text-2xl font-semibold leading-none tracking-tight",
+      "text-xl font-semibold leading-none tracking-tight text-brand-dark-grey dark:text-brand-light-grey",
       className
     )}
     {...props}

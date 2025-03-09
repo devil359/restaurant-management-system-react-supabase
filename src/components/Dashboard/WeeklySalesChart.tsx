@@ -52,29 +52,29 @@ const WeeklySalesChart = () => {
   });
 
   // Theme-aware colors
-  const textColor = isDarkMode ? '#e2e8f0' : '#888888';
-  const gridColor = isDarkMode ? '#383e4a' : '#e5e7eb';
-  const barColor = isDarkMode ? '#8b5cf6' : '#9b87f5';
-  const cursorFill = isDarkMode ? 'rgba(139, 92, 246, 0.2)' : 'rgba(155, 135, 245, 0.1)';
-  const tooltipBg = isDarkMode ? '#1e293b' : 'white';
-  const tooltipBorder = isDarkMode ? '#475569' : '#e5e7eb';
+  const textColor = isDarkMode ? '#F7FAFC' : '#2D3748';
+  const gridColor = isDarkMode ? '#4A5568' : '#E2E8F0';
+  const barColor = isDarkMode ? '#48BB78' : '#48BB78';
+  const cursorFill = isDarkMode ? 'rgba(72, 187, 120, 0.2)' : 'rgba(72, 187, 120, 0.1)';
+  const tooltipBg = isDarkMode ? '#2D3748' : 'white';
+  const tooltipBorder = isDarkMode ? '#4A5568' : '#E2E8F0';
 
   if (isLoading) {
-    return <Skeleton className="w-full h-[300px] rounded-lg bg-secondary/50" />;
+    return <Skeleton className="w-full h-[300px] rounded-lg bg-secondary/20" />;
   }
 
   return (
-    <Card variant="glass" className="p-4">
+    <Card className="p-4 shadow-card hover:shadow-card-hover transition-all duration-300">
       <ResponsiveContainer width="100%" height={300}>
         <BarChart data={weeklyData} className="mt-4">
           <CartesianGrid strokeDasharray="3 3" className="stroke-muted" stroke={gridColor} />
           <XAxis 
             dataKey="day"
-            tick={{ fill: textColor }}
+            tick={{ fill: textColor, fontSize: 12, fontWeight: 500 }}
             axisLine={{ stroke: gridColor }}
           />
           <YAxis 
-            tick={{ fill: textColor }}
+            tick={{ fill: textColor, fontSize: 12, fontWeight: 500 }}
             axisLine={{ stroke: gridColor }}
             tickFormatter={(value) => `₹${value}`}
           />
@@ -84,8 +84,9 @@ const WeeklySalesChart = () => {
               backgroundColor: tooltipBg,
               border: `1px solid ${tooltipBorder}`,
               borderRadius: '8px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-              color: isDarkMode ? '#e2e8f0' : '#333'
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              color: isDarkMode ? '#F7FAFC' : '#2D3748',
+              fontWeight: 500
             }}
             cursor={{ fill: cursorFill }}
           />
@@ -93,6 +94,7 @@ const WeeklySalesChart = () => {
             dataKey="amount" 
             fill={barColor}
             radius={[6, 6, 0, 0]}
+            animationDuration={1000}
           />
         </BarChart>
       </ResponsiveContainer>
