@@ -18,116 +18,104 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  // Handle OPTIONS request for CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    // Create Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
-    const supabase = createClient(supabaseUrl, supabaseKey)
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
-    // Parse request to get restaurant_id (optional)
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Missing environment variables')
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey)
+    
     let restaurantId: string | null = null;
     try {
       const body = await req.json();
-      restaurantId = body.restaurant_id || null;
+      restaurantId = body.restaurant_id;
+      
+      if (!restaurantId) {
+        throw new Error('Restaurant ID is required');
+      }
     } catch (e) {
       console.error('Error parsing request body:', e);
-      // Continue execution even if body parsing fails
+      throw new Error('Invalid request body');
     }
 
-    // Build query for low stock items
-    let query = supabase
+    // Query for low stock items
+    const { data: lowStockItems, error } = await supabase
       .from('inventory_items')
-      .select('id, name, quantity, reorder_level, unit, restaurant_id')
+      .select('*')
+      .eq('restaurant_id', restaurantId)
       .lt('quantity', supabase.raw('reorder_level'))
       .eq('notification_sent', false);
-    
-    // Add restaurant_id filter if provided
-    if (restaurantId) {
-      query = query.eq('restaurant_id', restaurantId);
-    }
 
-    // Execute query
-    const { data: lowStockItems, error } = await query;
-
-    if (error) {
-      console.error('Error checking low stock:', error)
-      return new Response(
-        JSON.stringify({ error: 'Failed to check inventory' }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 500,
-        }
-      )
-    }
+    if (error) throw error;
 
     // Process low stock items
-    const updatedItems = []
-    const notifications = []
+    const updates = [];
+    const notifications = [];
 
-    for (const item of (lowStockItems || []) as InventoryItem[]) {
-      try {
-        // Mark notification as sent
-        const { error: updateError } = await supabase
-          .from('inventory_items')
-          .update({ notification_sent: true })
-          .eq('id', item.id)
+    for (const item of (lowStockItems || [])) {
+      // Mark notification as sent
+      const { error: updateError } = await supabase
+        .from('inventory_items')
+        .update({ notification_sent: true })
+        .eq('id', item.id)
+        .eq('restaurant_id', restaurantId);
 
-        if (updateError) {
-          console.error(`Error updating notification for item ${item.id}:`, updateError)
-          continue
-        }
-
-        updatedItems.push(item.id)
-
-        // Get notification preferences for the restaurant
-        const { data: preferences, error: prefError } = await supabase
-          .from('notification_preferences')
-          .select('*')
-          .eq('restaurant_id', item.restaurant_id)
-          .single()
-
-        if (prefError || !preferences || !preferences.notify_low_stock) {
-          console.log(`Skipping notification for restaurant ${item.restaurant_id}`)
-          continue
-        }
-
-        notifications.push({
-          item: item.name,
-          quantity: item.quantity,
-          reorder_level: item.reorder_level,
-          unit: item.unit,
-          restaurant_id: item.restaurant_id,
-          recipients: preferences.email_recipients || []
-        })
-      } catch (itemError) {
-        console.error(`Error processing item ${item.id}:`, itemError)
+      if (updateError) {
+        console.error(`Error updating item ${item.id}:`, updateError);
+        continue;
       }
+
+      // Get notification preferences
+      const { data: preferences, error: prefError } = await supabase
+        .from('notification_preferences')
+        .select('*')
+        .eq('restaurant_id', restaurantId)
+        .single();
+
+      if (prefError || !preferences || !preferences.notify_low_stock) {
+        console.log(`Skipping notification for restaurant ${restaurantId}`);
+        continue;
+      }
+
+      notifications.push({
+        item: item.name,
+        quantity: item.quantity,
+        reorder_level: item.reorder_level,
+        unit: item.unit,
+        recipients: preferences.email_recipients || []
+      });
     }
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        updated_items: updatedItems,
-        notifications: notifications
+      JSON.stringify({ 
+        success: true, 
+        notifications,
+        items_checked: lowStockItems?.length || 0
       }),
-      {
+      { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
+        status: 200 
       }
-    )
+    );
+
   } catch (err) {
-    console.error('Unexpected error:', err)
+    console.error('Error in check-low-stock:', err);
     return new Response(
-      JSON.stringify({ error: 'Internal server error', details: err.message }),
-      {
+      JSON.stringify({ 
+        error: err.message || 'Internal server error',
+        details: err.stack
+      }),
+      { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
+        status: 500
       }
-    )
+    );
   }
 })

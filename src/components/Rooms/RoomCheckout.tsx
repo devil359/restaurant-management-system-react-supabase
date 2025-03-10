@@ -91,11 +91,9 @@ const RoomCheckout: React.FC<RoomCheckoutProps> = ({ roomId, reservationId, onCo
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Fetch room and reservation details
   useEffect(() => {
     const fetchDetails = async () => {
       try {
-        // Fetch room details
         const { data: roomData, error: roomError } = await supabase
           .from('rooms')
           .select('*')
@@ -104,14 +102,12 @@ const RoomCheckout: React.FC<RoomCheckoutProps> = ({ roomId, reservationId, onCo
 
         if (roomError) throw roomError;
         
-        // Ensure we have the price property
         if (roomData && typeof roomData.price === 'undefined') {
-          roomData.price = 0; // Default to 0 if price is missing
+          roomData.price = 0;
         }
         
         setRoom(roomData as RoomDetails);
 
-        // Fetch reservation details
         const { data: reservationData, error: reservationError } = await supabase
           .from('reservations')
           .select('*')
@@ -121,14 +117,11 @@ const RoomCheckout: React.FC<RoomCheckoutProps> = ({ roomId, reservationId, onCo
         if (reservationError) throw reservationError;
         setReservation(reservationData);
 
-        // Calculate days stayed
-        if (reservationData) {
-          const startDate = new Date(reservationData.start_time);
-          const endDate = new Date(reservationData.end_time);
-          const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-          setDaysStayed(diffDays === 0 ? 1 : diffDays);
-        }
+        const startDate = new Date(reservationData.start_time);
+        const endDate = new Date(reservationData.end_time);
+        const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        setDaysStayed(diffDays === 0 ? 1 : diffDays);
       } catch (error) {
         console.error('Error fetching details:', error);
         toast({
@@ -142,7 +135,6 @@ const RoomCheckout: React.FC<RoomCheckoutProps> = ({ roomId, reservationId, onCo
     fetchDetails();
   }, [roomId, reservationId, toast]);
 
-  // Calculate total
   useEffect(() => {
     if (room) {
       const roomTotal = room.price * daysStayed;
@@ -172,30 +164,28 @@ const RoomCheckout: React.FC<RoomCheckoutProps> = ({ roomId, reservationId, onCo
       if (!room || !reservation) {
         throw new Error("Room or reservation details missing");
       }
-      
-      // Format additionalCharges to make it compatible with Supabase's JSON type
+
       const formattedCharges = additionalCharges.map(charge => ({
         id: charge.id,
         name: charge.name,
-        amount: charge.amount
+        amount: Number(charge.amount)
       }));
-      
-      // Create a billing record in the database
+
       const { data, error } = await supabase
         .from('room_billings')
         .insert({
           reservation_id: reservationId,
           room_id: roomId,
+          restaurant_id: room.restaurant_id,
           customer_name: reservation.customer_name,
           days_stayed: daysStayed,
           room_charges: room.price * daysStayed,
-          service_charge: includeServiceCharge ? serviceCharge : 0,
+          service_charge: includeServiceCharge ? Number(serviceCharge) : 0,
           additional_charges: formattedCharges,
           total_amount: totalAmount,
           payment_method: paymentMethod,
           payment_status: 'completed',
-          checkout_date: new Date().toISOString(),
-          restaurant_id: room.restaurant_id
+          checkout_date: new Date().toISOString()
         })
         .select()
         .single();
@@ -205,19 +195,19 @@ const RoomCheckout: React.FC<RoomCheckoutProps> = ({ roomId, reservationId, onCo
         throw error;
       }
 
-      // Update room status to 'cleaning'
       const { error: roomError } = await supabase
         .from('rooms')
         .update({ status: 'cleaning' })
-        .eq('id', roomId);
+        .eq('id', roomId)
+        .eq('restaurant_id', room.restaurant_id);
 
       if (roomError) throw roomError;
 
-      // Update reservation status to 'completed'
       const { error: reservationError } = await supabase
         .from('reservations')
         .update({ status: 'completed' })
-        .eq('id', reservationId);
+        .eq('id', reservationId)
+        .eq('restaurant_id', room.restaurant_id);
 
       if (reservationError) throw reservationError;
 
