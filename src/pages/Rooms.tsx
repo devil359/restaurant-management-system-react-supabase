@@ -109,7 +109,16 @@ const Rooms = () => {
           .eq("restaurant_id", restaurantId);
 
         if (error) throw error;
-        setRooms(data || []);
+        
+        // Make sure every room has a price property
+        const roomsWithPrice = (data || []).map(room => {
+          if (typeof room.price === 'undefined') {
+            return { ...room, price: 0 };
+          }
+          return room;
+        });
+        
+        setRooms(roomsWithPrice as Room[]);
       } catch (error) {
         console.error("Error fetching rooms:", error);
         toast({
@@ -140,7 +149,7 @@ const Rooms = () => {
 
       if (error) throw error;
 
-      setRooms([...rooms, data[0]]);
+      setRooms([...rooms, data[0] as Room]);
       setOpenAddRoom(false);
       setNewRoom({
         name: "",
@@ -330,7 +339,16 @@ const Rooms = () => {
         .eq("restaurant_id", restaurantId);
 
       if (error) throw error;
-      setRooms(data || []);
+      
+      // Ensure all rooms have a price property
+      const roomsWithPrice = (data || []).map(room => {
+        if (typeof room.price === 'undefined') {
+          return { ...room, price: 0 };
+        }
+        return room;
+      });
+      
+      setRooms(roomsWithPrice as Room[]);
     } catch (error) {
       console.error("Error refreshing rooms:", error);
     }

@@ -103,7 +103,13 @@ const RoomCheckout: React.FC<RoomCheckoutProps> = ({ roomId, reservationId, onCo
           .single();
 
         if (roomError) throw roomError;
-        setRoom(roomData);
+        
+        // Ensure we have the price property
+        if (roomData && typeof roomData.price === 'undefined') {
+          roomData.price = 0; // Default to 0 if price is missing
+        }
+        
+        setRoom(roomData as RoomDetails);
 
         // Fetch reservation details
         const { data: reservationData, error: reservationError } = await supabase
@@ -163,21 +169,26 @@ const RoomCheckout: React.FC<RoomCheckoutProps> = ({ roomId, reservationId, onCo
   const handleCheckout = async () => {
     setLoading(true);
     try {
+      if (!room || !reservation) {
+        throw new Error("Room or reservation details missing");
+      }
+      
       // Create a billing record in the database
       const { data, error } = await supabase
         .from('room_billings')
         .insert({
           reservation_id: reservationId,
           room_id: roomId,
-          customer_name: reservation?.customer_name,
+          customer_name: reservation.customer_name,
           days_stayed: daysStayed,
-          room_charges: room?.price! * daysStayed,
+          room_charges: room.price * daysStayed,
           service_charge: includeServiceCharge ? serviceCharge : 0,
           additional_charges: additionalCharges,
           total_amount: totalAmount,
           payment_method: paymentMethod,
           payment_status: 'completed',
-          checkout_date: new Date().toISOString()
+          checkout_date: new Date().toISOString(),
+          restaurant_id: room.restaurant_id
         })
         .select()
         .single();

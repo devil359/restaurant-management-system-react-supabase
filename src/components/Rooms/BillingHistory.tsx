@@ -51,7 +51,7 @@ const BillingHistory: React.FC<BillingHistoryProps> = ({ restaurantId }) => {
           .from('room_billings')
           .select(`
             *,
-            rooms:room_id (name)
+            rooms(name)
           `)
           .eq('restaurant_id', restaurantId)
           .order('checkout_date', { ascending: false });
