@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from 'react-router-dom';
@@ -59,7 +58,7 @@ interface RoomDetails {
   name: string;
   price: number;
   capacity: number;
-  restaurant_id: string; // Added this field
+  restaurant_id: string;
 }
 
 interface ReservationDetails {
@@ -174,7 +173,7 @@ const RoomCheckout: React.FC<RoomCheckoutProps> = ({ roomId, reservationId, onCo
         throw new Error("Room or reservation details missing");
       }
       
-      // Convert additionalCharges to JSON-compatible format
+      // Format additionalCharges to make it compatible with Supabase's JSON type
       const formattedCharges = additionalCharges.map(charge => ({
         id: charge.id,
         name: charge.name,
@@ -201,7 +200,10 @@ const RoomCheckout: React.FC<RoomCheckoutProps> = ({ roomId, reservationId, onCo
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Checkout error:', error);
+        throw error;
+      }
 
       // Update room status to 'cleaning'
       const { error: roomError } = await supabase
