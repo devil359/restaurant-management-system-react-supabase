@@ -59,6 +59,7 @@ interface RoomDetails {
   name: string;
   price: number;
   capacity: number;
+  restaurant_id: string; // Added this field
 }
 
 interface ReservationDetails {
@@ -173,6 +174,13 @@ const RoomCheckout: React.FC<RoomCheckoutProps> = ({ roomId, reservationId, onCo
         throw new Error("Room or reservation details missing");
       }
       
+      // Convert additionalCharges to JSON-compatible format
+      const formattedCharges = additionalCharges.map(charge => ({
+        id: charge.id,
+        name: charge.name,
+        amount: charge.amount
+      }));
+      
       // Create a billing record in the database
       const { data, error } = await supabase
         .from('room_billings')
@@ -183,7 +191,7 @@ const RoomCheckout: React.FC<RoomCheckoutProps> = ({ roomId, reservationId, onCo
           days_stayed: daysStayed,
           room_charges: room.price * daysStayed,
           service_charge: includeServiceCharge ? serviceCharge : 0,
-          additional_charges: additionalCharges,
+          additional_charges: formattedCharges,
           total_amount: totalAmount,
           payment_method: paymentMethod,
           payment_status: 'completed',
