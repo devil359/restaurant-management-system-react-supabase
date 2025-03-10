@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -72,8 +71,9 @@ const Rooms = () => {
   const [activeTab, setActiveTab] = useState("rooms");
   const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
   const [checkoutRoom, setCheckoutRoom] = useState<{ roomId: string, reservationId: string } | null>(null);
+  const [restaurantId, setRestaurantId] = useState<string | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
 
-  // Form states
   const [newRoom, setNewRoom] = useState({
     name: "",
     capacity: 1,
@@ -97,11 +97,57 @@ const Rooms = () => {
   });
 
   const { toast } = useToast();
-  const restaurantId = "123e4567-e89b-12d3-a456-426614174000"; // Replace with dynamic ID in production
 
-  // Fetch rooms
+  useEffect(() => {
+    const fetchRestaurantId = async () => {
+      try {
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        
+        if (userError) {
+          setAuthError("Authentication error. Please log in again.");
+          throw userError;
+        }
+        
+        if (!userData.user) {
+          setAuthError("You must be logged in to view rooms.");
+          return;
+        }
+        
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("restaurant_id")
+          .eq("id", userData.user.id)
+          .single();
+        
+        if (profileError) {
+          setAuthError("Could not fetch your restaurant profile.");
+          throw profileError;
+        }
+        
+        if (!profileData.restaurant_id) {
+          setAuthError("No restaurant associated with your account.");
+          return;
+        }
+        
+        setRestaurantId(profileData.restaurant_id);
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        toast({
+          variant: "destructive",
+          title: "Authentication Error",
+          description: "Failed to authenticate. Please log in again."
+        });
+        setLoading(false);
+      }
+    };
+    
+    fetchRestaurantId();
+  }, [toast]);
+
   useEffect(() => {
     const fetchRooms = async () => {
+      if (!restaurantId) return;
+      
       try {
         let { data, error } = await supabase
           .from("rooms")
@@ -110,7 +156,6 @@ const Rooms = () => {
 
         if (error) throw error;
         
-        // Make sure every room has a price property
         const roomsWithPrice = (data || []).map(room => {
           if (typeof room.price === 'undefined') {
             return { ...room, price: 0 };
@@ -134,8 +179,16 @@ const Rooms = () => {
     fetchRooms();
   }, [restaurantId, toast]);
 
-  // Add new room
   const handleAddRoom = async () => {
+    if (!restaurantId) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No restaurant ID available. Please log in again.",
+      });
+      return;
+    }
+    
     try {
       const { data, error } = await supabase.from("rooms").insert([
         {
@@ -172,7 +225,6 @@ const Rooms = () => {
     }
   };
 
-  // Edit room
   const openEditDialog = (room: Room) => {
     setEditRoom({
       id: room.id,
@@ -219,14 +271,21 @@ const Rooms = () => {
     }
   };
 
-  // Open reservation dialog
   const openReservationDialog = (room: Room) => {
     setCurrentRoom(room);
     setOpenReservation(true);
   };
 
-  // Create reservation
   const handleCreateReservation = async () => {
+    if (!restaurantId) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No restaurant ID available. Please log in again.",
+      });
+      return;
+    }
+    
     try {
       if (!currentRoom) return;
 
@@ -252,7 +311,6 @@ const Rooms = () => {
 
       if (error) throw error;
 
-      // Update room status
       const { error: roomError } = await supabase
         .from("rooms")
         .update({ status: "occupied" })
@@ -270,7 +328,6 @@ const Rooms = () => {
         notes: "",
       });
 
-      // Update rooms in state
       setRooms(
         rooms.map((room) =>
           room.id === currentRoom.id
@@ -293,7 +350,6 @@ const Rooms = () => {
     }
   };
 
-  // Get active reservations for a room
   const handleCheckout = async (roomId: string) => {
     try {
       const { data, error } = await supabase
@@ -331,7 +387,6 @@ const Rooms = () => {
   const handleCheckoutComplete = async () => {
     setCheckoutRoom(null);
     
-    // Refresh rooms
     try {
       const { data, error } = await supabase
         .from("rooms")
@@ -340,7 +395,6 @@ const Rooms = () => {
 
       if (error) throw error;
       
-      // Ensure all rooms have a price property
       const roomsWithPrice = (data || []).map(room => {
         if (typeof room.price === 'undefined') {
           return { ...room, price: 0 };
@@ -354,13 +408,24 @@ const Rooms = () => {
     }
   };
 
-  // Get status badge class
   const getStatusClass = (status: string) => {
     return statusColors[status as keyof typeof statusColors] || "bg-gray-100 text-gray-800";
   };
 
   if (loading) {
     return <div className="flex justify-center items-center h-screen">Loading...</div>;
+  }
+
+  if (authError) {
+    return (
+      <div className="flex flex-col justify-center items-center h-screen">
+        <h2 className="text-2xl font-bold text-red-600 mb-4">{authError}</h2>
+        <p className="mb-4">You need to be logged in with a valid restaurant account to access this page.</p>
+        <Button onClick={() => window.location.href = '/auth'}>
+          Go to Login
+        </Button>
+      </div>
+    );
   }
 
   if (checkoutRoom) {
@@ -445,11 +510,10 @@ const Rooms = () => {
         </TabsContent>
 
         <TabsContent value="billing">
-          <BillingHistory restaurantId={restaurantId} />
+          {restaurantId && <BillingHistory restaurantId={restaurantId} />}
         </TabsContent>
       </Tabs>
 
-      {/* Add Room Dialog */}
       <Dialog open={openAddRoom} onOpenChange={setOpenAddRoom}>
         <DialogContent>
           <DialogHeader>
@@ -528,7 +592,6 @@ const Rooms = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Room Dialog */}
       <Dialog open={openEditRoom} onOpenChange={setOpenEditRoom}>
         <DialogContent>
           <DialogHeader>
@@ -607,7 +670,6 @@ const Rooms = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Reservation Dialog */}
       <Dialog open={openReservation} onOpenChange={setOpenReservation}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>

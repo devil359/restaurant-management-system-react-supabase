@@ -1,4 +1,3 @@
-
 import { useAnalyticsData } from "@/hooks/useAnalyticsData";
 import RevenueChart from "@/components/Analytics/RevenueChart";
 import CustomerInsights from "@/components/Analytics/CustomerInsights";
@@ -8,8 +7,8 @@ import { FileSpreadsheet, FileText, BarChart3, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import * as XLSX from "xlsx";
-import { jsPDF } from "jspdf";
-import "jspdf-autotable";
+import jsPDF from "jspdf";
+import autoTable from 'jspdf-autotable';
 
 const Analytics = () => {
   const { data, isLoading } = useAnalyticsData();
@@ -42,10 +41,8 @@ const Analytics = () => {
   const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
   const exportToExcel = () => {
-    // Create a workbook
     const wb = XLSX.utils.book_new();
     
-    // Revenue data
     const revenueData = data.revenueStats.map(item => ({
       Date: format(new Date(item.date), 'MMM dd, yyyy'),
       Revenue: Number(item.total_revenue).toFixed(2),
@@ -56,7 +53,6 @@ const Analytics = () => {
     const revenueSheet = XLSX.utils.json_to_sheet(revenueData);
     XLSX.utils.book_append_sheet(wb, revenueSheet, "Revenue");
     
-    // Customer data
     const customerData = data.customerInsights.map(customer => ({
       Name: customer.customer_name,
       Visits: customer.visit_count,
@@ -69,25 +65,20 @@ const Analytics = () => {
     const customerSheet = XLSX.utils.json_to_sheet(customerData);
     XLSX.utils.book_append_sheet(wb, customerSheet, "Customer Insights");
     
-    // Generate filename with date
     const fileName = `Analytics_Report_${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
     
-    // Write and download the file
     XLSX.writeFile(wb, fileName);
   };
   
   const exportToPDF = () => {
     const doc = new jsPDF();
     
-    // Title
     doc.setFontSize(18);
     doc.text("Analytics Report", 14, 22);
     
-    // Add date
     doc.setFontSize(11);
     doc.text(`Generated on: ${format(new Date(), 'MMM dd, yyyy')}`, 14, 30);
     
-    // Summary section
     doc.setFontSize(14);
     doc.text("Summary", 14, 40);
     
@@ -96,7 +87,6 @@ const Analytics = () => {
     doc.text(`Total Orders: ${totalOrders}`, 14, 56);
     doc.text(`Average Order Value: ₹${averageOrderValue.toFixed(2)}`, 14, 62);
     
-    // Revenue data table
     doc.setFontSize(14);
     doc.text("Revenue Data (Last 30 days)", 14, 75);
     
@@ -108,8 +98,7 @@ const Analytics = () => {
       `₹${Number(item.average_order_value).toFixed(2)}`
     ]);
     
-    // @ts-ignore - jspdf-autotable types are not properly recognized
-    doc.autoTable({
+    autoTable(doc, {
       head: [revenueTableColumn],
       body: revenueTableRows,
       startY: 80,
@@ -119,10 +108,8 @@ const Analytics = () => {
       alternateRowStyles: { fillColor: [245, 245, 245] },
     });
     
-    // Add new page for customer insights
     doc.addPage();
     
-    // Customer insights table
     doc.setFontSize(14);
     doc.text("Top Customer Insights", 14, 20);
     
@@ -134,8 +121,7 @@ const Analytics = () => {
       `₹${Number(item.average_order_value).toFixed(2)}`
     ]);
     
-    // @ts-ignore - jspdf-autotable types are not properly recognized
-    doc.autoTable({
+    autoTable(doc, {
       head: [customerTableColumn],
       body: customerTableRows,
       startY: 25,
@@ -145,10 +131,8 @@ const Analytics = () => {
       alternateRowStyles: { fillColor: [245, 245, 245] },
     });
     
-    // Generate filename with date
     const fileName = `Analytics_Report_${format(new Date(), 'yyyy-MM-dd')}.pdf`;
     
-    // Save the PDF
     doc.save(fileName);
   };
 
