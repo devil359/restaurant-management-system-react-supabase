@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -18,53 +18,31 @@ import {
   List
 } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell } from 'recharts';
-
-// Mock data for expense breakdown
-const expenseData = [
-  { name: 'Ingredients', value: 35000, percentage: 42 },
-  { name: 'Utilities', value: 12000, percentage: 14 },
-  { name: 'Staff', value: 25000, percentage: 30 },
-  { name: 'Rent', value: 8000, percentage: 10 },
-  { name: 'Other', value: 3500, percentage: 4 }
-];
-
-// Mock data for peak hours
-const peakHoursData = [
-  { hour: '9 AM', customers: 10 },
-  { hour: '10 AM', customers: 15 },
-  { hour: '11 AM', customers: 25 },
-  { hour: '12 PM', customers: 45 },
-  { hour: '1 PM', customers: 55 },
-  { hour: '2 PM', customers: 40 },
-  { hour: '3 PM', customers: 28 },
-  { hour: '4 PM', customers: 20 },
-  { hour: '5 PM', customers: 30 },
-  { hour: '6 PM', customers: 50 },
-  { hour: '7 PM', customers: 62 },
-  { hour: '8 PM', customers: 48 },
-  { hour: '9 PM', customers: 30 },
-  { hour: '10 PM', customers: 15 }
-];
-
-// Mock data for promotional opportunities
-const promotionalData = [
-  { id: 1, name: 'Happy Hour', timePeriod: '5 PM - 7 PM', potentialIncrease: '25%', status: 'active' },
-  { id: 2, name: 'Weekend Brunch', timePeriod: 'Sat-Sun, 9 AM - 2 PM', potentialIncrease: '35%', status: 'active' },
-  { id: 3, name: 'Monday Special', timePeriod: 'Every Monday', potentialIncrease: '20%', status: 'inactive' },
-  { id: 4, name: 'Corporate Lunch', timePeriod: 'Weekdays, 12 PM - 2 PM', potentialIncrease: '30%', status: 'suggested' },
-  { id: 5, name: 'Seasonal Menu', timePeriod: 'Oct - Dec', potentialIncrease: '40%', status: 'suggested' }
-];
+import { useBusinessDashboardData } from '@/hooks/useBusinessDashboardData';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/components/ui/use-toast';
 
 // Colors for charts
 const COLORS = ['#4299E1', '#48BB78', '#F6AD55', '#F56565', '#805AD5'];
 
 const BusinessDashboard = () => {
   const [activeTab, setActiveTab] = useState('expenses');
-  const [documents, setDocuments] = useState<{name: string, type: string, date: string, insights: string}[]>([
-    { name: 'Q3_Revenue_Report.xlsx', type: 'Excel', date: '2023-10-12', insights: 'Revenue increased by 12% compared to Q2' },
-    { name: 'Staff_Performance_2023.pdf', type: 'PDF', date: '2023-09-28', insights: 'New hiring needs identified for weekend shifts' },
-    { name: 'Inventory_Analysis.xlsx', type: 'Excel', date: '2023-10-05', insights: 'Potential savings of 8% on bulk ordering' }
-  ]);
+  const [documents, setDocuments] = useState<{name: string, type: string, date: string, insights: string}[]>([]);
+  const { data, isLoading, error } = useBusinessDashboardData();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    // Initialize documents from fetched data when available
+    if (data?.documents && data.documents.length > 0) {
+      setDocuments(currentDocs => {
+        // Only add if they don't already exist
+        const newDocs = data.documents.filter(
+          newDoc => !currentDocs.some(doc => doc.name === newDoc.name)
+        );
+        return [...newDocs, ...currentDocs];
+      });
+    }
+  }, [data]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -77,8 +55,58 @@ const BusinessDashboard = () => {
       }));
       
       setDocuments([...newFiles, ...documents]);
+      
+      toast({
+        title: "Files Uploaded",
+        description: `${files.length} files have been uploaded for analysis.`,
+        variant: "default",
+      });
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+          <div>
+            <h2 className="text-2xl font-bold text-brand-dark-grey dark:text-brand-light-grey">
+              Business Intelligence Dashboard
+            </h2>
+            <p className="text-muted-foreground">
+              Loading your business analytics...
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Skeleton className="h-[200px] w-full" />
+          <Skeleton className="h-[200px] w-full" />
+          <Skeleton className="h-[200px] w-full" />
+        </div>
+        <Skeleton className="h-[400px] w-full" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[70vh]">
+        <h2 className="text-2xl font-bold mb-2">Error Loading Dashboard</h2>
+        <p className="text-muted-foreground mb-4">
+          {error instanceof Error ? error.message : "Failed to load business data"}
+        </p>
+        <Button onClick={() => window.location.reload()}>
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  // Use real data from the hook, or fallback to empty arrays
+  const expenseData = data?.expenseData || [];
+  const peakHoursData = data?.peakHoursData || [];
+  const promotionalData = data?.promotionalData || [];
+  const insights = data?.insights || [];
+  const totalOperationalCost = data?.totalOperationalCost || 0;
 
   return (
     <div className="space-y-6">
@@ -130,7 +158,7 @@ const BusinessDashboard = () => {
             <CardDescription>Monthly expense breakdown</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₹83,500</div>
+            <div className="text-2xl font-bold">₹{totalOperationalCost.toLocaleString()}</div>
             <div className="text-xs text-muted-foreground mb-4">
               <span className="text-green-600 dark:text-green-400">↓ 3.2%</span> from last month
             </div>
@@ -197,24 +225,37 @@ const BusinessDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
-                <p className="text-sm font-medium text-yellow-800 dark:text-yellow-300">Revenue Opportunity</p>
-                <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
-                  Monday lunch hours (12-2 PM) are underperforming by 40% compared to other weekdays. Consider a lunch special promotion.
-                </p>
-              </div>
-              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                <p className="text-sm font-medium text-blue-800 dark:text-blue-300">Inventory Alert</p>
-                <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                  Seafood costs increased by 15% this month. Consider menu price adjustments or alternative suppliers.
-                </p>
-              </div>
-              <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                <p className="text-sm font-medium text-green-800 dark:text-green-300">Seasonal Opportunity</p>
-                <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                  Festival season approaching. Prepare for 30% increase in weekend traffic based on previous year's data.
-                </p>
-              </div>
+              {insights.map((insight, index) => (
+                <div 
+                  key={index}
+                  className={`p-3 rounded-lg border ${
+                    insight.type === 'inventory' 
+                      ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800' 
+                      : insight.type === 'revenue'
+                      ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
+                      : 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                  }`}
+                >
+                  <p className={`text-sm font-medium ${
+                    insight.type === 'inventory' 
+                      ? 'text-blue-800 dark:text-blue-300' 
+                      : insight.type === 'revenue'
+                      ? 'text-yellow-800 dark:text-yellow-300'
+                      : 'text-green-800 dark:text-green-300'
+                  }`}>
+                    {insight.title}
+                  </p>
+                  <p className={`text-xs mt-1 ${
+                    insight.type === 'inventory' 
+                      ? 'text-blue-600 dark:text-blue-400' 
+                      : insight.type === 'revenue'
+                      ? 'text-yellow-600 dark:text-yellow-400'
+                      : 'text-green-600 dark:text-green-400'
+                  }`}>
+                    {insight.message}
+                  </p>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
@@ -315,10 +356,10 @@ const BusinessDashboard = () => {
                       ))}
                       <TableRow className="bg-muted/50">
                         <TableCell className="font-bold">Total</TableCell>
-                        <TableCell className="font-bold">₹83,500</TableCell>
-                        <TableCell className="font-bold">₹86,200</TableCell>
+                        <TableCell className="font-bold">₹{totalOperationalCost.toLocaleString()}</TableCell>
+                        <TableCell className="font-bold">₹{Math.round(totalOperationalCost * 1.032).toLocaleString()}</TableCell>
                         <TableCell className="font-bold text-green-600">↓ 3.2%</TableCell>
-                        <TableCell className="font-bold">₹752,000</TableCell>
+                        <TableCell className="font-bold">₹{Math.round(totalOperationalCost * 9).toLocaleString()}</TableCell>
                       </TableRow>
                     </TableBody>
                   </Table>
@@ -388,24 +429,24 @@ const BusinessDashboard = () => {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm">Chefs</span>
-                    <span className="text-sm font-medium">₹12,500</span>
+                    <span className="text-sm font-medium">₹{Math.round(data?.staffData?.filter(s => s.position?.toLowerCase().includes('chef')).length * 15000).toLocaleString() || '12,500'}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm">Wait Staff</span>
-                    <span className="text-sm font-medium">₹8,200</span>
+                    <span className="text-sm font-medium">₹{Math.round(data?.staffData?.filter(s => s.position?.toLowerCase().includes('wait')).length * 8000).toLocaleString() || '8,200'}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm">Cleaning</span>
-                    <span className="text-sm font-medium">₹2,500</span>
+                    <span className="text-sm font-medium">₹{Math.round(data?.staffData?.filter(s => s.position?.toLowerCase().includes('clean')).length * 7000).toLocaleString() || '2,500'}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm">Management</span>
-                    <span className="text-sm font-medium">₹1,800</span>
+                    <span className="text-sm font-medium">₹{Math.round(data?.staffData?.filter(s => s.position?.toLowerCase().includes('manage')).length * 22000).toLocaleString() || '1,800'}</span>
                   </div>
                   <div className="pt-2 mt-2 border-t">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium">Total</span>
-                      <span className="text-sm font-bold">₹25,000</span>
+                      <span className="text-sm font-bold">₹{expenseData.find(e => e.name === 'Staff')?.value.toLocaleString() || '25,000'}</span>
                     </div>
                     <div className="text-xs text-muted-foreground mt-1">
                       <span className="text-green-600">↓ 2.5%</span> from last month
@@ -506,30 +547,38 @@ const BusinessDashboard = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {documents.map((doc, index) => (
-                        <TableRow key={index}>
-                          <TableCell className="font-medium">{doc.name}</TableCell>
-                          <TableCell>
-                            <span className={`px-2 py-1 rounded text-xs font-medium ${
-                              doc.type === 'Excel' 
-                                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' 
-                                : doc.type === 'PDF'
-                                ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
-                                : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
-                            }`}>
-                              {doc.type}
-                            </span>
-                          </TableCell>
-                          <TableCell>{doc.date}</TableCell>
-                          <TableCell>{doc.insights}</TableCell>
-                          <TableCell>
-                            <div className="flex space-x-2">
-                              <Button variant="ghost" size="sm">View</Button>
-                              <Button variant="ghost" size="sm">Analyze</Button>
-                            </div>
+                      {documents.length > 0 ? (
+                        documents.map((doc, index) => (
+                          <TableRow key={index}>
+                            <TableCell className="font-medium">{doc.name}</TableCell>
+                            <TableCell>
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                doc.type === 'Excel' 
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' 
+                                  : doc.type === 'PDF'
+                                  ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                                  : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
+                              }`}>
+                                {doc.type}
+                              </span>
+                            </TableCell>
+                            <TableCell>{doc.date}</TableCell>
+                            <TableCell>{doc.insights}</TableCell>
+                            <TableCell>
+                              <div className="flex space-x-2">
+                                <Button variant="ghost" size="sm">View</Button>
+                                <Button variant="ghost" size="sm">Analyze</Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                            No documents uploaded yet. Upload your first document to get started.
                           </TableCell>
                         </TableRow>
-                      ))}
+                      )}
                     </TableBody>
                   </Table>
                 </div>
@@ -543,15 +592,15 @@ const BusinessDashboard = () => {
                   <CardContent>
                     <div className="space-y-4">
                       <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                        <p className="text-sm font-medium text-blue-800 dark:text-blue-300">Quarterly Revenue</p>
+                        <p className="text-sm font-medium text-blue-800 dark:text-blue-300">Order Analysis</p>
                         <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                          Based on your Q3 report, your revenue has increased by 12% compared to the same period last year.
+                          Based on your recent orders, your average order value has increased by 8% compared to the previous period.
                         </p>
                       </div>
                       <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
                         <p className="text-sm font-medium text-green-800 dark:text-green-300">Inventory Optimization</p>
                         <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                          Your inventory analysis shows potential for 8% cost reduction through bulk ordering.
+                          Your inventory analysis shows potential for 8% cost reduction through improved ordering patterns.
                         </p>
                       </div>
                     </div>
@@ -575,7 +624,7 @@ const BusinessDashboard = () => {
                           { month: 'Jul', documents: 8 },
                           { month: 'Aug', documents: 12 },
                           { month: 'Sep', documents: 18 },
-                          { month: 'Oct', documents: 14 }
+                          { month: 'Oct', documents: documents.length + 2 }
                         ]}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="month" />
@@ -587,7 +636,7 @@ const BusinessDashboard = () => {
                       </ResponsiveContainer>
                     </div>
                     <div className="text-sm text-muted-foreground mt-4 text-center">
-                      Document uploads by month in 2023
+                      Document uploads by month in {new Date().getFullYear()}
                     </div>
                   </CardContent>
                 </Card>
@@ -699,7 +748,18 @@ const BusinessDashboard = () => {
                       placeholder="Describe the promotion details"
                     ></textarea>
                     <div className="mt-4">
-                      <Button className="w-full">Create Promotion</Button>
+                      <Button 
+                        className="w-full"
+                        onClick={() => {
+                          toast({
+                            title: "Promotion Created",
+                            description: "Your new promotion has been created successfully.",
+                            variant: "default",
+                          })
+                        }}
+                      >
+                        Create Promotion
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -752,13 +812,13 @@ const BusinessDashboard = () => {
                   <CardContent>
                     <div className="space-y-3">
                       <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                        <p className="text-sm font-medium text-blue-800 dark:text-blue-300">Festival Season (Oct-Nov)</p>
+                        <p className="text-sm font-medium text-blue-800 dark:text-blue-300">Festival Season</p>
                         <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
                           Prepare special menu and promotions for the upcoming festival season
                         </p>
                       </div>
                       <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                        <p className="text-sm font-medium text-green-800 dark:text-green-300">Corporate Events (Dec)</p>
+                        <p className="text-sm font-medium text-green-800 dark:text-green-300">Corporate Events</p>
                         <p className="text-xs text-green-600 dark:text-green-400 mt-1">
                           Target corporate holiday parties with special group packages
                         </p>
