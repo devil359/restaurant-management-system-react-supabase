@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Home,
   Utensils,
@@ -14,6 +13,8 @@ import {
   Settings,
   Menu as MenuIcon,
   X,
+  LogOut,
+  LayoutDashboard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
@@ -21,12 +22,21 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { fetchAllowedComponents } from "@/utils/subscriptionUtils";
 
 const Sidebar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const [staffName, setStaffName] = useState<string | null>(null);
+  const [restaurantId, setRestaurantId] = useState<string | null>(null);
   const { toast } = useToast();
+
+  const { data: allowedComponents = [] } = useQuery({
+    queryKey: ["allowedComponents", restaurantId],
+    queryFn: () => restaurantId ? fetchAllowedComponents(restaurantId) : Promise.resolve([]),
+    enabled: !!restaurantId,
+  });
 
   const getProfileData = async () => {
     try {
@@ -49,12 +59,12 @@ const Sidebar = () => {
           return;
         }
 
-        // Get the name from the profile object, using first_name and last_name fields
         const displayName = profile?.first_name 
           ? `${profile.first_name} ${profile.last_name || ''}`
           : user.email?.split('@')[0] || 'User';
         
         setStaffName(displayName.trim());
+        setRestaurantId(profile?.restaurant_id || null);
       }
     } catch (error) {
       console.error("Profile fetch error:", error);
@@ -65,22 +75,44 @@ const Sidebar = () => {
     getProfileData();
   }, []);
 
-  const navigation = [
-    { name: "Dashboard", href: "/", icon: Home },
-    { name: "Menu", href: "/menu", icon: Utensils },
-    { name: "Orders", href: "/orders", icon: ShoppingCart },
-    { name: "Tables", href: "/tables", icon: Coffee },
-    { name: "Staff", href: "/staff", icon: Users },
-    { name: "Inventory", href: "/inventory", icon: PackageOpen },
-    { name: "Rooms", href: "/rooms", icon: Bed },
-    { name: "Suppliers", href: "/suppliers", icon: Truck },
-    { name: "Analytics", href: "/analytics", icon: BarChart3 },
-    { name: "Settings", href: "/settings", icon: Settings },
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      navigate('/auth');
+      toast({
+        title: "Signed out",
+        description: "You have been successfully signed out.",
+      });
+    } catch (error) {
+      console.error("Sign out error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to sign out. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const allNavigation = [
+    { name: "Dashboard", href: "/", icon: Home, component: "dashboard" },
+    { name: "Menu", href: "/menu", icon: Utensils, component: "menu" },
+    { name: "Orders", href: "/orders", icon: ShoppingCart, component: "orders" },
+    { name: "Tables", href: "/tables", icon: Coffee, component: "tables" },
+    { name: "Staff", href: "/staff", icon: Users, component: "staff" },
+    { name: "Inventory", href: "/inventory", icon: PackageOpen, component: "inventory" },
+    { name: "Rooms", href: "/rooms", icon: Bed, component: "rooms" },
+    { name: "Suppliers", href: "/suppliers", icon: Truck, component: "suppliers" },
+    { name: "Analytics", href: "/analytics", icon: BarChart3, component: "analytics" },
+    { name: "Business Dashboard", href: "/business-dashboard", icon: LayoutDashboard, component: "business_dashboard" },
+    { name: "Settings", href: "/settings", icon: Settings, component: "settings" },
   ];
+
+  const navigation = allNavigation.filter(item => 
+    allowedComponents.includes(item.component)
+  );
 
   return (
     <>
-      {/* Mobile menu toggle */}
       <div className="fixed top-4 left-4 z-40 lg:hidden">
         <Button
           onClick={() => setIsOpen(!isOpen)}
@@ -92,7 +124,6 @@ const Sidebar = () => {
         </Button>
       </div>
 
-      {/* Sidebar */}
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-30 w-64 bg-sidebar-background border-r border-sidebar-border transition-transform duration-300 lg:translate-x-0 lg:relative",
@@ -100,7 +131,6 @@ const Sidebar = () => {
         )}
       >
         <div className="flex flex-col h-full">
-          {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
@@ -121,7 +151,6 @@ const Sidebar = () => {
             </div>
           </div>
 
-          {/* Navigation */}
           <nav className="flex-1 overflow-y-auto py-4 px-3">
             <ul className="space-y-1">
               {navigation.map((item) => (
@@ -145,7 +174,6 @@ const Sidebar = () => {
             </ul>
           </nav>
 
-          {/* Footer */}
           <div className="border-t border-sidebar-border p-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-sidebar-accent flex items-center justify-center text-sidebar-accent-foreground font-medium">
@@ -159,12 +187,19 @@ const Sidebar = () => {
                   Staff Member
                 </p>
               </div>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={handleSignOut}
+                title="Sign Out"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
             </div>
           </div>
         </div>
       </aside>
 
-      {/* Backdrop */}
       {isOpen && (
         <div
           className="fixed inset-0 bg-black/50 backdrop-blur-sm z-20 lg:hidden"

@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -8,6 +7,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ThemeProvider } from "@/hooks/useTheme";
 import Sidebar from "./components/Layout/Sidebar";
+import Watermark from "./components/Layout/Watermark";
 import Index from "./pages/Index";
 import Menu from "./pages/Menu";
 import Orders from "./pages/Orders";
@@ -23,6 +23,8 @@ import Auth from "./pages/Auth";
 import { checkSubscriptionStatus } from "@/utils/subscriptionUtils";
 import SubscriptionPlans from "@/components/SubscriptionPlans";
 import SubscriptionCheck from "@/components/SubscriptionCheck";
+import { fetchAllowedComponents } from "@/utils/subscriptionUtils";
+import BusinessDashboard from "@/components/Analytics/BusinessDashboard";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -33,7 +35,75 @@ const queryClient = new QueryClient({
   },
 });
 
-// Component to handle subscription check on route changes
+const ComponentAccessGuard = ({ 
+  children, 
+  requiredComponent 
+}: { 
+  children: React.ReactNode, 
+  requiredComponent: string 
+}) => {
+  const [hasAccess, setHasAccess] = useState<boolean | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  useEffect(() => {
+    const checkAccess = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("restaurant_id")
+            .eq("id", session.user.id)
+            .single();
+
+          if (profile?.restaurant_id) {
+            const allowedComponents = await fetchAllowedComponents(profile.restaurant_id);
+            const access = allowedComponents.includes(requiredComponent);
+            setHasAccess(access);
+          } else {
+            setHasAccess(false);
+          }
+        } else {
+          setHasAccess(false);
+        }
+      } catch (error) {
+        console.error("Error checking component access:", error);
+        setHasAccess(false);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    checkAccess();
+  }, [requiredComponent]);
+  
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
+      </div>
+    );
+  }
+  
+  if (!hasAccess) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-background to-muted">
+        <div className="text-center max-w-md p-6">
+          <h2 className="text-2xl font-bold mb-4">Access Restricted</h2>
+          <p className="text-muted-foreground mb-6">
+            Your current subscription plan does not include access to this component.
+            Please upgrade your subscription to access this feature.
+          </p>
+          <Navigate to="/" replace />
+        </div>
+      </div>
+    );
+  }
+  
+  return <>{children}</>;
+};
+
 const SubscriptionGuard = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
@@ -45,7 +115,6 @@ const SubscriptionGuard = ({ children }: { children: React.ReactNode }) => {
       
       if (session && location.pathname !== "/" && location.pathname !== "/auth") {
         try {
-          // Get user's profile to fetch restaurant_id
           const { data: profile } = await supabase
             .from("profiles")
             .select("restaurant_id")
@@ -71,7 +140,6 @@ const SubscriptionGuard = ({ children }: { children: React.ReactNode }) => {
     checkSubscription();
   }, [location.pathname]);
   
-  // Use this technique to prevent rendering the actual content when subscription check fails
   if (isRestricted) {
     return (
       <>
@@ -108,7 +176,6 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       
       if (session) {
         try {
-          // Get user's profile to fetch restaurant_id
           const { data: profile } = await supabase
             .from("profiles")
             .select("restaurant_id")
@@ -141,7 +208,6 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       
       if (session) {
         try {
-          // Get user's profile to fetch restaurant_id
           const { data: profile } = await supabase
             .from("profiles")
             .select("restaurant_id")
@@ -184,7 +250,6 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/auth" replace />;
   }
 
-  // If subscription status has been checked and there's no active subscription, show subscription plans
   if (hasActiveSubscription === false) {
     return <SubscriptionPlans restaurantId={restaurantId} />;
   }
@@ -215,20 +280,22 @@ const App = () => {
                       <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">
                         <div className="max-w-7xl mx-auto">
                           <Routes>
-                            <Route path="/" element={<Index />} />
-                            <Route path="/menu" element={<Menu />} />
-                            <Route path="/orders" element={<Orders />} />
-                            <Route path="/tables" element={<Tables />} />
-                            <Route path="/staff" element={<Staff />} />
-                            <Route path="/inventory" element={<Inventory />} />
-                            <Route path="/rooms" element={<Rooms />} />
-                            <Route path="/suppliers" element={<Suppliers />} />
-                            <Route path="/analytics" element={<Analytics />} />
-                            <Route path="/settings" element={<Settings />} />
+                            <Route path="/" element={<ComponentAccessGuard requiredComponent="dashboard"><Index /></ComponentAccessGuard>} />
+                            <Route path="/menu" element={<ComponentAccessGuard requiredComponent="menu"><Menu /></ComponentAccessGuard>} />
+                            <Route path="/orders" element={<ComponentAccessGuard requiredComponent="orders"><Orders /></ComponentAccessGuard>} />
+                            <Route path="/tables" element={<ComponentAccessGuard requiredComponent="tables"><Tables /></ComponentAccessGuard>} />
+                            <Route path="/staff" element={<ComponentAccessGuard requiredComponent="staff"><Staff /></ComponentAccessGuard>} />
+                            <Route path="/inventory" element={<ComponentAccessGuard requiredComponent="inventory"><Inventory /></ComponentAccessGuard>} />
+                            <Route path="/rooms" element={<ComponentAccessGuard requiredComponent="rooms"><Rooms /></ComponentAccessGuard>} />
+                            <Route path="/suppliers" element={<ComponentAccessGuard requiredComponent="suppliers"><Suppliers /></ComponentAccessGuard>} />
+                            <Route path="/analytics" element={<ComponentAccessGuard requiredComponent="analytics"><Analytics /></ComponentAccessGuard>} />
+                            <Route path="/business-dashboard" element={<ComponentAccessGuard requiredComponent="business_dashboard"><BusinessDashboard /></ComponentAccessGuard>} />
+                            <Route path="/settings" element={<ComponentAccessGuard requiredComponent="settings"><Settings /></ComponentAccessGuard>} />
                             <Route path="*" element={<NotFound />} />
                           </Routes>
                         </div>
                       </main>
+                      <Watermark />
                     </div>
                   </ProtectedRoute>
                 }
