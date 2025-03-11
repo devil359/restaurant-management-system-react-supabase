@@ -13,6 +13,7 @@ interface FileAnalysisUploaderProps {
     type: string;
     date: string;
     insights: string;
+    url?: string;
   }) => void;
   variant?: 'button' | 'inline';
 }
@@ -46,11 +47,11 @@ const FileAnalysisUploader: React.FC<FileAnalysisUploaderProps> = ({
     // Set the first file for Excel analysis
     const fileToAnalyze = files[0];
     const isExcelFile = fileToAnalyze.type.includes('sheet') || 
-                        fileToAnalyze.type.includes('excel') || 
-                        fileToAnalyze.type.includes('csv') ||
-                        fileToAnalyze.name.endsWith('.xlsx') || 
-                        fileToAnalyze.name.endsWith('.xls') || 
-                        fileToAnalyze.name.endsWith('.csv');
+                      fileToAnalyze.type.includes('excel') || 
+                      fileToAnalyze.type.includes('csv') ||
+                      fileToAnalyze.name.endsWith('.xlsx') || 
+                      fileToAnalyze.name.endsWith('.xls') || 
+                      fileToAnalyze.name.endsWith('.csv');
 
     setIsUploading(true);
     toast({
