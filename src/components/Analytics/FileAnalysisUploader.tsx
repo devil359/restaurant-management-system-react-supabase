@@ -5,6 +5,7 @@ import { FileUp, File, FileText, FileSpreadsheet, Image } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import ExcelAnalyzer from './ExcelAnalyzer';
 
 interface FileAnalysisUploaderProps {
   onFileUploaded: (fileData: {
@@ -22,6 +23,8 @@ const FileAnalysisUploader: React.FC<FileAnalysisUploaderProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [showAnalyzer, setShowAnalyzer] = useState(false);
+  const [currentFile, setCurrentFile] = useState<File | null>(null);
   const { toast } = useToast();
 
   const getFileIcon = (fileType: string) => {
@@ -39,6 +42,15 @@ const FileAnalysisUploader: React.FC<FileAnalysisUploaderProps> = ({
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
+
+    // Set the first file for Excel analysis
+    const fileToAnalyze = files[0];
+    const isExcelFile = fileToAnalyze.type.includes('sheet') || 
+                        fileToAnalyze.type.includes('excel') || 
+                        fileToAnalyze.type.includes('csv') ||
+                        fileToAnalyze.name.endsWith('.xlsx') || 
+                        fileToAnalyze.name.endsWith('.xls') || 
+                        fileToAnalyze.name.endsWith('.csv');
 
     setIsUploading(true);
     toast({
@@ -110,6 +122,12 @@ const FileAnalysisUploader: React.FC<FileAnalysisUploaderProps> = ({
       validResults.forEach(fileData => {
         if (fileData) onFileUploaded(fileData);
       });
+      
+      // If this is an Excel file, show the analyzer
+      if (isExcelFile) {
+        setCurrentFile(fileToAnalyze);
+        setShowAnalyzer(true);
+      }
     }
 
     // Reset file input
@@ -171,6 +189,11 @@ const FileAnalysisUploader: React.FC<FileAnalysisUploaderProps> = ({
     return randomValues[Math.floor(Math.random() * randomValues.length)];
   };
 
+  const handleCloseAnalyzer = () => {
+    setShowAnalyzer(false);
+    setCurrentFile(null);
+  };
+
   // Inline variant (used within document repository)
   if (variant === 'inline') {
     return (
@@ -193,6 +216,13 @@ const FileAnalysisUploader: React.FC<FileAnalysisUploaderProps> = ({
           <FileUp className="h-4 w-4" />
           <span>{isUploading ? "Uploading..." : "Upload Files"}</span>
         </Button>
+        
+        {/* Excel Analyzer Dialog */}
+        <ExcelAnalyzer 
+          isOpen={showAnalyzer} 
+          onClose={handleCloseAnalyzer}
+          fileData={currentFile || undefined}
+        />
       </>
     );
   }
@@ -242,6 +272,13 @@ const FileAnalysisUploader: React.FC<FileAnalysisUploaderProps> = ({
           </div>
         </PopoverContent>
       </Popover>
+      
+      {/* Excel Analyzer Dialog */}
+      <ExcelAnalyzer 
+        isOpen={showAnalyzer} 
+        onClose={handleCloseAnalyzer}
+        fileData={currentFile || undefined}
+      />
     </div>
   );
 };

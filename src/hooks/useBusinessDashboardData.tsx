@@ -3,6 +3,42 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subDays, startOfWeek, addDays, isSameDay } from "date-fns";
 
+// Define proper types for inventory items
+interface InventoryItem {
+  category: string;
+  cost_per_unit: number;
+  quantity: number;
+  name: string;
+  reorder_level: number;
+}
+
+// Define proper types for order items
+interface OrderItem {
+  category?: string;
+  quantity?: number;
+}
+
+// Define proper types for orders
+interface Order {
+  id: string;
+  created_at: string;
+  total: number;
+  items: OrderItem[];
+}
+
+// Define proper types for staff members
+interface StaffMember {
+  position?: string;
+}
+
+// Define proper types for revenue stats
+interface RevenueStats {
+  date: string;
+  total_revenue: number;
+  order_count: number;
+  average_order_value: number;
+}
+
 export const useBusinessDashboardData = () => {
   return useQuery({
     queryKey: ["business-dashboard-data"],
@@ -53,11 +89,17 @@ export const useBusinessDashboardData = () => {
         .gte("date", formattedDate)
         .order("date", { ascending: true });
 
+      // Cast data to proper types
+      const typedOrderData = orderData as Order[] || [];
+      const typedInventoryData = inventoryData as InventoryItem[] || [];
+      const typedStaffData = staffData as StaffMember[] || [];
+      const typedRevenueStats = revenueStats as RevenueStats[] || [];
+
       // Calculate expense breakdown based on real data
-      const totalOrderRevenue = orderData?.reduce((sum, order) => sum + order.total, 0) || 0;
+      const totalOrderRevenue = typedOrderData.reduce((sum, order) => sum + order.total, 0) || 0;
       
       // Calculate ingredient costs (from inventory)
-      const ingredientsCost = inventoryData?.reduce((sum, item) => {
+      const ingredientsCost = typedInventoryData.reduce((sum, item) => {
         return item.category.toLowerCase().includes("ingredient") ? 
           sum + (item.cost_per_unit || 0) * (item.quantity || 0) : sum;
       }, 0) || 0;
@@ -66,7 +108,7 @@ export const useBusinessDashboardData = () => {
       const utilitiesCost = totalOrderRevenue * 0.12;
       
       // Staff cost calculation based on real staff data
-      const staffCost = staffData?.reduce((sum, staff) => {
+      const staffCost = typedStaffData.reduce((sum, staff) => {
         // Approximate salary based on position
         let baseSalary = 12000; // Default monthly salary
         
@@ -134,8 +176,8 @@ export const useBusinessDashboardData = () => {
       }
       
       // Count orders by hour
-      if (orderData) {
-        orderData.forEach(order => {
+      if (typedOrderData) {
+        typedOrderData.forEach(order => {
           const orderDate = new Date(order.created_at);
           const hour = orderDate.getHours();
           
@@ -164,8 +206,8 @@ export const useBusinessDashboardData = () => {
         'late-night': 0 
       };
       
-      if (orderData) {
-        orderData.forEach(order => {
+      if (typedOrderData) {
+        typedOrderData.forEach(order => {
           const orderDate = new Date(order.created_at);
           const dayOfWeek = format(orderDate, 'EEE');
           const hour = orderDate.getHours();
@@ -203,9 +245,9 @@ export const useBusinessDashboardData = () => {
       // Get revenue trend from daily_revenue_stats
       let revenueTrend = 0;
       
-      if (revenueStats && revenueStats.length >= 2) {
-        const lastWeekRevenue = revenueStats.slice(-7).reduce((sum, day) => sum + day.total_revenue, 0);
-        const previousWeekRevenue = revenueStats.slice(-14, -7).reduce((sum, day) => sum + day.total_revenue, 0);
+      if (typedRevenueStats && typedRevenueStats.length >= 2) {
+        const lastWeekRevenue = typedRevenueStats.slice(-7).reduce((sum, day) => sum + day.total_revenue, 0);
+        const previousWeekRevenue = typedRevenueStats.slice(-14, -7).reduce((sum, day) => sum + day.total_revenue, 0);
         
         if (previousWeekRevenue > 0) {
           revenueTrend = ((lastWeekRevenue - previousWeekRevenue) / previousWeekRevenue) * 100;
@@ -213,7 +255,7 @@ export const useBusinessDashboardData = () => {
       }
 
       // Find low inventory items
-      const lowStockItems = inventoryData?.filter(item => 
+      const lowStockItems = typedInventoryData.filter(item => 
         item.quantity <= (item.reorder_level || 0)
       ) || [];
 
@@ -259,7 +301,7 @@ export const useBusinessDashboardData = () => {
 
       // For document analysis, use actual order data
       // Recent orders converted to "documents" for analysis
-      const documents = orderData ? orderData.slice(0, 5).map(order => {
+      const documents = typedOrderData ? typedOrderData.slice(0, 5).map(order => {
         return {
           name: `Order_${order.id.slice(0, 8)}.xlsx`,
           type: "Excel",
@@ -312,8 +354,8 @@ export const useBusinessDashboardData = () => {
       // Add inventory cost insight if relevant
       const highCostCategory: Record<string, number> = {};
       
-      if (inventoryData) {
-        inventoryData.forEach(item => {
+      if (typedInventoryData) {
+        typedInventoryData.forEach(item => {
           if (!highCostCategory[item.category]) {
             highCostCategory[item.category] = 0;
           }
@@ -348,8 +390,8 @@ export const useBusinessDashboardData = () => {
       // Prepare staffing distribution by role
       const staffByRole: Record<string, number> = {};
       
-      if (staffData) {
-        staffData.forEach(staff => {
+      if (typedStaffData) {
+        typedStaffData.forEach(staff => {
           const role = staff.position || 'Unassigned';
           if (!staffByRole[role]) {
             staffByRole[role] = 0;
@@ -366,8 +408,8 @@ export const useBusinessDashboardData = () => {
       // Get inventory by category
       const inventoryByCategory: Record<string, number> = {};
       
-      if (inventoryData) {
-        inventoryData.forEach(item => {
+      if (typedInventoryData) {
+        typedInventoryData.forEach(item => {
           const category = item.category || 'Other';
           if (!inventoryByCategory[category]) {
             inventoryByCategory[category] = 0;
@@ -382,7 +424,7 @@ export const useBusinessDashboardData = () => {
       }));
 
       // Revenue trend data
-      const revenueTrendData = revenueStats ? revenueStats.map(day => ({
+      const revenueTrendData = typedRevenueStats ? typedRevenueStats.map(day => ({
         date: day.date,
         revenue: day.total_revenue,
         orders: day.order_count,
@@ -392,10 +434,10 @@ export const useBusinessDashboardData = () => {
       // Calculate top selling item categories from orders
       const itemCategoryCounts: Record<string, number> = {};
       
-      if (orderData) {
-        orderData.forEach(order => {
+      if (typedOrderData) {
+        typedOrderData.forEach(order => {
           if (order.items && Array.isArray(order.items)) {
-            order.items.forEach((item: any) => {
+            order.items.forEach((item) => {
               if (typeof item === 'object' && item !== null) {
                 const category = item.category || 'Uncategorized';
                 if (!itemCategoryCounts[category]) {
@@ -423,7 +465,7 @@ export const useBusinessDashboardData = () => {
         documents,
         insights,
         totalOperationalCost,
-        staffData: staffData || [],
+        staffData: typedStaffData || [],
         revenueTrend,
         weekdayData,
         staffDistribution,
