@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { format, subDays, startOfWeek, addDays } from "date-fns";
+import { format, subDays, startOfWeek, addDays, isSameDay } from "date-fns";
 
 export const useBusinessDashboardData = () => {
   return useQuery({
@@ -21,14 +21,18 @@ export const useBusinessDashboardData = () => {
 
       const restaurantId = userProfile.restaurant_id;
 
-      // Fetch expense data from orders and inventory_items
+      // Fetch orders data with date range
+      const thirtyDaysAgo = subDays(new Date(), 30);
+      const formattedDate = thirtyDaysAgo.toISOString();
+
       const { data: orderData } = await supabase
         .from("orders")
         .select("*")
         .eq("restaurant_id", restaurantId)
-        .order("created_at", { ascending: false })
-        .limit(100);
+        .gte("created_at", formattedDate)
+        .order("created_at", { ascending: false });
 
+      // Fetch inventory data
       const { data: inventoryData } = await supabase
         .from("inventory_items")
         .select("*")
@@ -40,6 +44,14 @@ export const useBusinessDashboardData = () => {
         .select("*")
         .eq("restaurant_id", restaurantId);
 
+      // Fetch revenue stats data
+      const { data: revenueStats } = await supabase
+        .from("daily_revenue_stats")
+        .select("*")
+        .eq("restaurant_id", restaurantId)
+        .gte("date", formattedDate)
+        .order("date", { ascending: true });
+
       // Calculate expense breakdown based on real data
       const totalOrderRevenue = orderData?.reduce((sum, order) => sum + order.total, 0) || 0;
       
@@ -49,13 +61,31 @@ export const useBusinessDashboardData = () => {
           sum + (item.cost_per_unit || 0) * (item.quantity || 0) : sum;
       }, 0) || 0;
 
-      // Utilities cost estimation (20% of total revenue)
+      // Utilities cost estimation (12% of total revenue)
       const utilitiesCost = totalOrderRevenue * 0.12;
       
-      // Staff cost calculation
-      const staffCost = staffData?.length ? staffData.length * 12000 : 25000; // Avg salary per staff
+      // Staff cost calculation based on real staff data
+      const staffCost = staffData?.reduce((sum, staff) => {
+        // Approximate salary based on position
+        let baseSalary = 12000; // Default monthly salary
+        
+        if (staff.position) {
+          const position = staff.position.toLowerCase();
+          if (position.includes('chef') || position.includes('cook')) {
+            baseSalary = 18000;
+          } else if (position.includes('manager')) {
+            baseSalary = 25000;
+          } else if (position.includes('waiter') || position.includes('server')) {
+            baseSalary = 10000;
+          } else if (position.includes('clean') || position.includes('janitor')) {
+            baseSalary = 8000;
+          }
+        }
+        
+        return sum + baseSalary;
+      }, 0) || 25000; // Default to 25000 if no staff found
       
-      // Rent cost estimation (15% of revenue)
+      // Rent cost estimation (10% of revenue)
       const rentCost = totalOrderRevenue * 0.10;
       
       // Other costs
@@ -98,7 +128,7 @@ export const useBusinessDashboardData = () => {
       
       // Initialize all hours with 0
       for (let i = 9; i <= 22; i++) {
-        const hourLabel = i <= 12 ? `${i} AM` : `${i-12} PM`;
+        const hourLabel = i < 12 ? `${i} AM` : i === 12 ? `${i} PM` : `${i-12} PM`;
         hourCounts[hourLabel] = 0;
       }
       
@@ -110,7 +140,7 @@ export const useBusinessDashboardData = () => {
           
           // Only count business hours (9 AM to 10 PM)
           if (hour >= 9 && hour <= 22) {
-            const hourLabel = hour <= 12 ? `${hour} AM` : `${hour-12} PM`;
+            const hourLabel = hour < 12 ? `${hour} AM` : hour === 12 ? `${hour} PM` : `${hour-12} PM`;
             hourCounts[hourLabel] = (hourCounts[hourLabel] || 0) + 1;
           }
         });
@@ -122,26 +152,69 @@ export const useBusinessDashboardData = () => {
         customers: customers as number
       }));
 
-      // Calculate promotional opportunities based on peak hours
-      const lowTrafficHours = peakHoursData
-        .filter(d => d.customers < (Math.max(...peakHoursData.map(h => h.customers)) * 0.5))
-        .map(d => d.hour);
-      
-      // Get day of week distribution
+      // Analyze orders by day of week
       const dayOfWeekCounts = { 'Mon': 0, 'Tue': 0, 'Wed': 0, 'Thu': 0, 'Fri': 0, 'Sat': 0, 'Sun': 0 };
+      const dayOfWeekRevenue = { 'Mon': 0, 'Tue': 0, 'Wed': 0, 'Thu': 0, 'Fri': 0, 'Sat': 0, 'Sun': 0 };
+      const dayPartCounts = { 
+        'breakfast': 0, 
+        'lunch': 0, 
+        'evening': 0, 
+        'dinner': 0, 
+        'late-night': 0 
+      };
       
       if (orderData) {
         orderData.forEach(order => {
           const orderDate = new Date(order.created_at);
           const dayOfWeek = format(orderDate, 'EEE');
+          const hour = orderDate.getHours();
+          
+          // Update day of week counts and revenue
           dayOfWeekCounts[dayOfWeek] = (dayOfWeekCounts[dayOfWeek] || 0) + 1;
+          dayOfWeekRevenue[dayOfWeek] = (dayOfWeekRevenue[dayOfWeek] || 0) + order.total;
+          
+          // Update day part counts
+          if (hour >= 7 && hour < 11) {
+            dayPartCounts['breakfast'] += 1;
+          } else if (hour >= 11 && hour < 15) {
+            dayPartCounts['lunch'] += 1;
+          } else if (hour >= 15 && hour < 18) {
+            dayPartCounts['evening'] += 1;
+          } else if (hour >= 18 && hour < 22) {
+            dayPartCounts['dinner'] += 1;
+          } else {
+            dayPartCounts['late-night'] += 1;
+          }
         });
       }
+
+      // Find the slowest weekday by order count
+      const weekdayEntries = Object.entries(dayOfWeekCounts)
+        .filter(([day]) => !['Sat', 'Sun'].includes(day));
       
-      // Find the slowest weekday
-      const slowestWeekday = Object.entries(dayOfWeekCounts)
-        .filter(([day]) => !['Sat', 'Sun'].includes(day))
-        .sort((a, b) => a[1] - b[1])[0]?.[0] || 'Mon';
+      const slowestWeekday = weekdayEntries.length > 0 ? 
+        [...weekdayEntries].sort((a, b) => a[1] - b[1])[0][0] : 'Mon';
+      
+      // Find the lowest performing day part
+      const lowestDayPart = Object.entries(dayPartCounts)
+        .sort((a, b) => a[1] - b[1])[0][0];
+
+      // Get revenue trend from daily_revenue_stats
+      let revenueTrend = 0;
+      
+      if (revenueStats && revenueStats.length >= 2) {
+        const lastWeekRevenue = revenueStats.slice(-7).reduce((sum, day) => sum + day.total_revenue, 0);
+        const previousWeekRevenue = revenueStats.slice(-14, -7).reduce((sum, day) => sum + day.total_revenue, 0);
+        
+        if (previousWeekRevenue > 0) {
+          revenueTrend = ((lastWeekRevenue - previousWeekRevenue) / previousWeekRevenue) * 100;
+        }
+      }
+
+      // Find low inventory items
+      const lowStockItems = inventoryData?.filter(item => 
+        item.quantity <= (item.reorder_level || 0)
+      ) || [];
 
       // Create promotional suggestions based on data analysis
       const promotionalData = [
@@ -156,7 +229,7 @@ export const useBusinessDashboardData = () => {
         { 
           id: 2, 
           name: "Weekend Brunch", 
-          timePeriod: "Sat-Sun, 9 AM - 2 PM", 
+          timePeriod: "Sat-Sun, 10 AM - 2 PM", 
           potentialIncrease: "35%", 
           status: dayOfWeekCounts['Sat'] > dayOfWeekCounts['Sun'] * 1.5 ? "active" : "suggested" 
         },
@@ -172,7 +245,7 @@ export const useBusinessDashboardData = () => {
           name: "Corporate Lunch", 
           timePeriod: "Weekdays, 12 PM - 2 PM", 
           potentialIncrease: "30%", 
-          status: lowTrafficHours.includes("12 PM") ? "suggested" : "active" 
+          status: lowestDayPart === 'lunch' ? "suggested" : "active" 
         },
         { 
           id: 5, 
@@ -185,7 +258,7 @@ export const useBusinessDashboardData = () => {
 
       // For document analysis, use actual order data
       // Recent orders converted to "documents" for analysis
-      const documents = orderData ? orderData.slice(0, 3).map(order => {
+      const documents = orderData ? orderData.slice(0, 5).map(order => {
         return {
           name: `Order_${order.id.slice(0, 8)}.xlsx`,
           type: "Excel",
@@ -198,10 +271,6 @@ export const useBusinessDashboardData = () => {
       const insights = [];
       
       // Low inventory insights
-      const lowStockItems = inventoryData?.filter(item => 
-        item.quantity <= (item.reorder_level || 0)
-      ) || [];
-      
       if (lowStockItems.length > 0) {
         insights.push({
           type: "inventory",
@@ -210,32 +279,136 @@ export const useBusinessDashboardData = () => {
         });
       }
       
-      // Revenue insights
-      if (orderData && orderData.length > 0) {
-        const last30DaysOrders = orderData.filter(order => 
-          new Date(order.created_at) >= subDays(new Date(), 30)
-        );
+      // Revenue insights based on day of week analysis
+      const lowestRevenueDay = Object.entries(dayOfWeekRevenue)
+        .filter(([day]) => !['Sat', 'Sun'].includes(day))
+        .sort((a, b) => a[1] - b[1])[0];
+      
+      if (lowestRevenueDay) {
+        const [day, revenue] = lowestRevenueDay;
+        const highestRevenueWeekday = Object.entries(dayOfWeekRevenue)
+          .filter(([d]) => !['Sat', 'Sun'].includes(d))
+          .sort((a, b) => b[1] - a[1])[0];
         
-        if (last30DaysOrders.length > 0) {
-          const averageOrderValue = last30DaysOrders.reduce((sum, order) => sum + order.total, 0) / last30DaysOrders.length;
-          
-          if (averageOrderValue > 0) {
-            insights.push({
-              type: "revenue",
-              title: "Revenue Opportunity",
-              message: `Your average order value is ₹${averageOrderValue.toFixed(0)}. Consider upselling strategies to increase it by 15%.`
-            });
-          }
-        }
+        const percentageDifference = highestRevenueWeekday[1] > 0 ? 
+          Math.round(((highestRevenueWeekday[1] - revenue) / highestRevenueWeekday[1]) * 100) : 0;
+        
+        insights.push({
+          type: "revenue",
+          title: "Revenue Opportunity",
+          message: `${day} ${lowestDayPart} hours are underperforming by ${percentageDifference}% compared to other weekdays. Consider a lunch special promotion.`
+        });
       }
       
-      // Seasonal opportunity based on current month
+      // Seasonal opportunity
       const currentMonth = format(new Date(), 'MMMM');
       insights.push({
         type: "seasonal",
         title: "Seasonal Opportunity",
         message: `${currentMonth} is approaching. Prepare special promotions to increase traffic based on previous year's data.`
       });
+
+      // Add inventory cost insight if relevant
+      const highCostCategory = inventoryData?.reduce((acc, item) => {
+        if (!acc[item.category]) {
+          acc[item.category] = 0;
+        }
+        acc[item.category] += (item.cost_per_unit || 0) * (item.quantity || 0);
+        return acc;
+      }, {});
+      
+      if (highCostCategory) {
+        const sortedCategories = Object.entries(highCostCategory)
+          .sort((a, b) => b[1] - a[1]);
+        
+        if (sortedCategories.length > 0) {
+          const [topCategory, cost] = sortedCategories[0];
+          const percentOfTotal = Math.round((cost / ingredientsCost) * 100);
+          
+          if (percentOfTotal > 30) {
+            insights.push({
+              type: "inventory",
+              title: "Inventory Cost Analysis",
+              message: `${topCategory} costs account for ${percentOfTotal}% of your inventory expenses. Consider alternative suppliers or menu adjustments.`
+            });
+          }
+        }
+      }
+
+      // Prepare weekday distribution data for charts
+      const weekdayData = Object.entries(dayOfWeekCounts).map(([day, count]) => ({
+        day,
+        orders: count
+      }));
+
+      // Prepare staffing distribution by role
+      const staffByRole = {};
+      
+      if (staffData) {
+        staffData.forEach(staff => {
+          const role = staff.position || 'Unassigned';
+          if (!staffByRole[role]) {
+            staffByRole[role] = 0;
+          }
+          staffByRole[role] += 1;
+        });
+      }
+      
+      const staffDistribution = Object.entries(staffByRole).map(([role, count]) => ({
+        role,
+        count: count as number
+      }));
+
+      // Get inventory by category
+      const inventoryByCategory = {};
+      
+      if (inventoryData) {
+        inventoryData.forEach(item => {
+          const category = item.category || 'Other';
+          if (!inventoryByCategory[category]) {
+            inventoryByCategory[category] = 0;
+          }
+          inventoryByCategory[category] += 1;
+        });
+      }
+      
+      const inventoryDistribution = Object.entries(inventoryByCategory).map(([category, count]) => ({
+        category,
+        count: count as number
+      }));
+
+      // Revenue trend data
+      const revenueTrendData = revenueStats ? revenueStats.map(day => ({
+        date: day.date,
+        revenue: day.total_revenue,
+        orders: day.order_count,
+        average: day.average_order_value
+      })) : [];
+
+      // Calculate top selling item categories from orders
+      const itemCategoryCounts = {};
+      
+      if (orderData) {
+        orderData.forEach(order => {
+          if (order.items && Array.isArray(order.items)) {
+            order.items.forEach(item => {
+              const category = item.category || 'Uncategorized';
+              if (!itemCategoryCounts[category]) {
+                itemCategoryCounts[category] = 0;
+              }
+              itemCategoryCounts[category] += item.quantity || 1;
+            });
+          }
+        });
+      }
+      
+      const topCategories = Object.entries(itemCategoryCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([category, count]) => ({
+          category,
+          count: count as number
+        }));
 
       return {
         expenseData,
@@ -244,7 +417,18 @@ export const useBusinessDashboardData = () => {
         documents,
         insights,
         totalOperationalCost,
-        staffData: staffData || []
+        staffData: staffData || [],
+        revenueTrend,
+        weekdayData,
+        staffDistribution,
+        inventoryDistribution,
+        revenueTrendData,
+        topCategories,
+        lowStockItems: lowStockItems.map(item => ({
+          name: item.name,
+          quantity: item.quantity,
+          reorderLevel: item.reorder_level
+        }))
       };
     },
     refetchInterval: 60000, // Refetch every minute

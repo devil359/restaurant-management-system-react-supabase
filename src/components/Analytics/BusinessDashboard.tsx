@@ -15,12 +15,15 @@ import {
   Package, 
   Clock, 
   Lightbulb,
-  List
+  List,
+  AlertTriangle
 } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell } from 'recharts';
 import { useBusinessDashboardData } from '@/hooks/useBusinessDashboardData';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/use-toast';
+import BusinessReportExport from './BusinessReportExport';
+import FileAnalysisUploader from './FileAnalysisUploader';
 
 // Colors for charts
 const COLORS = ['#4299E1', '#48BB78', '#F6AD55', '#F56565', '#805AD5'];
@@ -44,24 +47,71 @@ const BusinessDashboard = () => {
     }
   }, [data]);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      const newFiles = Array.from(files).map(file => ({
-        name: file.name,
-        type: file.type.includes('sheet') ? 'Excel' : file.type.includes('pdf') ? 'PDF' : 'Other',
-        date: new Date().toISOString().split('T')[0],
-        insights: 'Processing... Analysis will be available soon'
-      }));
-      
-      setDocuments([...newFiles, ...documents]);
+  const handleFileUploaded = (fileData: {
+    name: string;
+    type: string;
+    date: string;
+    insights: string;
+  }) => {
+    setDocuments(currentDocs => [fileData, ...currentDocs]);
+  };
+
+  const handleViewDocument = (doc: {name: string, type: string, date: string, insights: string}) => {
+    toast({
+      title: "Document Viewer",
+      description: `Viewing ${doc.name}. This functionality would open the file in a viewer.`,
+    });
+  };
+
+  const handleAnalyzeDocument = (doc: {name: string, type: string, date: string, insights: string}) => {
+    toast({
+      title: "Document Analysis",
+      description: `Analyzing ${doc.name}. AI-powered analysis in progress...`,
+    });
+    
+    // Simulate analysis completion after 2 seconds
+    setTimeout(() => {
+      // Update document with more detailed insights
+      setDocuments(currentDocs => 
+        currentDocs.map(d => {
+          if (d.name === doc.name) {
+            return {
+              ...d,
+              insights: `Detailed analysis complete: ${doc.type === 'Excel' ? 
+                'Financial patterns identified. Revenue trending upward.' : 
+                'Document content analyzed. Key information extracted.'}`
+            };
+          }
+          return d;
+        })
+      );
       
       toast({
-        title: "Files Uploaded",
-        description: `${files.length} files have been uploaded for analysis.`,
-        variant: "default",
+        title: "Analysis Complete",
+        description: `${doc.name} has been analyzed. View the insights in the document details.`,
+      });
+    }, 2000);
+  };
+
+  const handleActivatePromotion = (promo: any) => {
+    if (promo.status === 'active') {
+      toast({
+        title: "Promotion Deactivated",
+        description: `${promo.name} has been deactivated.`,
+      });
+    } else {
+      toast({
+        title: "Promotion Activated",
+        description: `${promo.name} has been activated and is now live.`,
       });
     }
+  };
+
+  const handleEditPromotion = (promo: any) => {
+    toast({
+      title: "Edit Promotion",
+      description: `Editing ${promo.name}. This would open an edit form in a real application.`,
+    });
   };
 
   if (isLoading) {
@@ -107,6 +157,8 @@ const BusinessDashboard = () => {
   const promotionalData = data?.promotionalData || [];
   const insights = data?.insights || [];
   const totalOperationalCost = data?.totalOperationalCost || 0;
+  const revenueTrend = data?.revenueTrend || 0;
+  const lowStockItems = data?.lowStockItems || [];
 
   return (
     <div className="space-y-6">
@@ -121,26 +173,8 @@ const BusinessDashboard = () => {
         </div>
         
         <div className="flex space-x-2">
-          <Button className="flex items-center gap-2" variant="outline">
-            <List className="h-4 w-4" />
-            <span>Export Report</span>
-          </Button>
-          <div className="relative">
-            <input
-              type="file"
-              id="file-upload"
-              multiple
-              className="hidden"
-              onChange={handleFileUpload}
-              accept=".xlsx,.xls,.pdf,.jpg,.png"
-            />
-            <label htmlFor="file-upload">
-              <Button className="flex items-center gap-2" variant="default">
-                <FileUp className="h-4 w-4" />
-                <span>Upload Data</span>
-              </Button>
-            </label>
-          </div>
+          <BusinessReportExport data={data} />
+          <FileAnalysisUploader onFileUploaded={handleFileUploaded} />
         </div>
       </div>
 
@@ -160,7 +194,9 @@ const BusinessDashboard = () => {
           <CardContent>
             <div className="text-2xl font-bold">₹{totalOperationalCost.toLocaleString()}</div>
             <div className="text-xs text-muted-foreground mb-4">
-              <span className="text-green-600 dark:text-green-400">↓ 3.2%</span> from last month
+              <span className={revenueTrend < 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}>
+                {revenueTrend < 0 ? "↓" : "↑"} {Math.abs(revenueTrend).toFixed(1)}%
+              </span> from last month
             </div>
             <div className="space-y-2">
               {expenseData.map((item, i) => (
@@ -378,12 +414,23 @@ const BusinessDashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
+                  {lowStockItems.length > 0 ? (
+                    <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg mb-4">
+                      <div className="flex items-center gap-2 text-red-800 dark:text-red-300 font-medium text-sm mb-1">
+                        <AlertTriangle className="h-4 w-4" />
+                        Low Stock Alert
+                      </div>
+                      <p className="text-xs text-red-600 dark:text-red-400">
+                        {lowStockItems.length} items are below reorder level
+                      </p>
+                    </div>
+                  ) : null}
                   <div>
                     <div className="flex justify-between mb-1">
                       <span className="text-sm">Produce</span>
                       <span className="text-sm font-medium">75%</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                       <div className="bg-purple-600 h-2 rounded-full" style={{ width: '75%' }}></div>
                     </div>
                   </div>
@@ -392,7 +439,7 @@ const BusinessDashboard = () => {
                       <span className="text-sm">Seafood</span>
                       <span className="text-sm font-medium">45%</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                       <div className="bg-yellow-500 h-2 rounded-full" style={{ width: '45%' }}></div>
                     </div>
                   </div>
@@ -401,7 +448,7 @@ const BusinessDashboard = () => {
                       <span className="text-sm">Meat</span>
                       <span className="text-sm font-medium">60%</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                       <div className="bg-green-500 h-2 rounded-full" style={{ width: '60%' }}></div>
                     </div>
                   </div>
@@ -410,7 +457,7 @@ const BusinessDashboard = () => {
                       <span className="text-sm">Beverages</span>
                       <span className="text-sm font-medium">85%</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                       <div className="bg-blue-500 h-2 rounded-full" style={{ width: '85%' }}></div>
                     </div>
                   </div>
@@ -519,20 +566,7 @@ const BusinessDashboard = () => {
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-base font-medium">Recent Documents</h3>
-                  <input
-                    type="file"
-                    id="file-upload-inline"
-                    multiple
-                    className="hidden"
-                    onChange={handleFileUpload}
-                    accept=".xlsx,.xls,.pdf,.jpg,.png"
-                  />
-                  <label htmlFor="file-upload-inline">
-                    <Button size="sm" variant="outline" className="flex items-center gap-2">
-                      <FileUp className="h-4 w-4" />
-                      <span>Upload Files</span>
-                    </Button>
-                  </label>
+                  <FileAnalysisUploader onFileUploaded={handleFileUploaded} variant="inline" />
                 </div>
                 
                 <div className="overflow-x-auto">
@@ -566,8 +600,22 @@ const BusinessDashboard = () => {
                             <TableCell>{doc.insights}</TableCell>
                             <TableCell>
                               <div className="flex space-x-2">
-                                <Button variant="ghost" size="sm">View</Button>
-                                <Button variant="ghost" size="sm">Analyze</Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  className="text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+                                  onClick={() => handleViewDocument(doc)}
+                                >
+                                  View
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  className="text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/30"
+                                  onClick={() => handleAnalyzeDocument(doc)}
+                                >
+                                  Analyze
+                                </Button>
                               </div>
                             </TableCell>
                           </TableRow>
@@ -687,10 +735,18 @@ const BusinessDashboard = () => {
                             <Button 
                               variant={promo.status === 'active' ? 'destructive' : 'default'} 
                               size="sm"
+                              onClick={() => handleActivatePromotion(promo)}
                             >
                               {promo.status === 'active' ? 'Deactivate' : 'Activate'}
                             </Button>
-                            <Button variant="outline" size="sm">Edit</Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              className="text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+                              onClick={() => handleEditPromotion(promo)}
+                            >
+                              Edit
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -710,7 +766,7 @@ const BusinessDashboard = () => {
                       <input
                         id="promo-name"
                         type="text"
-                        className="w-full p-2 border border-gray-300 rounded-md"
+                        className="w-full p-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-800 rounded-md"
                         placeholder="Enter promotion name"
                       />
                     </div>
@@ -721,7 +777,7 @@ const BusinessDashboard = () => {
                       <input
                         id="time-period"
                         type="text"
-                        className="w-full p-2 border border-gray-300 rounded-md"
+                        className="w-full p-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-800 rounded-md"
                         placeholder="e.g., Mon-Fri, 3 PM - 6 PM"
                       />
                     </div>
@@ -732,7 +788,7 @@ const BusinessDashboard = () => {
                       <input
                         id="discount"
                         type="text"
-                        className="w-full p-2 border border-gray-300 rounded-md"
+                        className="w-full p-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-800 rounded-md"
                         placeholder="e.g., 15% off, Buy One Get One"
                       />
                     </div>
@@ -744,7 +800,7 @@ const BusinessDashboard = () => {
                     </label>
                     <textarea
                       id="description"
-                      className="w-full p-2 border border-gray-300 rounded-md h-[113px]"
+                      className="w-full p-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-800 rounded-md h-[113px]"
                       placeholder="Describe the promotion details"
                     ></textarea>
                     <div className="mt-4">
@@ -779,7 +835,7 @@ const BusinessDashboard = () => {
                         <span className="text-sm">Happy Hour</span>
                         <span className="text-sm font-medium text-green-600">+28% Revenue</span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                         <div className="bg-green-500 h-2 rounded-full" style={{ width: '78%' }}></div>
                       </div>
                       
@@ -787,7 +843,7 @@ const BusinessDashboard = () => {
                         <span className="text-sm">Weekend Brunch</span>
                         <span className="text-sm font-medium text-green-600">+35% Revenue</span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                         <div className="bg-purple-500 h-2 rounded-full" style={{ width: '85%' }}></div>
                       </div>
                       
@@ -795,7 +851,7 @@ const BusinessDashboard = () => {
                         <span className="text-sm">Corporate Lunch (Potential)</span>
                         <span className="text-sm font-medium text-gray-600">Est. +30% Revenue</span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                         <div className="bg-gray-500 h-2 rounded-full" style={{ width: '60%' }}></div>
                       </div>
                     </div>
