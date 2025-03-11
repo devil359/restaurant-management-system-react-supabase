@@ -44,6 +44,8 @@ const FileAnalysisUploader: React.FC<FileAnalysisUploaderProps> = ({
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
+    console.log("Files selected:", files.length, "First file:", files[0].name, files[0].type);
+
     // Set the first file for Excel analysis
     const fileToAnalyze = files[0];
     const isExcelFile = fileToAnalyze.type.includes('sheet') || 
@@ -61,9 +63,13 @@ const FileAnalysisUploader: React.FC<FileAnalysisUploaderProps> = ({
 
     const promises = Array.from(files).map(async (file) => {
       try {
+        console.log("Processing file:", file.name, "Type:", file.type, "Size:", file.size);
+        
         // Convert file to base64
         const base64 = await toBase64(file);
         const base64String = base64.split(',')[1]; // Remove data URL part
+        
+        console.log("File converted to base64, uploading to Supabase...");
 
         // Upload file to Supabase Edge Function
         const { data, error } = await supabase.functions.invoke('upload-image', {
@@ -74,7 +80,12 @@ const FileAnalysisUploader: React.FC<FileAnalysisUploaderProps> = ({
           }
         });
 
-        if (error) throw error;
+        if (error) {
+          console.error("Supabase upload error:", error);
+          throw error;
+        }
+        
+        console.log("Supabase upload response:", data);
 
         // Generate analysis based on file type
         let analysis = '';
@@ -89,14 +100,18 @@ const FileAnalysisUploader: React.FC<FileAnalysisUploaderProps> = ({
           analysis = "File processed. Document insights will be available soon.";
         }
 
-        // File upload success
-        return {
+        const fileResult = {
           name: file.name,
           type: getFileType(file.type),
           date: new Date().toISOString().split('T')[0],
           insights: analysis,
           url: data?.image?.url || ''
         };
+        
+        console.log("File upload complete, result:", fileResult);
+        
+        // File upload success
+        return fileResult;
       } catch (error) {
         console.error("File upload error:", error);
         toast({
@@ -114,6 +129,8 @@ const FileAnalysisUploader: React.FC<FileAnalysisUploaderProps> = ({
     setIsUploading(false);
     
     if (validResults.length > 0) {
+      console.log("All files processed successfully:", validResults);
+      
       toast({
         title: "Files Uploaded",
         description: `${validResults.length} files have been uploaded for analysis.`,
@@ -126,6 +143,7 @@ const FileAnalysisUploader: React.FC<FileAnalysisUploaderProps> = ({
       
       // If this is an Excel file, show the analyzer
       if (isExcelFile) {
+        console.log("Excel file detected, showing analyzer");
         setCurrentFile(fileToAnalyze);
         setShowAnalyzer(true);
       }
@@ -191,6 +209,7 @@ const FileAnalysisUploader: React.FC<FileAnalysisUploaderProps> = ({
   };
 
   const handleCloseAnalyzer = () => {
+    console.log("Closing analyzer");
     setShowAnalyzer(false);
     setCurrentFile(null);
   };
