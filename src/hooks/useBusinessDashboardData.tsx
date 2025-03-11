@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subDays, startOfWeek, addDays, isSameDay } from "date-fns";
@@ -124,7 +125,7 @@ export const useBusinessDashboardData = () => {
       ];
 
       // Calculate peak hours data based on order timestamps
-      const hourCounts = {};
+      const hourCounts: Record<string, number> = {};
       
       // Initialize all hours with 0
       for (let i = 9; i <= 22; i++) {
@@ -149,13 +150,13 @@ export const useBusinessDashboardData = () => {
       // Convert to array format for chart
       const peakHoursData = Object.entries(hourCounts).map(([hour, customers]) => ({
         hour,
-        customers: customers as number
+        customers
       }));
 
       // Analyze orders by day of week
-      const dayOfWeekCounts = { 'Mon': 0, 'Tue': 0, 'Wed': 0, 'Thu': 0, 'Fri': 0, 'Sat': 0, 'Sun': 0 };
-      const dayOfWeekRevenue = { 'Mon': 0, 'Tue': 0, 'Wed': 0, 'Thu': 0, 'Fri': 0, 'Sat': 0, 'Sun': 0 };
-      const dayPartCounts = { 
+      const dayOfWeekCounts: Record<string, number> = { 'Mon': 0, 'Tue': 0, 'Wed': 0, 'Thu': 0, 'Fri': 0, 'Sat': 0, 'Sun': 0 };
+      const dayOfWeekRevenue: Record<string, number> = { 'Mon': 0, 'Tue': 0, 'Wed': 0, 'Thu': 0, 'Fri': 0, 'Sat': 0, 'Sun': 0 };
+      const dayPartCounts: Record<string, number> = { 
         'breakfast': 0, 
         'lunch': 0, 
         'evening': 0, 
@@ -309,15 +310,18 @@ export const useBusinessDashboardData = () => {
       });
 
       // Add inventory cost insight if relevant
-      const highCostCategory = inventoryData?.reduce((acc, item) => {
-        if (!acc[item.category]) {
-          acc[item.category] = 0;
-        }
-        acc[item.category] += (item.cost_per_unit || 0) * (item.quantity || 0);
-        return acc;
-      }, {});
+      const highCostCategory: Record<string, number> = {};
       
-      if (highCostCategory) {
+      if (inventoryData) {
+        inventoryData.forEach(item => {
+          if (!highCostCategory[item.category]) {
+            highCostCategory[item.category] = 0;
+          }
+          highCostCategory[item.category] += (item.cost_per_unit || 0) * (item.quantity || 0);
+        });
+      }
+      
+      if (Object.keys(highCostCategory).length > 0) {
         const sortedCategories = Object.entries(highCostCategory)
           .sort((a, b) => b[1] - a[1]);
         
@@ -342,7 +346,7 @@ export const useBusinessDashboardData = () => {
       }));
 
       // Prepare staffing distribution by role
-      const staffByRole = {};
+      const staffByRole: Record<string, number> = {};
       
       if (staffData) {
         staffData.forEach(staff => {
@@ -356,11 +360,11 @@ export const useBusinessDashboardData = () => {
       
       const staffDistribution = Object.entries(staffByRole).map(([role, count]) => ({
         role,
-        count: count as number
+        count
       }));
 
       // Get inventory by category
-      const inventoryByCategory = {};
+      const inventoryByCategory: Record<string, number> = {};
       
       if (inventoryData) {
         inventoryData.forEach(item => {
@@ -374,7 +378,7 @@ export const useBusinessDashboardData = () => {
       
       const inventoryDistribution = Object.entries(inventoryByCategory).map(([category, count]) => ({
         category,
-        count: count as number
+        count
       }));
 
       // Revenue trend data
@@ -386,17 +390,19 @@ export const useBusinessDashboardData = () => {
       })) : [];
 
       // Calculate top selling item categories from orders
-      const itemCategoryCounts = {};
+      const itemCategoryCounts: Record<string, number> = {};
       
       if (orderData) {
         orderData.forEach(order => {
           if (order.items && Array.isArray(order.items)) {
-            order.items.forEach(item => {
-              const category = item.category || 'Uncategorized';
-              if (!itemCategoryCounts[category]) {
-                itemCategoryCounts[category] = 0;
+            order.items.forEach((item: any) => {
+              if (typeof item === 'object' && item !== null) {
+                const category = item.category || 'Uncategorized';
+                if (!itemCategoryCounts[category]) {
+                  itemCategoryCounts[category] = 0;
+                }
+                itemCategoryCounts[category] += item.quantity || 1;
               }
-              itemCategoryCounts[category] += item.quantity || 1;
             });
           }
         });
@@ -407,7 +413,7 @@ export const useBusinessDashboardData = () => {
         .slice(0, 5)
         .map(([category, count]) => ({
           category,
-          count: count as number
+          count
         }));
 
       return {
