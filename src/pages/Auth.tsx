@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,49 +28,75 @@ const Auth = () => {
 
   useEffect(() => {
     const handleAuthChange = async () => {
-      const { data: authData } = await supabase.auth.getSession();
-      
-      // Handle OAuth redirections
-      if (authData?.session) {
-        // Clean up URL if it contains tokens (from OAuth redirect)
-        if (window.location.hash && window.location.hash.includes('access_token')) {
-          window.history.replaceState({}, document.title, window.location.pathname);
-        }
+      try {
+        const { data: authData } = await supabase.auth.getSession();
         
-        try {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("restaurant_id")
-            .eq("id", authData.session.user?.id)
-            .single();
-
-          if (profile?.restaurant_id) {
-            const hasActiveSubscription = await checkSubscriptionStatus(profile.restaurant_id);
-            
-            if (!hasActiveSubscription) {
-              setShowPlans(true);
-              toast({
-                title: "Subscription Required",
-                description: "Your subscription is not active. Please choose a plan to continue.",
-                variant: "destructive",
-              });
-              return;
-            }
-          }
+        // Handle OAuth redirections and hash fragments from Google auth
+        if (window.location.hash && window.location.hash.includes('access_token')) {
+          // We have a hash with auth tokens, likely from Google OAuth
+          console.log("Detected OAuth redirect with hash");
           
-          toast({
-            title: "Success",
-            description: "Logged in successfully",
-          });
-          navigate("/");
-        } catch (error) {
-          console.error("Profile fetch error:", error);
+          // Clean up URL
+          window.history.replaceState({}, document.title, window.location.pathname);
+          
+          // If we have a session either from the hash or already established
+          if (authData?.session) {
+            await processSuccessfulAuth(authData.session.user.id);
+          }
+        } else if (authData?.session) {
+          // Normal session check without hash
+          await processSuccessfulAuth(authData.session.user.id);
         }
+      } catch (error) {
+        console.error("Auth change error:", error);
+        toast({
+          title: "Error",
+          description: "Failed to process authentication",
+          variant: "destructive",
+        });
       }
     };
 
     handleAuthChange();
   }, [navigate, toast]);
+
+  // Extract the authentication success logic to a reusable function
+  const processSuccessfulAuth = async (userId) => {
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("restaurant_id")
+        .eq("id", userId)
+        .single();
+
+      if (profile?.restaurant_id) {
+        const hasActiveSubscription = await checkSubscriptionStatus(profile.restaurant_id);
+        
+        if (!hasActiveSubscription) {
+          setShowPlans(true);
+          toast({
+            title: "Subscription Required",
+            description: "Your subscription is not active. Please choose a plan to continue.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+      
+      toast({
+        title: "Success",
+        description: "Logged in successfully",
+      });
+      navigate("/");
+    } catch (error) {
+      console.error("Profile fetch error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch user profile",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,31 +110,7 @@ const Auth = () => {
         });
         if (error) throw error;
 
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("restaurant_id")
-          .eq("id", user?.id)
-          .single();
-
-        if (profile?.restaurant_id) {
-          const hasActiveSubscription = await checkSubscriptionStatus(profile.restaurant_id);
-          
-          if (!hasActiveSubscription) {
-            setShowPlans(true);
-            toast({
-              title: "Subscription Required",
-              description: "Your subscription is not active. Please choose a plan to continue.",
-              variant: "destructive",
-            });
-            return;
-          }
-        }
-        
-        toast({
-          title: "Success",
-          description: "Logged in successfully",
-        });
-        navigate("/");
+        await processSuccessfulAuth(user?.id);
       } else {
         const { data: { user }, error } = await supabase.auth.signUp({
           email,
@@ -164,13 +167,10 @@ const Auth = () => {
   const handleGoogleAuth = async () => {
     try {
       setGoogleLoading(true);
-      // Fix: Remove the flowType option which is causing the TypeScript error
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: window.location.origin,
-          // The flowType option is not supported in the current Supabase version
-          // Use the default PKCE flow which is more secure
         }
       });
       
