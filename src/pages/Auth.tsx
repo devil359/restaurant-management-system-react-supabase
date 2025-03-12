@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -25,6 +24,44 @@ const Auth = () => {
   const [restaurantName, setRestaurantName] = useState("");
   const [restaurantType, setRestaurantType] = useState("");
 
+  useEffect(() => {
+    const handleAuthChange = async () => {
+      const { data: authData } = await supabase.auth.getSession();
+      
+      if (authData?.session && window.location.hash.includes('access_token')) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("restaurant_id")
+          .eq("id", authData.session.user?.id)
+          .single();
+
+        if (profile?.restaurant_id) {
+          const hasActiveSubscription = await checkSubscriptionStatus(profile.restaurant_id);
+          
+          if (!hasActiveSubscription) {
+            setShowPlans(true);
+            toast({
+              title: "Subscription Required",
+              description: "Your subscription is not active. Please choose a plan to continue.",
+              variant: "destructive",
+            });
+            return;
+          }
+        }
+        
+        toast({
+          title: "Success",
+          description: "Logged in successfully",
+        });
+        navigate("/");
+      }
+    };
+
+    handleAuthChange();
+  }, [navigate, toast]);
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -37,7 +74,6 @@ const Auth = () => {
         });
         if (error) throw error;
 
-        // Get user's profile to get restaurant_id
         const { data: profile } = await supabase
           .from("profiles")
           .select("restaurant_id")
@@ -64,7 +100,6 @@ const Auth = () => {
         });
         navigate("/");
       } else {
-        // Sign up new user
         const { data: { user }, error } = await supabase.auth.signUp({
           email,
           password,
@@ -73,7 +108,6 @@ const Auth = () => {
         if (error) throw error;
         
         if (user) {
-          // Create restaurant
           const { data: restaurant, error: restaurantError } = await supabase
             .from("restaurants")
             .insert([
@@ -84,7 +118,6 @@ const Auth = () => {
             
           if (restaurantError) throw restaurantError;
           
-          // Update user profile with restaurant_id
           const { error: profileError } = await supabase
             .from("profiles")
             .update({
