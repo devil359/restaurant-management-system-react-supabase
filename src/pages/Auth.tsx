@@ -6,12 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, StoreIcon, Mail } from "lucide-react";
+import { Loader2, StoreIcon, Mail, Lock } from "lucide-react";
 import { checkSubscriptionStatus } from "@/utils/subscriptionUtils";
 import SubscriptionPlans from "@/components/SubscriptionPlans";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -29,34 +30,42 @@ const Auth = () => {
     const handleAuthChange = async () => {
       const { data: authData } = await supabase.auth.getSession();
       
-      if (authData?.session && window.location.hash.includes('access_token')) {
-        window.history.replaceState({}, document.title, window.location.pathname);
-        
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("restaurant_id")
-          .eq("id", authData.session.user?.id)
-          .single();
-
-        if (profile?.restaurant_id) {
-          const hasActiveSubscription = await checkSubscriptionStatus(profile.restaurant_id);
-          
-          if (!hasActiveSubscription) {
-            setShowPlans(true);
-            toast({
-              title: "Subscription Required",
-              description: "Your subscription is not active. Please choose a plan to continue.",
-              variant: "destructive",
-            });
-            return;
-          }
+      // Handle OAuth redirections
+      if (authData?.session) {
+        // Clean up URL if it contains tokens (from OAuth redirect)
+        if (window.location.hash && window.location.hash.includes('access_token')) {
+          window.history.replaceState({}, document.title, window.location.pathname);
         }
         
-        toast({
-          title: "Success",
-          description: "Logged in successfully",
-        });
-        navigate("/");
+        try {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("restaurant_id")
+            .eq("id", authData.session.user?.id)
+            .single();
+
+          if (profile?.restaurant_id) {
+            const hasActiveSubscription = await checkSubscriptionStatus(profile.restaurant_id);
+            
+            if (!hasActiveSubscription) {
+              setShowPlans(true);
+              toast({
+                title: "Subscription Required",
+                description: "Your subscription is not active. Please choose a plan to continue.",
+                variant: "destructive",
+              });
+              return;
+            }
+          }
+          
+          toast({
+            title: "Success",
+            description: "Logged in successfully",
+          });
+          navigate("/");
+        } catch (error) {
+          console.error("Profile fetch error:", error);
+        }
       }
     };
 
@@ -156,10 +165,14 @@ const Auth = () => {
   const handleGoogleAuth = async () => {
     try {
       setGoogleLoading(true);
+      // Instead of popup, we use redirect for Google auth
+      // This avoids the X-Frame-Options issue
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: window.location.origin,
+          // Use 'global' scope to ensure full page redirection
+          flowType: 'pkce',
         }
       });
       
@@ -187,25 +200,30 @@ const Auth = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center bg-gradient-to-b from-gray-50 to-gray-100 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex flex-col items-center bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 py-12 px-4 sm:px-6 lg:px-8 transition-colors duration-300">
+      {/* Header with Theme Toggle */}
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
+      
       {/* Header with Swadeshi Solutions */}
       <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold text-brand-deep-blue mb-1 font-playfair relative inline-block">
+        <h1 className="text-4xl font-bold text-brand-deep-blue dark:text-white mb-1 font-playfair relative inline-block">
           <span className="relative z-10">Swadeshi Solutions</span>
           <span className="absolute bottom-0 left-0 w-full h-2 bg-brand-success-green opacity-30 rounded"></span>
         </h1>
-        <p className="text-slate-600 mt-2 text-lg">Restaurant Management System</p>
+        <p className="text-slate-600 dark:text-slate-300 mt-2 text-lg">Restaurant Management System</p>
       </div>
       
-      <Card className="w-full max-w-md p-8 shadow-xl border-t-4 border-t-brand-success-green animate-fade-in">
+      <Card className="w-full max-w-md p-8 shadow-xl border-t-4 border-t-brand-success-green animate-fade-in bg-white dark:bg-gray-800 dark:border-brand-success-green dark:text-white">
         <div className="text-center mb-8">
-          <div className="mx-auto w-16 h-16 bg-gradient-to-r from-brand-deep-blue to-brand-success-green rounded-full flex items-center justify-center mb-4 shadow-lg">
+          <div className="mx-auto w-16 h-16 bg-gradient-to-r from-brand-deep-blue to-brand-success-green dark:from-brand-success-green dark:to-brand-deep-blue rounded-full flex items-center justify-center mb-4 shadow-lg">
             <StoreIcon className="w-8 h-8 text-white" />
           </div>
-          <h2 className="text-2xl font-bold text-brand-deep-blue">
+          <h2 className="text-2xl font-bold text-brand-deep-blue dark:text-white">
             {isLogin ? "Welcome Back" : "Create Account"}
           </h2>
-          <p className="text-slate-600 mt-1">
+          <p className="text-slate-600 dark:text-slate-300 mt-1">
             {isLogin 
               ? "Sign in to manage your restaurant" 
               : "Set up your restaurant management account"}
@@ -214,7 +232,7 @@ const Auth = () => {
 
         <form onSubmit={handleAuth} className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-slate-700">Email</Label>
+            <Label htmlFor="email" className="text-slate-700 dark:text-slate-200">Email</Label>
             <div className="relative">
               <Input
                 id="email"
@@ -222,7 +240,7 @@ const Auth = () => {
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="pl-10"
+                className="pl-10 bg-white dark:bg-gray-700 dark:text-white dark:border-gray-600"
                 required
               />
               <Mail className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
@@ -230,15 +248,19 @@ const Auth = () => {
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="password" className="text-slate-700">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+            <Label htmlFor="password" className="text-slate-700 dark:text-slate-200">Password</Label>
+            <div className="relative">
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="pl-10 bg-white dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                required
+              />
+              <Lock className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+            </div>
           </div>
           
           {!isLogin && (
@@ -277,7 +299,7 @@ const Auth = () => {
           
           <Button
             type="submit"
-            className="w-full bg-brand-deep-blue hover:bg-brand-deep-blue/90"
+            className="w-full bg-brand-deep-blue hover:bg-brand-deep-blue/90 dark:bg-brand-success-green dark:hover:bg-brand-success-green/90 dark:text-brand-deep-blue font-medium"
             disabled={loading}
           >
             {loading ? (
@@ -290,10 +312,10 @@ const Auth = () => {
         <div className="mt-6">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <Separator className="w-full" />
+              <Separator className="w-full dark:bg-gray-600" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-slate-500">
+              <span className="bg-background dark:bg-gray-800 px-2 text-slate-500 dark:text-slate-400">
                 Or continue with
               </span>
             </div>
@@ -302,7 +324,7 @@ const Auth = () => {
           <Button
             type="button"
             variant="outline"
-            className="w-full mt-4 flex items-center justify-center border-slate-300 hover:bg-slate-50"
+            className="w-full mt-4 flex items-center justify-center border-slate-300 dark:border-slate-600 dark:text-white hover:bg-slate-50 dark:hover:bg-gray-700"
             onClick={handleGoogleAuth}
             disabled={googleLoading}
           >
@@ -337,7 +359,7 @@ const Auth = () => {
           <Button
             variant="link"
             onClick={() => setIsLogin(!isLogin)}
-            className="text-sm text-brand-deep-blue hover:text-brand-success-green"
+            className="text-sm text-brand-deep-blue dark:text-brand-success-green hover:text-brand-success-green dark:hover:text-brand-success-green/80"
           >
             {isLogin
               ? "Don't have an account? Sign up"
@@ -346,7 +368,7 @@ const Auth = () => {
         </div>
       </Card>
       
-      <div className="mt-8 text-center text-sm text-slate-500">
+      <div className="mt-8 text-center text-sm text-slate-500 dark:text-slate-400">
         &copy; {new Date().getFullYear()} Swadeshi Solutions. All rights reserved.
       </div>
     </div>
