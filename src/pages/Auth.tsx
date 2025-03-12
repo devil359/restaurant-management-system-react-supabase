@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -165,14 +164,13 @@ const Auth = () => {
   const handleGoogleAuth = async () => {
     try {
       setGoogleLoading(true);
-      // Instead of popup, we use redirect for Google auth
-      // This avoids the X-Frame-Options issue
+      // Fix: Remove the flowType option which is causing the TypeScript error
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: window.location.origin,
-          // Use 'global' scope to ensure full page redirection
-          flowType: 'pkce',
+          // The flowType option is not supported in the current Supabase version
+          // Use the default PKCE flow which is more secure
         }
       });
       
@@ -201,12 +199,10 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 py-12 px-4 sm:px-6 lg:px-8 transition-colors duration-300">
-      {/* Header with Theme Toggle */}
       <div className="absolute top-4 right-4">
         <ThemeToggle />
       </div>
       
-      {/* Header with Swadeshi Solutions */}
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold text-brand-deep-blue dark:text-white mb-1 font-playfair relative inline-block">
           <span className="relative z-10">Swadeshi Solutions</span>
@@ -266,31 +262,32 @@ const Auth = () => {
           {!isLogin && (
             <div className="space-y-4 pt-2">
               <div className="space-y-2">
-                <Label htmlFor="restaurantName" className="text-slate-700">Restaurant Name</Label>
+                <Label htmlFor="restaurantName" className="text-slate-700 dark:text-slate-200">Restaurant Name</Label>
                 <Input
                   id="restaurantName"
                   placeholder="Your Restaurant Name"
                   value={restaurantName}
                   onChange={(e) => setRestaurantName(e.target.value)}
+                  className="bg-white dark:bg-gray-700 dark:text-white dark:border-gray-600"
                 />
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="restaurantType" className="text-slate-700">Restaurant Type</Label>
+                <Label htmlFor="restaurantType" className="text-slate-700 dark:text-slate-200">Restaurant Type</Label>
                 <Select 
                   value={restaurantType} 
                   onValueChange={setRestaurantType}
                 >
-                  <SelectTrigger id="restaurantType">
+                  <SelectTrigger id="restaurantType" className="dark:bg-gray-700 dark:text-white dark:border-gray-600">
                     <SelectValue placeholder="Select restaurant type" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="dark:bg-gray-800 dark:text-white">
                     <SelectItem value="cafe">Café / Restaurant</SelectItem>
                     <SelectItem value="hotel">Hotel / Accommodation</SelectItem>
                     <SelectItem value="all-in-one">All-in-One (Restaurant & Hotel)</SelectItem>
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                   This helps us recommend the best subscription plan for your business
                 </p>
               </div>
