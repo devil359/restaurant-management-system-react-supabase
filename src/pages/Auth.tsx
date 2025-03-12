@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -186,37 +187,54 @@ const Auth = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md p-8">
+    <div className="min-h-screen flex flex-col items-center bg-gradient-to-b from-gray-50 to-gray-100 py-12 px-4 sm:px-6 lg:px-8">
+      {/* Header with Swadeshi Solutions */}
+      <div className="text-center mb-12">
+        <h1 className="text-4xl font-bold text-brand-deep-blue mb-1 font-playfair relative inline-block">
+          <span className="relative z-10">Swadeshi Solutions</span>
+          <span className="absolute bottom-0 left-0 w-full h-2 bg-brand-success-green opacity-30 rounded"></span>
+        </h1>
+        <p className="text-slate-600 mt-2 text-lg">Restaurant Management System</p>
+      </div>
+      
+      <Card className="w-full max-w-md p-8 shadow-xl border-t-4 border-t-brand-success-green animate-fade-in">
         <div className="text-center mb-8">
-          <div className="mx-auto w-12 h-12 bg-primary rounded-full flex items-center justify-center mb-4">
-            <StoreIcon className="w-6 h-6 text-primary-foreground" />
+          <div className="mx-auto w-16 h-16 bg-gradient-to-r from-brand-deep-blue to-brand-success-green rounded-full flex items-center justify-center mb-4 shadow-lg">
+            <StoreIcon className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold">
-            {isLogin ? "Login" : "Create Account"}
-          </h1>
-          {!isLogin && (
-            <p className="text-muted-foreground mt-1">
-              Set up your restaurant management account
-            </p>
-          )}
+          <h2 className="text-2xl font-bold text-brand-deep-blue">
+            {isLogin ? "Welcome Back" : "Create Account"}
+          </h2>
+          <p className="text-slate-600 mt-1">
+            {isLogin 
+              ? "Sign in to manage your restaurant" 
+              : "Set up your restaurant management account"}
+          </p>
         </div>
 
         <form onSubmit={handleAuth} className="space-y-6">
-          <div>
-            <Input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+          <div className="space-y-2">
+            <Label htmlFor="email" className="text-slate-700">Email</Label>
+            <div className="relative">
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="pl-10"
+                required
+              />
+              <Mail className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+            </div>
           </div>
           
-          <div>
+          <div className="space-y-2">
+            <Label htmlFor="password" className="text-slate-700">Password</Label>
             <Input
+              id="password"
               type="password"
-              placeholder="Password"
+              placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -224,19 +242,19 @@ const Auth = () => {
           </div>
           
           {!isLogin && (
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="restaurantName">Restaurant Name</Label>
+            <div className="space-y-4 pt-2">
+              <div className="space-y-2">
+                <Label htmlFor="restaurantName" className="text-slate-700">Restaurant Name</Label>
                 <Input
                   id="restaurantName"
-                  placeholder="Restaurant Name"
+                  placeholder="Your Restaurant Name"
                   value={restaurantName}
                   onChange={(e) => setRestaurantName(e.target.value)}
                 />
               </div>
               
-              <div>
-                <Label htmlFor="restaurantType">Restaurant Type</Label>
+              <div className="space-y-2">
+                <Label htmlFor="restaurantType" className="text-slate-700">Restaurant Type</Label>
                 <Select 
                   value={restaurantType} 
                   onValueChange={setRestaurantType}
@@ -250,7 +268,7 @@ const Auth = () => {
                     <SelectItem value="all-in-one">All-in-One (Restaurant & Hotel)</SelectItem>
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-xs text-slate-500 mt-1">
                   This helps us recommend the best subscription plan for your business
                 </p>
               </div>
@@ -259,13 +277,13 @@ const Auth = () => {
           
           <Button
             type="submit"
-            className="w-full"
+            className="w-full bg-brand-deep-blue hover:bg-brand-deep-blue/90"
             disabled={loading}
           >
             {loading ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
             ) : null}
-            {isLogin ? "Login" : "Create Account"}
+            {isLogin ? "Sign In" : "Create Account"}
           </Button>
         </form>
 
@@ -275,7 +293,7 @@ const Auth = () => {
               <Separator className="w-full" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
+              <span className="bg-background px-2 text-slate-500">
                 Or continue with
               </span>
             </div>
@@ -284,7 +302,7 @@ const Auth = () => {
           <Button
             type="button"
             variant="outline"
-            className="w-full mt-4 flex items-center justify-center"
+            className="w-full mt-4 flex items-center justify-center border-slate-300 hover:bg-slate-50"
             onClick={handleGoogleAuth}
             disabled={googleLoading}
           >
@@ -311,22 +329,26 @@ const Auth = () => {
                 <path d="M1 1h22v22H1z" fill="none" />
               </svg>
             )}
-            {isLogin ? "Sign in with Google" : "Sign up with Google"}
+            Sign {isLogin ? "in" : "up"} with Google
           </Button>
         </div>
 
-        <div className="mt-4 text-center">
+        <div className="mt-6 text-center">
           <Button
             variant="link"
             onClick={() => setIsLogin(!isLogin)}
-            className="text-sm"
+            className="text-sm text-brand-deep-blue hover:text-brand-success-green"
           >
             {isLogin
               ? "Don't have an account? Sign up"
-              : "Already have an account? Login"}
+              : "Already have an account? Sign in"}
           </Button>
         </div>
       </Card>
+      
+      <div className="mt-8 text-center text-sm text-slate-500">
+        &copy; {new Date().getFullYear()} Swadeshi Solutions. All rights reserved.
+      </div>
     </div>
   );
 };
