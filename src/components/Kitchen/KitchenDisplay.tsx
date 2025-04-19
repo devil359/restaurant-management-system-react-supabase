@@ -90,7 +90,7 @@ const KitchenDisplay = () => {
         const typedOrders = data.map(order => {
           // Ensure items is an array and transform each item to match our expected structure
           const transformedItems = Array.isArray(order.items) 
-            ? order.items.map((item: Json) => ({
+            ? order.items.map((item: any) => ({
                 name: typeof item.name === 'string' ? item.name : 'Unknown Item',
                 quantity: typeof item.quantity === 'number' ? item.quantity : 1,
                 notes: Array.isArray(item.notes) ? item.notes : undefined
@@ -127,7 +127,7 @@ const KitchenDisplay = () => {
             // Transform the new order data to match KitchenOrder type
             const newOrderData = payload.new;
             const transformedItems = Array.isArray(newOrderData.items) 
-              ? newOrderData.items.map((item: Json) => ({
+              ? newOrderData.items.map((item: any) => ({
                   name: typeof item.name === 'string' ? item.name : 'Unknown Item',
                   quantity: typeof item.quantity === 'number' ? item.quantity : 1,
                   notes: Array.isArray(item.notes) ? item.notes : undefined
@@ -166,7 +166,7 @@ const KitchenDisplay = () => {
             // Transform the updated order to match KitchenOrder type
             const updatedOrderData = payload.new;
             const transformedItems = Array.isArray(updatedOrderData.items) 
-              ? updatedOrderData.items.map((item: Json) => ({
+              ? updatedOrderData.items.map((item: any) => ({
                   name: typeof item.name === 'string' ? item.name : 'Unknown Item',
                   quantity: typeof item.quantity === 'number' ? item.quantity : 1,
                   notes: Array.isArray(item.notes) ? item.notes : undefined
