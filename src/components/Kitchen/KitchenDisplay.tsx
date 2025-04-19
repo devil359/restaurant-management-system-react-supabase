@@ -84,7 +84,16 @@ const KitchenDisplay = () => {
         .eq("restaurant_id", profile.restaurant_id)
         .order("created_at", { ascending: false });
 
-      if (data) setOrders(data as KitchenOrder[]);
+      if (data) {
+        // Cast the data to KitchenOrder[] with proper type handling for the items field
+        const typedOrders = data.map(order => ({
+          ...order,
+          items: Array.isArray(order.items) ? order.items : [],
+          status: order.status as KitchenOrder["status"]
+        })) as KitchenOrder[];
+        
+        setOrders(typedOrders);
+      }
     };
 
     fetchOrders();
@@ -101,7 +110,14 @@ const KitchenDisplay = () => {
         },
         (payload) => {
           if (payload.eventType === "INSERT") {
-            setOrders((prev) => [payload.new as KitchenOrder, ...prev]);
+            // Cast new order with proper type handling
+            const newOrder = {
+              ...payload.new,
+              items: Array.isArray(payload.new.items) ? payload.new.items : [],
+              status: payload.new.status as KitchenOrder["status"]
+            } as KitchenOrder;
+            
+            setOrders((prev) => [newOrder, ...prev]);
             if (soundEnabled) {
               try {
                 notification.play().catch(err => {
@@ -109,23 +125,28 @@ const KitchenDisplay = () => {
                 });
                 toast({
                   title: "New Order",
-                  description: `New order from ${(payload.new as KitchenOrder).source}`,
+                  description: `New order from ${newOrder.source}`,
                 });
               } catch (e) {
                 console.error("Could not play notification:", e);
                 // Still show the toast even if sound fails
                 toast({
                   title: "New Order",
-                  description: `New order from ${(payload.new as KitchenOrder).source}`,
+                  description: `New order from ${newOrder.source}`,
                 });
               }
             }
           } else if (payload.eventType === "UPDATE") {
+            // Cast updated order with proper type handling
+            const updatedOrder = {
+              ...payload.new,
+              items: Array.isArray(payload.new.items) ? payload.new.items : [],
+              status: payload.new.status as KitchenOrder["status"]
+            } as KitchenOrder;
+            
             setOrders((prev) =>
               prev.map((order) =>
-                order.id === payload.new.id
-                  ? (payload.new as KitchenOrder)
-                  : order
+                order.id === updatedOrder.id ? updatedOrder : order
               )
             );
           }
