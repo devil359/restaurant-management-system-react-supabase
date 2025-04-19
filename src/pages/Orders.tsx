@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import type { Order } from "@/types/orders";
-import { ToggleLeft, ToggleRight, Plus, Pencil, UtensilsCrossed, PackageCheck, Truck } from "lucide-react";
+import { ToggleLeft, ToggleRight, Plus, Pencil, UtensilsCrossed, PackageCheck, Truck, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -22,6 +22,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import ActiveOrdersList from "@/components/Orders/ActiveOrdersList";
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 export type OrderItem = {
   id: string;
@@ -297,7 +299,34 @@ const Orders = () => {
     },
   });
 
-  // Calculate order stats
+  const handlePrintBill = async () => {
+    try {
+      const element = document.getElementById('payment-summary');
+      if (!element) return;
+
+      const canvas = await html2canvas(element);
+      const pdf = new jsPDF();
+      
+      const imgWidth = 210;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, imgWidth, imgHeight);
+      pdf.save(`bill-${Date.now()}.pdf`);
+
+      toast({
+        title: "Bill Printed",
+        description: "The bill has been generated successfully",
+      });
+    } catch (error) {
+      console.error('Error printing bill:', error);
+      toast({
+        variant: "destructive",
+        title: "Print Failed",
+        description: "Failed to print the bill",
+      });
+    }
+  };
+
   const orderStats = {
     totalOrders: orders?.length || 0,
     pendingOrders: orders?.filter(order => order.status === 'pending').length || 0,
@@ -454,7 +483,7 @@ const Orders = () => {
             <h2 className="text-2xl font-bold mb-4">Payment</h2>
             <div className="space-y-4">
               {/* Order Summary */}
-              <div className="border rounded p-4">
+              <div id="payment-summary" className="border rounded p-4">
                 <h3 className="font-semibold mb-2">Order Summary</h3>
                 {currentOrderItems.map((item) => (
                   <div key={item.id} className="flex justify-between text-sm">
@@ -497,7 +526,12 @@ const Orders = () => {
                 <Button variant="outline" onClick={() => setShowPaymentDialog(false)}>
                   Cancel
                 </Button>
+                <Button variant="outline" onClick={handlePrintBill}>
+                  <Printer className="w-4 h-4 mr-2" />
+                  Print Bill
+                </Button>
                 <Button onClick={() => {
+                  handlePrintBill();
                   toast({
                     title: "Payment Successful",
                     description: "Order has been completed",

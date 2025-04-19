@@ -1,12 +1,13 @@
-
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Check, Clock, ChefHat } from "lucide-react";
+import { Check, Clock, ChefHat, Eye } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import type { Json } from "@/integrations/supabase/types";
+import OrderDetailsDialog from "./OrderDetailsDialog";
+import { Button } from "@/components/ui/button";
 
 interface OrderItem {
   name: string;
@@ -24,10 +25,10 @@ interface ActiveOrder {
 
 const ActiveOrdersList = () => {
   const [activeOrders, setActiveOrders] = useState<ActiveOrder[]>([]);
+  const [selectedOrder, setSelectedOrder] = useState<ActiveOrder | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
-    // Fetch initial active orders
     const fetchActiveOrders = async () => {
       const { data: profile } = await supabase
         .from("profiles")
@@ -45,7 +46,6 @@ const ActiveOrdersList = () => {
         .order("created_at", { ascending: false });
 
       if (orders) {
-        // Transform the data to match our ActiveOrder interface
         const formattedOrders: ActiveOrder[] = orders.map(order => ({
           id: order.id,
           source: order.source,
@@ -60,15 +60,12 @@ const ActiveOrdersList = () => {
 
     fetchActiveOrders();
 
-    // Parse order items from JSON
     function parseOrderItems(items: Json): OrderItem[] {
       if (!items) return [];
       
       try {
-        // If items is already an array, try to parse it directly
         if (Array.isArray(items)) {
           return items.map(item => {
-            // Type guard to check if item is an object with the required properties
             const itemObj = item as Record<string, any>;
             return {
               name: typeof itemObj.name === 'string' ? itemObj.name : "Unknown Item",
@@ -78,7 +75,6 @@ const ActiveOrdersList = () => {
           });
         }
         
-        // Otherwise, try to parse it as a JSON string
         const parsedItems = typeof items === 'string' ? JSON.parse(items) : items;
         
         if (Array.isArray(parsedItems)) {
@@ -99,7 +95,6 @@ const ActiveOrdersList = () => {
       }
     }
 
-    // Subscribe to real-time updates
     const channel = supabase
       .channel("kitchen-orders-changes")
       .on(
@@ -136,13 +131,11 @@ const ActiveOrdersList = () => {
               )
             );
             
-            // Show toast notification when order is ready
             if (updatedOrder.status === "ready") {
               toast({
                 title: "Order Ready!",
                 description: `Order from ${updatedOrder.source} is ready for pickup`,
               });
-              // Play notification sound
               const audio = new Audio("/notification.mp3");
               audio.play().catch(console.error);
             }
@@ -182,34 +175,69 @@ const ActiveOrdersList = () => {
     }
   };
 
+  const handleViewOrder = (order: ActiveOrder) => {
+    setSelectedOrder(order);
+  };
+
+  const handleCloseDialog = () => {
+    setSelectedOrder(null);
+  };
+
   return (
-    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 overflow-auto h-[30vh] p-2">
-      {activeOrders.map((order) => (
-        <Card key={order.id} className="p-4 hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="font-semibold">{order.source}</h3>
-            <Badge 
-              variant="secondary" 
-              className={`flex items-center gap-1 ${getStatusColor(order.status)}`}
-            >
-              {getStatusIcon(order.status)}
-              {order.status}
-            </Badge>
-          </div>
-          <div className="space-y-2">
-            <div className="text-sm text-muted-foreground">
-              {formatDistanceToNow(new Date(order.created_at), { addSuffix: true })}
+    <div className="h-[30vh] overflow-auto p-2">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {activeOrders.map((order) => (
+          <Card 
+            key={order.id} 
+            className="p-4 hover:shadow-md transition-shadow cursor-pointer"
+            onClick={() => handleViewOrder(order)}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-semibold">{order.source}</h3>
+              <Badge 
+                variant="secondary" 
+                className={`flex items-center gap-1 ${getStatusColor(order.status)}`}
+              >
+                {getStatusIcon(order.status)}
+                {order.status}
+              </Badge>
             </div>
-            <ul className="text-sm space-y-1">
-              {order.items.map((item, index) => (
-                <li key={index}>
-                  {item.quantity}x {item.name}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </Card>
-      ))}
+            <div className="space-y-2">
+              <div className="text-sm text-muted-foreground">
+                {formatDistanceToNow(new Date(order.created_at), { addSuffix: true })}
+              </div>
+              <ul className="text-sm space-y-1">
+                {order.items.map((item, index) => (
+                  <li key={index} className="flex justify-between">
+                    <span>{item.quantity}x {item.name}</span>
+                  </li>
+                ))}
+              </ul>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full mt-2"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleViewOrder(order);
+                }}
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                View Details
+              </Button>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      <OrderDetailsDialog
+        isOpen={selectedOrder !== null}
+        onClose={handleCloseDialog}
+        order={selectedOrder}
+        onEditOrder={() => {
+          handleCloseDialog();
+        }}
+      />
     </div>
   );
 };
