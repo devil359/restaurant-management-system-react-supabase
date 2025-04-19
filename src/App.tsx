@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Routes, Route, BrowserRouter } from "react-router-dom";
 import { ThemeProvider } from "@/components/ui/theme-provider";
@@ -20,6 +21,8 @@ import Analytics from "@/pages/Analytics";
 import BusinessDashboard from "./components/Analytics/BusinessDashboard";
 import AI from "@/pages/AI";
 import Customers from "@/pages/Customers";
+import KitchenDisplay from "@/components/Kitchen/KitchenDisplay";
+import Reservations from "@/pages/Reservations";
 import { supabase } from "@/integrations/supabase/client";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Loader2 } from "lucide-react";
@@ -192,6 +195,22 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <Customers />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/kitchen"
+                  element={
+                    <ProtectedRoute>
+                      <KitchenDisplay />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/reservations"
+                  element={
+                    <ProtectedRoute>
+                      <Reservations />
                     </ProtectedRoute>
                   }
                 />

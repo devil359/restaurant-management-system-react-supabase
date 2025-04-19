@@ -88,14 +88,15 @@ const KitchenDisplay = () => {
       if (data) {
         // Properly transform and cast the data from Supabase's Json type to our KitchenOrder type
         const typedOrders = data.map(order => {
+          // Safely cast the items to handle Json type
+          const itemsArray = Array.isArray(order.items) ? order.items : [];
+          
           // Ensure items is an array and transform each item to match our expected structure
-          const transformedItems = Array.isArray(order.items) 
-            ? order.items.map((item: any) => ({
-                name: typeof item.name === 'string' ? item.name : 'Unknown Item',
-                quantity: typeof item.quantity === 'number' ? item.quantity : 1,
-                notes: Array.isArray(item.notes) ? item.notes : undefined
-              }))
-            : [];
+          const transformedItems = itemsArray.map((item: any) => ({
+            name: typeof item.name === 'string' ? item.name : 'Unknown Item',
+            quantity: typeof item.quantity === 'number' ? item.quantity : 1,
+            notes: Array.isArray(item.notes) ? item.notes : undefined
+          }));
           
           return {
             id: order.id,
@@ -126,13 +127,14 @@ const KitchenDisplay = () => {
           if (payload.eventType === "INSERT") {
             // Transform the new order data to match KitchenOrder type
             const newOrderData = payload.new;
-            const transformedItems = Array.isArray(newOrderData.items) 
-              ? newOrderData.items.map((item: any) => ({
-                  name: typeof item.name === 'string' ? item.name : 'Unknown Item',
-                  quantity: typeof item.quantity === 'number' ? item.quantity : 1,
-                  notes: Array.isArray(item.notes) ? item.notes : undefined
-                }))
-              : [];
+            const itemsArray = Array.isArray(newOrderData.items) ? newOrderData.items : [];
+            
+            // Transform each item safely
+            const transformedItems = itemsArray.map((item: any) => ({
+              name: typeof item.name === 'string' ? item.name : 'Unknown Item',
+              quantity: typeof item.quantity === 'number' ? item.quantity : 1,
+              notes: Array.isArray(item.notes) ? item.notes : undefined
+            }));
             
             const newOrder: KitchenOrder = {
               id: newOrderData.id,
@@ -165,13 +167,14 @@ const KitchenDisplay = () => {
           } else if (payload.eventType === "UPDATE") {
             // Transform the updated order to match KitchenOrder type
             const updatedOrderData = payload.new;
-            const transformedItems = Array.isArray(updatedOrderData.items) 
-              ? updatedOrderData.items.map((item: any) => ({
-                  name: typeof item.name === 'string' ? item.name : 'Unknown Item',
-                  quantity: typeof item.quantity === 'number' ? item.quantity : 1,
-                  notes: Array.isArray(item.notes) ? item.notes : undefined
-                }))
-              : [];
+            const itemsArray = Array.isArray(updatedOrderData.items) ? updatedOrderData.items : [];
+            
+            // Transform each item safely
+            const transformedItems = itemsArray.map((item: any) => ({
+              name: typeof item.name === 'string' ? item.name : 'Unknown Item',
+              quantity: typeof item.quantity === 'number' ? item.quantity : 1,
+              notes: Array.isArray(item.notes) ? item.notes : undefined
+            }));
             
             const updatedOrder: KitchenOrder = {
               id: updatedOrderData.id,
