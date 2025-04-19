@@ -1,90 +1,48 @@
 
 import React, { useState, useEffect } from 'react';
-import { useToast } from "@/hooks/use-toast";
-import { supabase, OrderItem } from "@/integrations/supabase/client";
-import { 
-  Card, 
-  CardHeader, 
-  CardTitle, 
-  CardDescription, 
-  CardContent, 
-  CardFooter 
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Label } from "@/components/ui/label";
-import { Search, Plus, Minus, Trash2 } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-interface MenuItem {
-  id: string;
-  name: string;
-  price: number;
-  category: string;
-  description?: string;
-  is_veg?: boolean;
-}
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { v4 as uuidv4 } from 'uuid';
+import MenuItemsList from './OrderForm/MenuItemsList';
+import MenuFilter from './OrderForm/MenuFilter';
+import OrderSummary from './OrderForm/OrderSummary';
+import { OrderItem } from "@/integrations/supabase/client";
 
 interface RoomOrderFormProps {
   roomId: string;
-  customerName: string;
+  open: boolean;
+  onClose: () => void;
   onSuccess: () => void;
-  onCancel: () => void;
+  restaurantId: string;
+  customerName: string;
 }
 
-const RoomOrderForm: React.FC<RoomOrderFormProps> = ({ 
-  roomId, 
-  customerName, 
-  onSuccess, 
-  onCancel 
+const RoomOrderForm: React.FC<RoomOrderFormProps> = ({
+  roomId,
+  open,
+  onClose,
+  onSuccess,
+  restaurantId,
+  customerName
 }) => {
-  const { toast } = useToast();
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [filteredItems, setFilteredItems] = useState<MenuItem[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [menuItems, setMenuItems] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [restaurantId, setRestaurantId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    const fetchRestaurantId = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('restaurant_id')
-          .eq('id', user.id)
-          .single();
-
-        if (error) throw error;
-        if (profile?.restaurant_id) {
-          setRestaurantId(profile.restaurant_id);
-        }
-      } catch (error) {
-        console.error('Error fetching restaurant ID:', error);
-      }
-    };
-
-    fetchRestaurantId();
-  }, []);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchMenuItems = async () => {
-      if (!restaurantId) return;
-      
       setIsLoading(true);
       try {
         const { data, error } = await supabase
@@ -95,76 +53,60 @@ const RoomOrderForm: React.FC<RoomOrderFormProps> = ({
 
         if (error) throw error;
         setMenuItems(data || []);
-        setFilteredItems(data || []);
-      } catch (error) {
-        console.error('Error fetching menu items:', error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to load menu items."
-        });
+      } catch (err) {
+        console.error('Error fetching menu items:', err);
+        setError('Failed to load menu items');
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchMenuItems();
-  }, [restaurantId, toast]);
+    if (open && restaurantId) {
+      fetchMenuItems();
+    }
+  }, [open, restaurantId]);
 
-  useEffect(() => {
-    const filtered = menuItems.filter(item => {
-      const matchesSearch = 
-        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.description?.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      if (categoryFilter === 'all') return matchesSearch;
-      if (categoryFilter === 'veg') return matchesSearch && item.is_veg === true;
-      if (categoryFilter === 'non-veg') return matchesSearch && item.is_veg === false;
-      
-      return matchesSearch && item.category === categoryFilter;
-    });
-    
-    setFilteredItems(filtered);
-  }, [searchQuery, categoryFilter, menuItems]);
+  const handleAddToOrder = (menuItem: any) => {
+    const existingItemIndex = orderItems.findIndex(item => item.menuItemId === menuItem.id);
 
-  const handleAddItem = (menuItem: MenuItem) => {
-    setOrderItems(prevItems => {
-      const existingItemIndex = prevItems.findIndex(item => item.menuItemId === menuItem.id);
-      
-      if (existingItemIndex !== -1) {
-        const updatedItems = [...prevItems];
-        updatedItems[existingItemIndex] = {
-          ...updatedItems[existingItemIndex],
-          quantity: updatedItems[existingItemIndex].quantity + 1
-        };
-        return updatedItems;
-      } else {
-        return [...prevItems, {
-          id: Date.now().toString(),
+    if (existingItemIndex !== -1) {
+      // Item already exists, increase quantity
+      const updatedItems = [...orderItems];
+      updatedItems[existingItemIndex].quantity += 1;
+      setOrderItems(updatedItems);
+    } else {
+      // Add new item
+      setOrderItems([
+        ...orderItems,
+        {
+          id: uuidv4(), // Generate unique ID for each order item
           menuItemId: menuItem.id,
           name: menuItem.name,
           price: menuItem.price,
           quantity: 1
-        }];
-      }
+        }
+      ]);
+    }
+
+    toast({
+      title: "Item Added",
+      description: `${menuItem.name} added to order`,
     });
   };
 
-  const handleUpdateQuantity = (id: string, newQuantity: number) => {
+  const handleUpdateQuantity = (itemId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
-      setOrderItems(prevItems => prevItems.filter(item => item.id !== id));
+      handleRemoveItem(itemId);
       return;
     }
-    
-    setOrderItems(prevItems =>
-      prevItems.map(item =>
-        item.id === id ? { ...item, quantity: newQuantity } : item
-      )
-    );
+
+    setOrderItems(orderItems.map(item => 
+      item.id === itemId ? { ...item, quantity: newQuantity } : item
+    ));
   };
 
-  const handleRemoveItem = (id: string) => {
-    setOrderItems(prevItems => prevItems.filter(item => item.id !== id));
+  const handleRemoveItem = (itemId: string) => {
+    setOrderItems(orderItems.filter(item => item.id !== itemId));
   };
 
   const calculateTotal = () => {
@@ -174,237 +116,107 @@ const RoomOrderForm: React.FC<RoomOrderFormProps> = ({
   const handleSubmitOrder = async () => {
     if (orderItems.length === 0) {
       toast({
-        title: "Error",
-        description: "Please add at least one item to the order",
-        variant: "destructive"
+        variant: "destructive",
+        title: "Empty Order",
+        description: "Please add items to your order.",
       });
       return;
     }
 
-    if (!restaurantId) {
-      toast({
-        title: "Error",
-        description: "Restaurant ID not available",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsSubmitting(true);
     try {
-      // Get the current authenticated user
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        throw new Error("You must be logged in to create an order");
-      }
+      // Convert order items to JSON compatible format
+      const orderItemsJson = orderItems.map(item => ({
+        id: item.id,
+        menuItemId: item.menuItemId,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity
+      }));
 
-      const orderData = {
+      const { error } = await supabase.from('room_food_orders').insert({
         room_id: roomId,
         restaurant_id: restaurantId,
         customer_name: customerName,
-        items: orderItems,
+        items: orderItemsJson, // This will be stored as a JSON array
         total: calculateTotal(),
         status: 'pending',
-        // Add user_id to meet potential RLS requirements
-        user_id: user.id
-      };
+      });
 
-      console.log("Submitting order data:", orderData);
-
-      const { data, error } = await supabase
-        .from('room_food_orders')
-        .insert(orderData)
-        .select();
-
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating order:', error);
+        throw error;
+      }
 
       toast({
-        title: "Success",
-        description: "Food order has been placed successfully"
+        title: "Order Placed",
+        description: "Your order has been successfully placed.",
       });
-      
       onSuccess();
-    } catch (error) {
-      console.error('Error creating order:', error);
+      onClose();
+    } catch (err) {
+      console.error('Error creating order:', err);
       toast({
-        title: "Error",
-        description: "Failed to place order. Please ensure you have the proper permissions.",
-        variant: "destructive"
+        variant: "destructive",
+        title: "Order Failed",
+        description: "Failed to place your order. Please try again.",
       });
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
-  const categories = ['all', 'veg', 'non-veg', ...new Set(menuItems.map(item => item.category))];
+  // Filter menu items based on category and search query
+  const filteredMenuItems = menuItems.filter(item => {
+    const matchesCategory = categoryFilter === "all" || item.category === categoryFilter;
+    const matchesSearch = searchQuery === "" || 
+      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    return matchesCategory && matchesSearch;
+  });
+
+  // Get unique categories for the filter
+  const categories = ["all", ...new Set(menuItems.map(item => item.category))];
 
   return (
-    <Card className="w-full max-w-3xl mx-auto">
-      <CardHeader>
-        <CardTitle>Room Food Order</CardTitle>
-        <CardDescription>
-          Create a food order for {customerName}'s room
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <Label>Filter by Category</Label>
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map(category => (
-                    <SelectItem key={category} value={category}>
-                      {category.charAt(0).toUpperCase() + category.slice(1)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex-1">
-              <Label>Search Menu Items</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  placeholder="Search menu items..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Place Food Order for Room</DialogTitle>
+        </DialogHeader>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+          <div className="space-y-4">
+            <MenuFilter 
+              categories={categories}
+              selectedCategory={categoryFilter}
+              onCategoryChange={setCategoryFilter}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+            />
+
+            <MenuItemsList 
+              menuItems={filteredMenuItems}
+              isLoading={isLoading}
+              error={error}
+              onAddToOrder={handleAddToOrder}
+            />
           </div>
 
-          <div className="border rounded-md">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead className="text-right">Price</TableHead>
-                  <TableHead></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center py-4">Loading menu items...</TableCell>
-                  </TableRow>
-                ) : filteredItems.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center py-4">No menu items found</TableCell>
-                  </TableRow>
-                ) : (
-                  filteredItems.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-medium">
-                        {item.name}
-                        {item.is_veg !== undefined && (
-                          <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${item.is_veg ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                            {item.is_veg ? 'Veg' : 'Non-Veg'}
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell>{item.category}</TableCell>
-                      <TableCell className="text-right">₹{item.price.toFixed(2)}</TableCell>
-                      <TableCell className="text-right">
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={() => handleAddItem(item)}
-                        >
-                          <Plus className="h-4 w-4" />
-                          <span className="ml-1 hidden sm:inline">Add</span>
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-          
-          <div className="mt-6">
-            <h3 className="text-lg font-medium mb-2">Order Summary</h3>
-            {orderItems.length === 0 ? (
-              <p className="text-muted-foreground text-center py-4">No items added to order</p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Item</TableHead>
-                    <TableHead className="text-center">Quantity</TableHead>
-                    <TableHead className="text-right">Price</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {orderItems.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell>{item.name}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center justify-center">
-                          <Button 
-                            size="icon" 
-                            variant="outline" 
-                            className="h-7 w-7"
-                            onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
-                          >
-                            <Minus className="h-3 w-3" />
-                          </Button>
-                          <span className="w-10 text-center">{item.quantity}</span>
-                          <Button 
-                            size="icon" 
-                            variant="outline" 
-                            className="h-7 w-7"
-                            onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
-                          >
-                            <Plus className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">₹{item.price.toFixed(2)}</TableCell>
-                      <TableCell className="text-right">₹{(item.price * item.quantity).toFixed(2)}</TableCell>
-                      <TableCell>
-                        <Button 
-                          size="icon" 
-                          variant="ghost" 
-                          className="h-7 w-7"
-                          onClick={() => handleRemoveItem(item.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  <TableRow>
-                    <TableCell colSpan={3} className="text-right font-bold">Total:</TableCell>
-                    <TableCell className="text-right font-bold">₹{calculateTotal().toFixed(2)}</TableCell>
-                    <TableCell></TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            )}
+          <div className="bg-secondary/10 p-4 rounded-lg">
+            <h3 className="text-lg font-semibold mb-3">Order Summary</h3>
+            <OrderSummary 
+              orderItems={orderItems}
+              onUpdateQuantity={handleUpdateQuantity}
+              onRemoveItem={handleRemoveItem}
+            />
           </div>
         </div>
-      </CardContent>
-      <CardFooter className="flex justify-between">
-        <Button variant="outline" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button 
-          onClick={handleSubmitOrder} 
-          disabled={orderItems.length === 0 || isSubmitting}
-        >
-          {isSubmitting ? "Processing..." : "Place Order"}
-        </Button>
-      </CardFooter>
-    </Card>
+
+        <DialogFooter className="mt-6">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSubmitOrder}>Place Order</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 

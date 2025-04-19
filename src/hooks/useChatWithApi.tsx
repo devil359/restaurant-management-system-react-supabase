@@ -55,14 +55,16 @@ export const useChatWithApi = () => {
     setIsLoading(true);
 
     try {
-      console.log("Calling chat-with-api function with messages:", [...messages, userMessage]);
+      console.log("Calling AI assistant with messages:", [...messages, userMessage]);
       console.log("Using restaurant ID:", restaurantId);
       
       if (!restaurantId) {
         console.warn("Warning: No restaurant ID available. The chatbot won't be able to access restaurant-specific data.");
       }
       
-      const { data, error } = await supabase.functions.invoke('chat-with-api', {
+      // Always use the chat-with-gemini function directly
+      console.log("Invoking chat-with-gemini function directly...");
+      const { data, error } = await supabase.functions.invoke('chat-with-gemini', {
         body: { 
           messages: [...messages, userMessage].map(m => ({ 
             role: m.role, 
@@ -81,7 +83,7 @@ export const useChatWithApi = () => {
         throw new Error("No data returned from function");
       }
 
-      console.log("Response data:", data);
+      console.log("Response data from AI:", data);
       
       // Extract the assistant message from the response
       const assistantMessage = data.choices?.[0]?.message;
@@ -104,7 +106,7 @@ export const useChatWithApi = () => {
         ...prev,
         { 
           role: "assistant", 
-          content: "I'm sorry, I encountered an error. Please check that the API keys are configured correctly in the Supabase Edge Function secrets." 
+          content: "I'm sorry, I encountered an error. Please check that the Gemini API key is configured correctly in the Supabase Edge Function secrets." 
         },
       ]);
       
@@ -210,7 +212,8 @@ export const useChatWithApi = () => {
         description: `Analyzing ${file.name}...`,
       });
 
-      const { data: analysisData, error: analysisError } = await supabase.functions.invoke('chat-with-api', {
+      // Use the gemini function directly for file analysis as well
+      const { data: analysisData, error: analysisError } = await supabase.functions.invoke('chat-with-gemini', {
         body: { 
           messages: [...messages, 
             { role: "user", content: `I've uploaded a ${fileTypeDescription} file named "${file.name}" for analysis.` },
