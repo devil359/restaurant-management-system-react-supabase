@@ -17,6 +17,7 @@ import {
   LogOut,
   LayoutDashboard,
   Bot,
+  ChefHat,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { useQuery } from "@tanstack/react-query";
@@ -116,6 +117,7 @@ const Sidebar = () => {
     { name: "Analytics", href: "/analytics", icon: BarChart3, component: "analytics" },
     { name: "Business Dashboard", href: "/business-dashboard", icon: LayoutDashboard, component: "business_dashboard" },
     { name: "AI Assistant", href: "/ai", icon: Bot, component: "dashboard" },
+    { name: "Kitchen Display", href: "/kitchen", icon: ChefHat, component: "dashboard" },
     { name: "Settings", href: "/settings", icon: Settings, component: "settings" },
   ];
 
