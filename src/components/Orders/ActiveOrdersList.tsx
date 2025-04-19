@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Check, Clock, ChefHat } from "lucide-react";
@@ -6,15 +5,19 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
+import type { Json } from "@/integrations/supabase/types";
+
+interface OrderItem {
+  name: string;
+  quantity: number;
+  notes?: string[];
+}
 
 interface ActiveOrder {
   id: string;
   source: string;
   status: "new" | "preparing" | "ready";
-  items: {
-    name: string;
-    quantity: number;
-  }[];
+  items: OrderItem[];
   created_at: string;
 }
 
@@ -41,11 +44,52 @@ const ActiveOrdersList = () => {
         .order("created_at", { ascending: false });
 
       if (orders) {
-        setActiveOrders(orders as ActiveOrder[]);
+        // Transform the data to match our ActiveOrder interface
+        const formattedOrders: ActiveOrder[] = orders.map(order => ({
+          id: order.id,
+          source: order.source,
+          status: order.status as "new" | "preparing" | "ready",
+          items: parseOrderItems(order.items),
+          created_at: order.created_at
+        }));
+        
+        setActiveOrders(formattedOrders);
       }
     };
 
     fetchActiveOrders();
+
+    // Parse order items from JSON
+    function parseOrderItems(items: Json): OrderItem[] {
+      if (!items) return [];
+      
+      try {
+        // If items is already an array, try to parse it directly
+        if (Array.isArray(items)) {
+          return items.map(item => ({
+            name: item.name || "Unknown Item",
+            quantity: item.quantity || 1,
+            notes: item.notes || []
+          }));
+        }
+        
+        // Otherwise, try to parse it as a JSON string
+        const parsedItems = typeof items === 'string' ? JSON.parse(items) : items;
+        
+        if (Array.isArray(parsedItems)) {
+          return parsedItems.map(item => ({
+            name: item.name || "Unknown Item",
+            quantity: item.quantity || 1,
+            notes: item.notes || []
+          }));
+        }
+        
+        return [];
+      } catch (error) {
+        console.error("Error parsing order items:", error);
+        return [];
+      }
+    }
 
     // Subscribe to real-time updates
     const channel = supabase
@@ -59,19 +103,36 @@ const ActiveOrdersList = () => {
         },
         (payload) => {
           if (payload.eventType === "INSERT") {
-            setActiveOrders((prev) => [payload.new as ActiveOrder, ...prev]);
+            const newOrder = payload.new;
+            const formattedOrder: ActiveOrder = {
+              id: newOrder.id,
+              source: newOrder.source,
+              status: newOrder.status as "new" | "preparing" | "ready",
+              items: parseOrderItems(newOrder.items),
+              created_at: newOrder.created_at
+            };
+            
+            setActiveOrders((prev) => [formattedOrder, ...prev]);
           } else if (payload.eventType === "UPDATE") {
+            const updatedOrder = payload.new;
+            
             setActiveOrders((prev) =>
               prev.map((order) =>
-                order.id === payload.new.id ? payload.new as ActiveOrder : order
+                order.id === updatedOrder.id 
+                  ? {
+                      ...order,
+                      status: updatedOrder.status as "new" | "preparing" | "ready",
+                      items: parseOrderItems(updatedOrder.items)
+                    } 
+                  : order
               )
             );
             
             // Show toast notification when order is ready
-            if (payload.new.status === "ready") {
+            if (updatedOrder.status === "ready") {
               toast({
                 title: "Order Ready!",
-                description: `Order from ${payload.new.source} is ready for pickup`,
+                description: `Order from ${updatedOrder.source} is ready for pickup`,
               });
               // Play notification sound
               const audio = new Audio("/notification.mp3");
