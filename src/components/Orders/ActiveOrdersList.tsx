@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Check, Clock, ChefHat } from "lucide-react";
@@ -182,7 +183,7 @@ const ActiveOrdersList = () => {
   };
 
   return (
-    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 overflow-auto h-[30vh] p-2">
       {activeOrders.map((order) => (
         <Card key={order.id} className="p-4 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-2">

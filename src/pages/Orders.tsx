@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import type { Order } from "@/types/orders";
-import { ToggleLeft, ToggleRight, Plus, Pencil } from "lucide-react";
+import { ToggleLeft, ToggleRight, Plus, Pencil, UtensilsCrossed, PackageCheck, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -49,6 +49,7 @@ const Orders = () => {
   const [orderType, setOrderType] = useState("Dine-In");
   const [showOrderDetails, setShowOrderDetails] = useState(false);
   const [currentOrderItems, setCurrentOrderItems] = useState<OrderItem[]>([]);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
 
   const { toast } = useToast();
   const isMobile = useIsMobile();
@@ -233,8 +234,7 @@ const Orders = () => {
       });
       return;
     }
-    
-    setShowAddForm(true);
+    setShowPaymentDialog(true);
   };
 
   const handleClearOrder = () => {
@@ -304,6 +304,10 @@ const Orders = () => {
     completedOrders: orders?.filter(order => order.status === 'completed').length || 0,
   };
 
+  const subtotal = currentOrderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const tax = subtotal * 0.10; // 10% tax
+  const total = subtotal + tax;
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="flex h-16 items-center justify-between px-4 bg-white dark:bg-gray-800 border-b">
@@ -340,22 +344,76 @@ const Orders = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 h-[calc(100vh-4rem)]">
           <div className="col-span-2 overflow-hidden flex flex-col bg-gray-100 dark:bg-gray-800">
             <div className="p-4 border-b">
-              <h2 className="text-lg font-semibold mb-4">Active Orders</h2>
-              <ActiveOrdersList />
+              <div className="flex items-center gap-4 mb-4">
+                <Select 
+                  value={orderType} 
+                  onValueChange={(value) => setOrderType(value)}
+                >
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Select order type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Dine-In">
+                      <div className="flex items-center gap-2">
+                        <UtensilsCrossed className="w-4 h-4" />
+                        Dine-In
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="Takeaway">
+                      <div className="flex items-center gap-2">
+                        <PackageCheck className="w-4 h-4" />
+                        Takeaway
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="Delivery">
+                      <div className="flex items-center gap-2">
+                        <Truck className="w-4 h-4" />
+                        Delivery
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {orderType === "Dine-In" && tables && (
+                  <Select 
+                    value={tableNumber} 
+                    onValueChange={setTableNumber}
+                  >
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue placeholder="Select table" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {tables.map(table => (
+                        <SelectItem key={table.id} value={table.name}>
+                          Table {table.name} (Capacity: {table.capacity})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+
+              <h2 className="text-lg font-semibold">Active Orders</h2>
+              <div className="overflow-auto">
+                <ActiveOrdersList />
+              </div>
             </div>
-            <MenuCategories
-              selectedCategory={selectedCategory}
-              onSelectCategory={setSelectedCategory}
-            />
+
             <div className="flex-1 overflow-auto">
-              <MenuItemsGrid
+              <MenuCategories
                 selectedCategory={selectedCategory}
-                onSelectItem={handleAddItem}
+                onSelectCategory={setSelectedCategory}
               />
+              <div className="overflow-auto h-[calc(100vh-24rem)]">
+                <MenuItemsGrid
+                  selectedCategory={selectedCategory}
+                  onSelectItem={handleAddItem}
+                />
+              </div>
             </div>
           </div>
 
-          <div className="overflow-hidden">
+          <div className="overflow-auto">
             <CurrentOrder
               items={currentOrderItems}
               tableNumber={tableNumber}
@@ -389,6 +447,71 @@ const Orders = () => {
           />
         </div>
       )}
+
+      <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+        <DialogContent className="max-w-xl">
+          <div className="p-4">
+            <h2 className="text-2xl font-bold mb-4">Payment</h2>
+            <div className="space-y-4">
+              {/* Order Summary */}
+              <div className="border rounded p-4">
+                <h3 className="font-semibold mb-2">Order Summary</h3>
+                {currentOrderItems.map((item) => (
+                  <div key={item.id} className="flex justify-between text-sm">
+                    <span>{item.quantity}x {item.name}</span>
+                    <span>₹{(item.price * item.quantity).toFixed(2)}</span>
+                  </div>
+                ))}
+                <div className="border-t mt-2 pt-2">
+                  <div className="flex justify-between">
+                    <span>Subtotal</span>
+                    <span>₹{subtotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Tax (10%)</span>
+                    <span>₹{(subtotal * 0.1).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between font-bold mt-2">
+                    <span>Total</span>
+                    <span>₹{(subtotal * 1.1).toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Payment Method Selection */}
+              <div>
+                <h3 className="font-semibold mb-2">Payment Method</h3>
+                <Select defaultValue="cash">
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select payment method" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cash">Cash</SelectItem>
+                    <SelectItem value="card">Card</SelectItem>
+                    <SelectItem value="upi">UPI</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex justify-end gap-2 mt-4">
+                <Button variant="outline" onClick={() => setShowPaymentDialog(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={() => {
+                  toast({
+                    title: "Payment Successful",
+                    description: "Order has been completed",
+                  });
+                  setShowPaymentDialog(false);
+                  setCurrentOrderItems([]);
+                }}>
+                  Complete Payment
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
         <DialogContent className={`${isMobile ? 'w-[95%] max-w-lg' : 'max-w-4xl'} max-h-[90vh] overflow-y-auto`}>
