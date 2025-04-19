@@ -66,22 +66,29 @@ const ActiveOrdersList = () => {
       try {
         // If items is already an array, try to parse it directly
         if (Array.isArray(items)) {
-          return items.map(item => ({
-            name: item.name || "Unknown Item",
-            quantity: item.quantity || 1,
-            notes: item.notes || []
-          }));
+          return items.map(item => {
+            // Type guard to check if item is an object with the required properties
+            const itemObj = item as Record<string, any>;
+            return {
+              name: typeof itemObj.name === 'string' ? itemObj.name : "Unknown Item",
+              quantity: typeof itemObj.quantity === 'number' ? itemObj.quantity : 1,
+              notes: Array.isArray(itemObj.notes) ? itemObj.notes : []
+            };
+          });
         }
         
         // Otherwise, try to parse it as a JSON string
         const parsedItems = typeof items === 'string' ? JSON.parse(items) : items;
         
         if (Array.isArray(parsedItems)) {
-          return parsedItems.map(item => ({
-            name: item.name || "Unknown Item",
-            quantity: item.quantity || 1,
-            notes: item.notes || []
-          }));
+          return parsedItems.map(item => {
+            const itemObj = item as Record<string, any>;
+            return {
+              name: typeof itemObj.name === 'string' ? itemObj.name : "Unknown Item",
+              quantity: typeof itemObj.quantity === 'number' ? itemObj.quantity : 1,
+              notes: Array.isArray(itemObj.notes) ? itemObj.notes : []
+            };
+          });
         }
         
         return [];
