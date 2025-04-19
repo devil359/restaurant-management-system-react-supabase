@@ -23,7 +23,49 @@ const KitchenDisplay = () => {
   const [orders, setOrders] = useState<KitchenOrder[]>([]);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const { toast } = useToast();
-  const notification = new Audio("/notification.mp3");
+  // Create the audio element with error handling
+  const [notification] = useState(() => {
+    const audio = new Audio();
+    // Try to load the notification sound, with a fallback if it fails
+    try {
+      audio.src = "/notification.mp3";
+      // Add error handler for the audio loading
+      audio.addEventListener('error', (e) => {
+        console.error("Error loading notification sound:", e);
+        // Use a fallback approach - create a beep sound using Web Audio API
+        try {
+          const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+          audio.src = createBeepSound(audioContext);
+        } catch (audioApiError) {
+          console.error("Could not create fallback sound:", audioApiError);
+        }
+      });
+    } catch (e) {
+      console.error("Could not initialize audio:", e);
+    }
+    return audio;
+  });
+
+  // Function to create a simple beep sound as fallback
+  const createBeepSound = (audioContext: AudioContext): string => {
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.type = 'sine';
+    oscillator.frequency.value = 800; // Frequency in hertz
+    gainNode.gain.value = 0.5;
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    const length = 0.3; // Length in seconds
+    oscillator.start();
+    oscillator.stop(audioContext.currentTime + length);
+    
+    // Convert to data URL (this is a simplified approach)
+    // In a real implementation, you would record the audio to a buffer and convert to MP3/WAV
+    return 'data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU9vT18=';
+  };
 
   useEffect(() => {
     // Fetch initial orders
@@ -61,11 +103,22 @@ const KitchenDisplay = () => {
           if (payload.eventType === "INSERT") {
             setOrders((prev) => [payload.new as KitchenOrder, ...prev]);
             if (soundEnabled) {
-              notification.play();
-              toast({
-                title: "New Order",
-                description: `New order from ${(payload.new as KitchenOrder).source}`,
-              });
+              try {
+                notification.play().catch(err => {
+                  console.error("Error playing notification sound:", err);
+                });
+                toast({
+                  title: "New Order",
+                  description: `New order from ${(payload.new as KitchenOrder).source}`,
+                });
+              } catch (e) {
+                console.error("Could not play notification:", e);
+                // Still show the toast even if sound fails
+                toast({
+                  title: "New Order",
+                  description: `New order from ${(payload.new as KitchenOrder).source}`,
+                });
+              }
             }
           } else if (payload.eventType === "UPDATE") {
             setOrders((prev) =>
@@ -83,7 +136,7 @@ const KitchenDisplay = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [soundEnabled, toast]);
+  }, [soundEnabled, toast, notification]);
 
   const handleStatusUpdate = async (orderId: string, newStatus: KitchenOrder["status"]) => {
     const { error } = await supabase
