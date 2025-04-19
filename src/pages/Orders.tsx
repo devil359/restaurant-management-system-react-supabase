@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import ActiveOrdersList from "@/components/Orders/ActiveOrdersList";
 
 export type OrderItem = {
   id: string;
@@ -338,6 +339,10 @@ const Orders = () => {
       {showPOS ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 h-[calc(100vh-4rem)]">
           <div className="col-span-2 overflow-hidden flex flex-col bg-gray-100 dark:bg-gray-800">
+            <div className="p-4 border-b">
+              <h2 className="text-lg font-semibold mb-4">Active Orders</h2>
+              <ActiveOrdersList />
+            </div>
             <MenuCategories
               selectedCategory={selectedCategory}
               onSelectCategory={setSelectedCategory}
