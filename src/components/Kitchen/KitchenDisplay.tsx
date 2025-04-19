@@ -6,6 +6,7 @@ import { Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import OrderTicket from "./OrderTicket";
 import OrdersColumn from "./OrdersColumn";
+import { Json } from "@/integrations/supabase/types";
 
 export interface KitchenOrder {
   id: string;
@@ -85,12 +86,25 @@ const KitchenDisplay = () => {
         .order("created_at", { ascending: false });
 
       if (data) {
-        // Cast the data to KitchenOrder[] with proper type handling for the items field
-        const typedOrders = data.map(order => ({
-          ...order,
-          items: Array.isArray(order.items) ? order.items : [],
-          status: order.status as KitchenOrder["status"]
-        })) as KitchenOrder[];
+        // Properly transform and cast the data from Supabase's Json type to our KitchenOrder type
+        const typedOrders = data.map(order => {
+          // Ensure items is an array and transform each item to match our expected structure
+          const transformedItems = Array.isArray(order.items) 
+            ? order.items.map((item: Json) => ({
+                name: typeof item.name === 'string' ? item.name : 'Unknown Item',
+                quantity: typeof item.quantity === 'number' ? item.quantity : 1,
+                notes: Array.isArray(item.notes) ? item.notes : undefined
+              }))
+            : [];
+          
+          return {
+            id: order.id,
+            source: order.source,
+            status: order.status as KitchenOrder["status"],
+            created_at: order.created_at,
+            items: transformedItems
+          } as KitchenOrder;
+        });
         
         setOrders(typedOrders);
       }
@@ -110,14 +124,26 @@ const KitchenDisplay = () => {
         },
         (payload) => {
           if (payload.eventType === "INSERT") {
-            // Cast new order with proper type handling
-            const newOrder = {
-              ...payload.new,
-              items: Array.isArray(payload.new.items) ? payload.new.items : [],
-              status: payload.new.status as KitchenOrder["status"]
-            } as KitchenOrder;
+            // Transform the new order data to match KitchenOrder type
+            const newOrderData = payload.new;
+            const transformedItems = Array.isArray(newOrderData.items) 
+              ? newOrderData.items.map((item: Json) => ({
+                  name: typeof item.name === 'string' ? item.name : 'Unknown Item',
+                  quantity: typeof item.quantity === 'number' ? item.quantity : 1,
+                  notes: Array.isArray(item.notes) ? item.notes : undefined
+                }))
+              : [];
+            
+            const newOrder: KitchenOrder = {
+              id: newOrderData.id,
+              source: newOrderData.source,
+              status: newOrderData.status as KitchenOrder["status"],
+              created_at: newOrderData.created_at,
+              items: transformedItems
+            };
             
             setOrders((prev) => [newOrder, ...prev]);
+            
             if (soundEnabled) {
               try {
                 notification.play().catch(err => {
@@ -137,12 +163,23 @@ const KitchenDisplay = () => {
               }
             }
           } else if (payload.eventType === "UPDATE") {
-            // Cast updated order with proper type handling
-            const updatedOrder = {
-              ...payload.new,
-              items: Array.isArray(payload.new.items) ? payload.new.items : [],
-              status: payload.new.status as KitchenOrder["status"]
-            } as KitchenOrder;
+            // Transform the updated order to match KitchenOrder type
+            const updatedOrderData = payload.new;
+            const transformedItems = Array.isArray(updatedOrderData.items) 
+              ? updatedOrderData.items.map((item: Json) => ({
+                  name: typeof item.name === 'string' ? item.name : 'Unknown Item',
+                  quantity: typeof item.quantity === 'number' ? item.quantity : 1,
+                  notes: Array.isArray(item.notes) ? item.notes : undefined
+                }))
+              : [];
+            
+            const updatedOrder: KitchenOrder = {
+              id: updatedOrderData.id,
+              source: updatedOrderData.source,
+              status: updatedOrderData.status as KitchenOrder["status"],
+              created_at: updatedOrderData.created_at,
+              items: transformedItems
+            };
             
             setOrders((prev) =>
               prev.map((order) =>
