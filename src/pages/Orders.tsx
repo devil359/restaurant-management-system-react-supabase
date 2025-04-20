@@ -197,21 +197,38 @@ const Orders = () => {
         throw new Error("No restaurant found for user");
       }
 
-      // Create kitchen order
-      const { error: kitchenError } = await supabase
+      const orderSource = `${orderType === "Dine-In" ? "Table " + tableNumber : orderType}`;
+      const posOrderSource = `POS-${orderSource}`;
+
+      const { error: kitchenError, data: kitchenOrder } = await supabase
         .from("kitchen_orders")
         .insert({
           restaurant_id: profile.restaurant_id,
-          source: `${orderType === "dineIn" ? "Table " + tableNumber : "Takeaway"}`,
+          source: posOrderSource,
           items: currentOrderItems.map(item => ({
             name: item.name,
             quantity: item.quantity,
-            notes: item.modifiers
+            notes: item.modifiers,
+            price: item.price
           })),
           status: "new"
-        });
+        })
+        .select()
+        .single();
 
       if (kitchenError) throw kitchenError;
+
+      const { error: orderError } = await supabase
+        .from("orders")
+        .insert({
+          restaurant_id: profile.restaurant_id,
+          customer_name: posOrderSource,
+          items: currentOrderItems.map(item => `${item.quantity}x ${item.name}`),
+          total: currentOrderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0),
+          status: "pending"
+        });
+
+      if (orderError) throw orderError;
       
       toast({
         title: "Order Sent",

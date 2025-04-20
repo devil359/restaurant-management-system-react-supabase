@@ -35,9 +35,10 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
   
   if (!order) return null;
 
-  // Calculate total - use item.price if available, otherwise default to 10
+  // Calculate total - use the provided price from the item itself
   const total = order.items.reduce((sum, item) => {
-    const price = item.price ?? 10;
+    // Make sure we're using the actual price from the menu item
+    const price = item.price || 0;
     return sum + (item.quantity * price);
   }, 0);
 
@@ -128,18 +129,18 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
 
             <Card className="p-4">
               <h3 className="font-semibold mb-2">Items</h3>
-              <ul className="space-y-2">
+              <ul className="space-y-2 max-h-40 overflow-auto">
                 {order.items.map((item, index) => (
                   <li key={index} className="flex justify-between text-sm">
-                    <span>{item.quantity}x {item.name}</span>
-                    <span>₹{item.price ? (item.quantity * item.price) : (item.quantity * 10)}</span>
+                    <span className="truncate flex-1">{item.quantity}x {item.name}</span>
+                    <span className="pl-2">₹{item.price ? (item.quantity * item.price).toFixed(2) : '0.00'}</span>
                   </li>
                 ))}
               </ul>
               <div className="mt-4 pt-2 border-t">
                 <div className="flex justify-between font-semibold">
                   <span>Total</span>
-                  <span>₹{total}</span>
+                  <span>₹{total.toFixed(2)}</span>
                 </div>
               </div>
             </Card>

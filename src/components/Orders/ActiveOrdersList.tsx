@@ -77,7 +77,7 @@ const ActiveOrdersList = () => {
               name: typeof itemObj.name === 'string' ? itemObj.name : "Unknown Item",
               quantity: typeof itemObj.quantity === 'number' ? itemObj.quantity : 1,
               notes: Array.isArray(itemObj.notes) ? itemObj.notes : [],
-              price: typeof itemObj.price === 'number' ? itemObj.price : 10,  // Default price if not provided
+              price: typeof itemObj.price === 'number' ? itemObj.price : undefined,  // Keep original price
             };
           });
         }
@@ -91,7 +91,7 @@ const ActiveOrdersList = () => {
               name: typeof itemObj.name === 'string' ? itemObj.name : "Unknown Item",
               quantity: typeof itemObj.quantity === 'number' ? itemObj.quantity : 1,
               notes: Array.isArray(itemObj.notes) ? itemObj.notes : [],
-              price: typeof itemObj.price === 'number' ? itemObj.price : 10,  // Default price if not provided
+              price: typeof itemObj.price === 'number' ? itemObj.price : undefined,  // Keep original price
             };
           });
         }
@@ -240,7 +240,7 @@ const ActiveOrdersList = () => {
   // Calculate total for an order
   const calculateOrderTotal = (items: OrderItem[]): number => {
     return items.reduce((sum, item) => {
-      const price = item.price ?? 10; // Use a default price of 10 if not specified
+      const price = typeof item.price === 'number' ? item.price : 0; // Use actual price, fallback to 0
       return sum + (price * item.quantity);
     }, 0);
   };
@@ -280,7 +280,7 @@ const ActiveOrdersList = () => {
             onClick={() => handleViewOrder(order)}
           >
             <div className="flex items-center justify-between mb-2">
-              <h3 className="font-semibold">{order.source}</h3>
+              <h3 className="font-semibold text-sm truncate mr-2">{order.source}</h3>
               <Badge 
                 variant="secondary" 
                 className={`flex items-center gap-1 ${getStatusColor(order.status)}`}
@@ -290,19 +290,19 @@ const ActiveOrdersList = () => {
               </Badge>
             </div>
             <div className="space-y-2">
-              <div className="text-sm text-muted-foreground">
+              <div className="text-xs text-muted-foreground">
                 {formatDistanceToNow(new Date(order.created_at), { addSuffix: true })}
               </div>
-              <ul className="text-sm space-y-1">
+              <ul className="text-xs space-y-1 max-h-16 overflow-auto">
                 {order.items.map((item, index) => (
                   <li key={index} className="flex justify-between">
-                    <span>{item.quantity}x {item.name}</span>
-                    <span>₹{(item.price ?? 10) * item.quantity}</span>
+                    <span className="truncate flex-1">{item.quantity}x {item.name}</span>
+                    <span className="pl-1">₹{(item.price || 0) * item.quantity}</span>
                   </li>
                 ))}
               </ul>
               <div className="mt-2 pt-2 border-t flex justify-between items-center">
-                <div className="font-semibold">
+                <div className="font-semibold text-sm">
                   Total: ₹{calculateOrderTotal(order.items)}
                 </div>
                 <Button 
@@ -313,7 +313,7 @@ const ActiveOrdersList = () => {
                     handleViewOrder(order);
                   }}
                 >
-                  <Eye className="w-4 h-4 mr-2" />
+                  <Eye className="w-3 h-3 mr-1" />
                   View
                 </Button>
               </div>
