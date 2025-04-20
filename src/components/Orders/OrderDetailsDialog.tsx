@@ -1,13 +1,16 @@
 
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatDistanceToNow } from "date-fns";
-import { Printer, Eye, Edit, DollarSign, Check } from "lucide-react";
+import { Printer, Edit, DollarSign, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import AddOrderForm from "./AddOrderForm";
+import { Order } from "@/types/orders";
 
 interface OrderItem {
   name: string;
@@ -32,6 +35,8 @@ interface OrderDetailsDialogProps {
 
 const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }: OrderDetailsDialogProps) => {
   const { toast } = useToast();
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [showPaymentProcessing, setShowPaymentProcessing] = useState(false);
   
   if (!order) return null;
 
@@ -94,6 +99,89 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
       });
     }
   };
+
+  const handleProceedToPayment = async () => {
+    setShowPaymentProcessing(true);
+    
+    try {
+      // Mark as completed in kitchen_orders
+      const { error: kitchenError } = await supabase
+        .from("kitchen_orders")
+        .update({ status: "completed" })
+        .eq("id", order.id);
+      
+      if (kitchenError) throw kitchenError;
+      
+      // Add payment record or other relevant actions here
+      
+      toast({
+        title: "Payment Completed",
+        description: "Order has been marked as paid and completed",
+      });
+      
+      // Delay before closing to show completion message
+      setTimeout(() => {
+        setShowPaymentProcessing(false);
+        onClose();
+      }, 1500);
+      
+    } catch (error) {
+      console.error('Error processing payment:', error);
+      setShowPaymentProcessing(false);
+      toast({
+        variant: "destructive",
+        title: "Payment Failed",
+        description: "Failed to process payment",
+      });
+    }
+  };
+
+  const handleOpenEditForm = () => {
+    setShowEditForm(true);
+  };
+
+  // Convert the kitchen order to the format expected by AddOrderForm
+  const prepareOrderForEdit = (): Order | null => {
+    try {
+      // Create a synthetic order object matching the Order interface
+      return {
+        id: order.id,
+        customer_name: order.source,
+        items: order.items.map(item => `${item.quantity}x ${item.name}`),
+        total: total,
+        status: order.status,
+        created_at: order.created_at,
+        restaurant_id: "", // Will be filled by the form
+        updated_at: new Date().toISOString()
+      };
+    } catch (error) {
+      console.error('Error preparing order for edit:', error);
+      return null;
+    }
+  };
+
+  if (showEditForm) {
+    return (
+      <Dialog open={isOpen} onOpenChange={() => {
+        setShowEditForm(false);
+        onClose();
+      }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <AddOrderForm 
+            onSuccess={() => {
+              setShowEditForm(false);
+              onClose();
+            }}
+            onCancel={() => {
+              setShowEditForm(false);
+              onClose();
+            }}
+            editingOrder={prepareOrderForEdit()}
+          />
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={() => onClose()}>
@@ -162,12 +250,31 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
             </Button>
           )}
           
-          {onEditOrder && (
-            <Button variant="outline" onClick={() => onEditOrder(order.id)}>
-              <Edit className="w-4 h-4 mr-2" />
-              Edit Order
+          {order.status === "ready" && (
+            <Button 
+              variant="secondary" 
+              className="bg-purple-600 hover:bg-purple-700 text-white"
+              onClick={handleProceedToPayment}
+              disabled={showPaymentProcessing}
+            >
+              {showPaymentProcessing ? (
+                <span className="flex items-center">
+                  <DollarSign className="w-4 h-4 mr-2 animate-spin" />
+                  Processing...
+                </span>
+              ) : (
+                <span className="flex items-center">
+                  <DollarSign className="w-4 h-4 mr-2" />
+                  Proceed to Payment
+                </span>
+              )}
             </Button>
           )}
+          
+          <Button variant="outline" onClick={handleOpenEditForm}>
+            <Edit className="w-4 h-4 mr-2" />
+            Edit Order
+          </Button>
           
           <Button variant="outline" onClick={handlePrintBill}>
             <Printer className="w-4 h-4 mr-2" />

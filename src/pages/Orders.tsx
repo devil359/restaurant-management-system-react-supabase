@@ -30,7 +30,9 @@ const Orders = () => {
         </div>
       </div>
 
-      {showPOS ? <POSMode /> : <OrdersView />}
+      <div className="h-[calc(100vh-64px)] overflow-hidden">
+        {showPOS ? <POSMode /> : <OrdersView />}
+      </div>
     </div>
   );
 };

@@ -1,15 +1,16 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, Filter } from "lucide-react";
+import { Search, Filter, Calendar } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, subDays, startOfDay, isWithinInterval } from "date-fns";
 import type { Json } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import OrderDetailsDialog from "./OrderDetailsDialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface OrderItem {
   name: string;
@@ -31,6 +32,7 @@ const ActiveOrdersList = () => {
   const [selectedOrder, setSelectedOrder] = useState<ActiveOrder | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState("today");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -135,7 +137,7 @@ const ActiveOrdersList = () => {
                       items: parseOrderItems(updatedOrder.items)
                     } 
                   : order
-              )
+              ).filter(order => order.status !== "completed")
             );
             
             if (updatedOrder.status === "ready") {
@@ -156,8 +158,39 @@ const ActiveOrdersList = () => {
     };
   }, [toast]);
 
-  // Filter orders based on search term and status
-  const filteredOrders = activeOrders.filter(order => {
+  // Apply date filtering
+  const getDateFilteredOrders = (orders: ActiveOrder[]) => {
+    const today = new Date();
+    
+    switch (dateFilter) {
+      case "today":
+        return orders.filter(order => 
+          new Date(order.created_at) >= startOfDay(today)
+        );
+      case "yesterday":
+        return orders.filter(order => 
+          isWithinInterval(new Date(order.created_at), {
+            start: startOfDay(subDays(today, 1)),
+            end: startOfDay(today)
+          })
+        );
+      case "last7days":
+        return orders.filter(order => 
+          new Date(order.created_at) >= subDays(today, 7)
+        );
+      case "thisMonth":
+        return orders.filter(order => {
+          const orderDate = new Date(order.created_at);
+          return orderDate.getMonth() === today.getMonth() && 
+                 orderDate.getFullYear() === today.getFullYear();
+        });
+      default:
+        return orders;
+    }
+  };
+
+  // Filter orders based on search term, status, and date
+  const filteredOrders = getDateFilteredOrders(activeOrders).filter(order => {
     // Filter by status
     if (statusFilter !== "all" && order.status !== statusFilter) {
       return false;
@@ -198,6 +231,10 @@ const ActiveOrdersList = () => {
     }
   };
 
+  const handleEditOrder = (orderId: string) => {
+    // Will be implemented in OrderDetailsDialog
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2 mb-4">
@@ -225,59 +262,72 @@ const ActiveOrdersList = () => {
         </Select>
       </div>
       
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-        {filteredOrders.length > 0 ? filteredOrders.map((order) => (
-          <Card 
-            key={order.id} 
-            className={`p-4 hover:shadow-md transition-shadow cursor-pointer ${getCardStyleByStatus(order.status)}`}
-            onClick={() => setSelectedOrder(order)}
-          >
-            <div className="flex flex-col h-full">
-              <div className="flex items-start justify-between mb-2">
-                <h3 className="font-semibold text-sm truncate mr-2 flex-1">{order.source}</h3>
-                <span className="text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700">
-                  {order.status}
-                </span>
-              </div>
-              
-              <div className="space-y-2 flex-1">
-                <div className="text-xs text-muted-foreground">
-                  {formatDistanceToNow(new Date(order.created_at), { addSuffix: true })}
+      <div className="mb-4">
+        <Tabs defaultValue="today" value={dateFilter} onValueChange={setDateFilter}>
+          <TabsList>
+            <TabsTrigger value="today">Today</TabsTrigger>
+            <TabsTrigger value="yesterday">Yesterday</TabsTrigger>
+            <TabsTrigger value="last7days">Last 7 Days</TabsTrigger>
+            <TabsTrigger value="thisMonth">This Month</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+      
+      <div className="h-[calc(70vh-180px)] overflow-auto">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          {filteredOrders.length > 0 ? filteredOrders.map((order) => (
+            <Card 
+              key={order.id} 
+              className={`p-4 hover:shadow-md transition-shadow cursor-pointer ${getCardStyleByStatus(order.status)}`}
+              onClick={() => setSelectedOrder(order)}
+            >
+              <div className="flex flex-col h-full">
+                <div className="flex items-start justify-between mb-2">
+                  <h3 className="font-semibold text-sm truncate mr-2 flex-1">{order.source}</h3>
+                  <span className="text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700">
+                    {order.status}
+                  </span>
                 </div>
                 
-                <ul className="text-xs space-y-1 max-h-16 overflow-y-auto">
-                  {order.items.map((item, index) => (
-                    <li key={index} className="flex justify-between">
-                      <span className="truncate flex-1">{item.quantity}x {item.name}</span>
-                      <span className="pl-1">₹{item.price ? (item.price * item.quantity).toFixed(2) : '0.00'}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="mt-2 pt-2 border-t flex justify-between items-center">
-                <div className="font-semibold text-sm">
-                  Total: ₹{calculateOrderTotal(order.items).toFixed(2)}
+                <div className="space-y-2 flex-1">
+                  <div className="text-xs text-muted-foreground">
+                    {formatDistanceToNow(new Date(order.created_at), { addSuffix: true })}
+                  </div>
+                  
+                  <ul className="text-xs space-y-1 max-h-16 overflow-y-auto">
+                    {order.items.map((item, index) => (
+                      <li key={index} className="flex justify-between">
+                        <span className="truncate flex-1">{item.quantity}x {item.name}</span>
+                        <span className="pl-1">₹{item.price ? (item.price * item.quantity).toFixed(2) : '0.00'}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  className="text-xs"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedOrder(order);
-                  }}
-                >
-                  View Details
-                </Button>
+
+                <div className="mt-2 pt-2 border-t flex justify-between items-center">
+                  <div className="font-semibold text-sm">
+                    Total: ₹{calculateOrderTotal(order.items).toFixed(2)}
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="text-xs"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedOrder(order);
+                    }}
+                  >
+                    View Details
+                  </Button>
+                </div>
               </div>
+            </Card>
+          )) : (
+            <div className="col-span-full text-center p-4 text-muted-foreground">
+              No orders found matching your filters
             </div>
-          </Card>
-        )) : (
-          <div className="col-span-full text-center p-4 text-muted-foreground">
-            No orders found matching your filters
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <OrderDetailsDialog
@@ -285,7 +335,7 @@ const ActiveOrdersList = () => {
         onClose={() => setSelectedOrder(null)}
         order={selectedOrder}
         onPrintBill={() => {}}
-        onEditOrder={() => {}}
+        onEditOrder={handleEditOrder}
       />
     </div>
   );
