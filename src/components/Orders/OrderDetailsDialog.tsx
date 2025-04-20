@@ -1,9 +1,9 @@
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatDistanceToNow } from "date-fns";
-import { Printer, Eye, Edit, DollarSign } from "lucide-react";
+import { Printer, Eye, Edit, DollarSign, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import html2canvas from "html2canvas";
@@ -13,6 +13,7 @@ interface OrderItem {
   name: string;
   quantity: number;
   notes?: string[];
+  price?: number;
 }
 
 interface OrderDetailsDialogProps {
@@ -26,7 +27,7 @@ interface OrderDetailsDialogProps {
     created_at: string;
   } | null;
   onPrintBill?: () => void;
-  onEditOrder?: () => void;
+  onEditOrder?: (orderId: string) => void;
 }
 
 const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }: OrderDetailsDialogProps) => {
@@ -34,10 +35,10 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
   
   if (!order) return null;
 
-  // Calculate total
+  // Calculate total - use item.price if available, otherwise default to 10
   const total = order.items.reduce((sum, item) => {
-    // Assuming each item costs 10 for this example - you should replace with actual prices
-    return sum + (item.quantity * 10);
+    const price = item.price ?? 10;
+    return sum + (item.quantity * price);
   }, 0);
 
   const handlePrintBill = async () => {
@@ -68,11 +69,37 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
     }
   };
 
+  const handleUpdateStatus = async (newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from("kitchen_orders")
+        .update({ status: newStatus })
+        .eq("id", order.id);
+        
+      if (error) throw error;
+      
+      toast({
+        title: "Order Updated",
+        description: `Order status updated to ${newStatus}`,
+      });
+      
+      onClose();
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description: "Failed to update order status",
+      });
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={() => onClose()}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Order Details</DialogTitle>
+          <DialogDescription>View and manage order details</DialogDescription>
         </DialogHeader>
         
         <div id="bill-content" className="space-y-4 p-4">
@@ -105,7 +132,7 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
                 {order.items.map((item, index) => (
                   <li key={index} className="flex justify-between text-sm">
                     <span>{item.quantity}x {item.name}</span>
-                    <span>₹{item.quantity * 10}</span>
+                    <span>₹{item.price ? (item.quantity * item.price) : (item.quantity * 10)}</span>
                   </li>
                 ))}
               </ul>
@@ -119,15 +146,33 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 mt-4">
-          <Button variant="outline" onClick={onEditOrder}>
-            <Edit className="w-4 h-4 mr-2" />
-            Edit Order
-          </Button>
+        <div className="flex flex-wrap justify-end gap-2 mt-4">
+          {order.status === "new" && (
+            <Button variant="outline" className="bg-blue-50 text-blue-600 hover:bg-blue-100" onClick={() => handleUpdateStatus("preparing")}>
+              <Edit className="w-4 h-4 mr-2" />
+              Mark Preparing
+            </Button>
+          )}
+          
+          {order.status === "preparing" && (
+            <Button variant="outline" className="bg-green-50 text-green-600 hover:bg-green-100" onClick={() => handleUpdateStatus("ready")}>
+              <Check className="w-4 h-4 mr-2" />
+              Mark Ready
+            </Button>
+          )}
+          
+          {onEditOrder && (
+            <Button variant="outline" onClick={() => onEditOrder(order.id)}>
+              <Edit className="w-4 h-4 mr-2" />
+              Edit Order
+            </Button>
+          )}
+          
           <Button variant="outline" onClick={handlePrintBill}>
             <Printer className="w-4 h-4 mr-2" />
             Print Bill
           </Button>
+          
           <Button onClick={onClose}>
             Close
           </Button>

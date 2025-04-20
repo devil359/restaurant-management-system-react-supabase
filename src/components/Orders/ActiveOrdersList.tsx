@@ -1,6 +1,7 @@
+
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Check, Clock, ChefHat, Eye } from "lucide-react";
+import { Check, Clock, ChefHat, Eye, Search, Filter } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -8,11 +9,14 @@ import { formatDistanceToNow } from "date-fns";
 import type { Json } from "@/integrations/supabase/types";
 import OrderDetailsDialog from "./OrderDetailsDialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface OrderItem {
   name: string;
   quantity: number;
   notes?: string[];
+  price?: number;
 }
 
 interface ActiveOrder {
@@ -26,6 +30,8 @@ interface ActiveOrder {
 const ActiveOrdersList = () => {
   const [activeOrders, setActiveOrders] = useState<ActiveOrder[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<ActiveOrder | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -70,7 +76,8 @@ const ActiveOrdersList = () => {
             return {
               name: typeof itemObj.name === 'string' ? itemObj.name : "Unknown Item",
               quantity: typeof itemObj.quantity === 'number' ? itemObj.quantity : 1,
-              notes: Array.isArray(itemObj.notes) ? itemObj.notes : []
+              notes: Array.isArray(itemObj.notes) ? itemObj.notes : [],
+              price: typeof itemObj.price === 'number' ? itemObj.price : 10,  // Default price if not provided
             };
           });
         }
@@ -83,7 +90,8 @@ const ActiveOrdersList = () => {
             return {
               name: typeof itemObj.name === 'string' ? itemObj.name : "Unknown Item",
               quantity: typeof itemObj.quantity === 'number' ? itemObj.quantity : 1,
-              notes: Array.isArray(itemObj.notes) ? itemObj.notes : []
+              notes: Array.isArray(itemObj.notes) ? itemObj.notes : [],
+              price: typeof itemObj.price === 'number' ? itemObj.price : 10,  // Default price if not provided
             };
           });
         }
@@ -162,6 +170,17 @@ const ActiveOrdersList = () => {
     }
   };
 
+  const getCardStyleByStatus = (status: string) => {
+    switch (status) {
+      case "preparing":
+        return "bg-[#fee2e2] border-l-4 border-red-400";
+      case "ready":
+        return "bg-[#F2FCE2] border-l-4 border-green-400";
+      default:
+        return "bg-white border";
+    }
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "new":
@@ -183,13 +202,81 @@ const ActiveOrdersList = () => {
     setSelectedOrder(null);
   };
 
+  const handleEditOrder = (orderId: string) => {
+    // We'll use this ID to find the order in Orders.tsx
+    console.log("Edit order:", orderId);
+    // Close dialog and trigger editing in the parent component
+    handleCloseDialog();
+    // For now, we'll just show a toast until we implement the editing functionality
+    toast({
+      title: "Edit Order",
+      description: `Editing order ${orderId.slice(0, 8)}`,
+    });
+  };
+
+  // Filter orders based on search term and status
+  const filteredOrders = activeOrders.filter(order => {
+    // Filter by status
+    if (statusFilter !== "all" && order.status !== statusFilter) {
+      return false;
+    }
+
+    // Filter by search term
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      // Search in source
+      if (order.source.toLowerCase().includes(searchLower)) {
+        return true;
+      }
+      // Search in items
+      return order.items.some(item => 
+        item.name.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    return true;
+  });
+
+  // Calculate total for an order
+  const calculateOrderTotal = (items: OrderItem[]): number => {
+    return items.reduce((sum, item) => {
+      const price = item.price ?? 10; // Use a default price of 10 if not specified
+      return sum + (price * item.quantity);
+    }, 0);
+  };
+
   return (
-    <div className="h-[30vh] overflow-auto p-2">
+    <div className="space-y-4 overflow-auto" style={{ height: "30vh" }}>
+      <div className="flex flex-wrap gap-2 mb-4">
+        <div className="flex-1 relative min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+          <Input
+            placeholder="Search orders..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[180px]">
+            <Filter className="mr-2 h-4 w-4" />
+            <SelectValue placeholder="Filter by status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Orders</SelectItem>
+            <SelectItem value="new">New Orders</SelectItem>
+            <SelectItem value="preparing">Preparing</SelectItem>
+            <SelectItem value="ready">Ready</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {activeOrders.map((order) => (
+        {filteredOrders.length > 0 ? filteredOrders.map((order) => (
           <Card 
             key={order.id} 
-            className="p-4 hover:shadow-md transition-shadow cursor-pointer"
+            className={`p-4 hover:shadow-md transition-shadow cursor-pointer ${getCardStyleByStatus(order.status)}`}
             onClick={() => handleViewOrder(order)}
           >
             <div className="flex items-center justify-between mb-2">
@@ -210,33 +297,40 @@ const ActiveOrdersList = () => {
                 {order.items.map((item, index) => (
                   <li key={index} className="flex justify-between">
                     <span>{item.quantity}x {item.name}</span>
+                    <span>₹{(item.price ?? 10) * item.quantity}</span>
                   </li>
                 ))}
               </ul>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="w-full mt-2"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleViewOrder(order);
-                }}
-              >
-                <Eye className="w-4 h-4 mr-2" />
-                View Details
-              </Button>
+              <div className="mt-2 pt-2 border-t flex justify-between items-center">
+                <div className="font-semibold">
+                  Total: ₹{calculateOrderTotal(order.items)}
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleViewOrder(order);
+                  }}
+                >
+                  <Eye className="w-4 h-4 mr-2" />
+                  View
+                </Button>
+              </div>
             </div>
           </Card>
-        ))}
+        )) : (
+          <div className="col-span-full text-center p-4 text-muted-foreground">
+            No orders found matching your filters
+          </div>
+        )}
       </div>
 
       <OrderDetailsDialog
         isOpen={selectedOrder !== null}
         onClose={handleCloseDialog}
         order={selectedOrder}
-        onEditOrder={() => {
-          handleCloseDialog();
-        }}
+        onEditOrder={handleEditOrder}
       />
     </div>
   );
