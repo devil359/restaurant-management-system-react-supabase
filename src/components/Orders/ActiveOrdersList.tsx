@@ -1,16 +1,15 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Check, Clock, ChefHat, Eye, Search, Filter } from "lucide-react";
+import { Search, Filter } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import type { Json } from "@/integrations/supabase/types";
-import OrderDetailsDialog from "./OrderDetailsDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import OrderDetailsDialog from "./OrderDetailsDialog";
 
 interface OrderItem {
   name: string;
@@ -77,7 +76,7 @@ const ActiveOrdersList = () => {
               name: typeof itemObj.name === 'string' ? itemObj.name : "Unknown Item",
               quantity: typeof itemObj.quantity === 'number' ? itemObj.quantity : 1,
               notes: Array.isArray(itemObj.notes) ? itemObj.notes : [],
-              price: typeof itemObj.price === 'number' ? itemObj.price : undefined,  // Keep original price
+              price: typeof itemObj.price === 'number' ? itemObj.price : undefined,
             };
           });
         }
@@ -91,7 +90,7 @@ const ActiveOrdersList = () => {
               name: typeof itemObj.name === 'string' ? itemObj.name : "Unknown Item",
               quantity: typeof itemObj.quantity === 'number' ? itemObj.quantity : 1,
               notes: Array.isArray(itemObj.notes) ? itemObj.notes : [],
-              price: typeof itemObj.price === 'number' ? itemObj.price : undefined,  // Keep original price
+              price: typeof itemObj.price === 'number' ? itemObj.price : undefined,
             };
           });
         }
@@ -157,63 +156,6 @@ const ActiveOrdersList = () => {
     };
   }, [toast]);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "new":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300";
-      case "preparing":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300";
-      case "ready":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
-    }
-  };
-
-  const getCardStyleByStatus = (status: string) => {
-    switch (status) {
-      case "preparing":
-        return "bg-[#fee2e2] border-l-4 border-red-400";
-      case "ready":
-        return "bg-[#F2FCE2] border-l-4 border-green-400";
-      default:
-        return "bg-white border";
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "new":
-        return <Clock className="h-4 w-4" />;
-      case "preparing":
-        return <ChefHat className="h-4 w-4" />;
-      case "ready":
-        return <Check className="h-4 w-4" />;
-      default:
-        return null;
-    }
-  };
-
-  const handleViewOrder = (order: ActiveOrder) => {
-    setSelectedOrder(order);
-  };
-
-  const handleCloseDialog = () => {
-    setSelectedOrder(null);
-  };
-
-  const handleEditOrder = (orderId: string) => {
-    // We'll use this ID to find the order in Orders.tsx
-    console.log("Edit order:", orderId);
-    // Close dialog and trigger editing in the parent component
-    handleCloseDialog();
-    // For now, we'll just show a toast until we implement the editing functionality
-    toast({
-      title: "Edit Order",
-      description: `Editing order ${orderId.slice(0, 8)}`,
-    });
-  };
-
   // Filter orders based on search term and status
   const filteredOrders = activeOrders.filter(order => {
     // Filter by status
@@ -240,13 +182,24 @@ const ActiveOrdersList = () => {
   // Calculate total for an order
   const calculateOrderTotal = (items: OrderItem[]): number => {
     return items.reduce((sum, item) => {
-      const price = typeof item.price === 'number' ? item.price : 0; // Use actual price, fallback to 0
+      const price = typeof item.price === 'number' ? item.price : 0;
       return sum + (price * item.quantity);
     }, 0);
   };
 
+  const getCardStyleByStatus = (status: string) => {
+    switch (status) {
+      case "preparing":
+        return "bg-[#fee2e2] border-l-4 border-red-400";
+      case "ready":
+        return "bg-[#F2FCE2] border-l-4 border-green-400";
+      default:
+        return "bg-white border";
+    }
+  };
+
   return (
-    <div className="space-y-4 overflow-auto" style={{ height: "30vh" }}>
+    <div className="space-y-4">
       <div className="flex flex-wrap gap-2 mb-4">
         <div className="flex-1 relative min-w-[200px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
@@ -272,49 +225,50 @@ const ActiveOrdersList = () => {
         </Select>
       </div>
       
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         {filteredOrders.length > 0 ? filteredOrders.map((order) => (
           <Card 
             key={order.id} 
             className={`p-4 hover:shadow-md transition-shadow cursor-pointer ${getCardStyleByStatus(order.status)}`}
-            onClick={() => handleViewOrder(order)}
+            onClick={() => setSelectedOrder(order)}
           >
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="font-semibold text-sm truncate mr-2">{order.source}</h3>
-              <Badge 
-                variant="secondary" 
-                className={`flex items-center gap-1 ${getStatusColor(order.status)}`}
-              >
-                {getStatusIcon(order.status)}
-                {order.status}
-              </Badge>
-            </div>
-            <div className="space-y-2">
-              <div className="text-xs text-muted-foreground">
-                {formatDistanceToNow(new Date(order.created_at), { addSuffix: true })}
+            <div className="flex flex-col h-full">
+              <div className="flex items-start justify-between mb-2">
+                <h3 className="font-semibold text-sm truncate mr-2 flex-1">{order.source}</h3>
+                <span className="text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700">
+                  {order.status}
+                </span>
               </div>
-              <ul className="text-xs space-y-1 max-h-16 overflow-auto">
-                {order.items.map((item, index) => (
-                  <li key={index} className="flex justify-between">
-                    <span className="truncate flex-1">{item.quantity}x {item.name}</span>
-                    <span className="pl-1">₹{(item.price || 0) * item.quantity}</span>
-                  </li>
-                ))}
-              </ul>
+              
+              <div className="space-y-2 flex-1">
+                <div className="text-xs text-muted-foreground">
+                  {formatDistanceToNow(new Date(order.created_at), { addSuffix: true })}
+                </div>
+                
+                <ul className="text-xs space-y-1 max-h-16 overflow-y-auto">
+                  {order.items.map((item, index) => (
+                    <li key={index} className="flex justify-between">
+                      <span className="truncate flex-1">{item.quantity}x {item.name}</span>
+                      <span className="pl-1">₹{item.price ? (item.price * item.quantity).toFixed(2) : '0.00'}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
               <div className="mt-2 pt-2 border-t flex justify-between items-center">
                 <div className="font-semibold text-sm">
-                  Total: ₹{calculateOrderTotal(order.items)}
+                  Total: ₹{calculateOrderTotal(order.items).toFixed(2)}
                 </div>
                 <Button 
                   variant="outline" 
                   size="sm"
+                  className="text-xs"
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleViewOrder(order);
+                    setSelectedOrder(order);
                   }}
                 >
-                  <Eye className="w-3 h-3 mr-1" />
-                  View
+                  View Details
                 </Button>
               </div>
             </div>
@@ -328,9 +282,10 @@ const ActiveOrdersList = () => {
 
       <OrderDetailsDialog
         isOpen={selectedOrder !== null}
-        onClose={handleCloseDialog}
+        onClose={() => setSelectedOrder(null)}
         order={selectedOrder}
-        onEditOrder={handleEditOrder}
+        onPrintBill={() => {}}
+        onEditOrder={() => {}}
       />
     </div>
   );
