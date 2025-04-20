@@ -1,3 +1,4 @@
+
 export interface Order {
   id: string;
   customer_name: string;
@@ -7,4 +8,13 @@ export interface Order {
   created_at: string;
   restaurant_id: string;
   updated_at: string;
+}
+
+export interface OrderItem {
+  id: string;
+  menuItemId?: string;
+  name: string;
+  price: number;
+  quantity: number;
+  modifiers?: string[];
 }
