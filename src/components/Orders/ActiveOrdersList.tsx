@@ -22,7 +22,7 @@ interface OrderItem {
 interface ActiveOrder {
   id: string;
   source: string;
-  status: "new" | "preparing" | "ready";
+  status: "new" | "preparing" | "ready" | "completed"; // Added "completed" to the type
   items: OrderItem[];
   created_at: string;
 }
@@ -56,7 +56,7 @@ const ActiveOrdersList = () => {
         const formattedOrders: ActiveOrder[] = orders.map(order => ({
           id: order.id,
           source: order.source,
-          status: order.status as "new" | "preparing" | "ready",
+          status: order.status as "new" | "preparing" | "ready" | "completed",
           items: parseOrderItems(order.items),
           created_at: order.created_at
         }));
@@ -119,7 +119,7 @@ const ActiveOrdersList = () => {
             const formattedOrder: ActiveOrder = {
               id: newOrder.id,
               source: newOrder.source,
-              status: newOrder.status as "new" | "preparing" | "ready",
+              status: newOrder.status as "new" | "preparing" | "ready" | "completed",
               items: parseOrderItems(newOrder.items),
               created_at: newOrder.created_at
             };
@@ -133,7 +133,7 @@ const ActiveOrdersList = () => {
                 order.id === updatedOrder.id 
                   ? {
                       ...order,
-                      status: updatedOrder.status as "new" | "preparing" | "ready",
+                      status: updatedOrder.status as "new" | "preparing" | "ready" | "completed",
                       items: parseOrderItems(updatedOrder.items)
                     } 
                   : order
@@ -335,7 +335,7 @@ const ActiveOrdersList = () => {
         onClose={() => setSelectedOrder(null)}
         order={selectedOrder}
         onPrintBill={() => {}}
-        onEditOrder={handleEditOrder}
+        onEditOrder={() => {}}
       />
     </div>
   );
