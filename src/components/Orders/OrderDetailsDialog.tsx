@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,7 @@ import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import AddOrderForm from "./AddOrderForm";
 import { Order } from "@/types/orders";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface OrderItem {
   name: string;
@@ -36,7 +36,7 @@ interface OrderDetailsDialogProps {
 const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }: OrderDetailsDialogProps) => {
   const { toast } = useToast();
   const [showEditForm, setShowEditForm] = useState(false);
-  const [showPaymentProcessing, setShowPaymentProcessing] = useState(false);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   
   if (!order) return null;
 
@@ -100,40 +100,8 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
     }
   };
 
-  const handleProceedToPayment = async () => {
-    setShowPaymentProcessing(true);
-    
-    try {
-      // Mark as completed in kitchen_orders
-      const { error: kitchenError } = await supabase
-        .from("kitchen_orders")
-        .update({ status: "completed" })
-        .eq("id", order.id);
-      
-      if (kitchenError) throw kitchenError;
-      
-      // Add payment record or other relevant actions here
-      
-      toast({
-        title: "Payment Completed",
-        description: "Order has been marked as paid and completed",
-      });
-      
-      // Delay before closing to show completion message
-      setTimeout(() => {
-        setShowPaymentProcessing(false);
-        onClose();
-      }, 1500);
-      
-    } catch (error) {
-      console.error('Error processing payment:', error);
-      setShowPaymentProcessing(false);
-      toast({
-        variant: "destructive",
-        title: "Payment Failed",
-        description: "Failed to process payment",
-      });
-    }
+  const handleProceedToPayment = () => {
+    setShowPaymentDialog(true);
   };
 
   const handleOpenEditForm = () => {
@@ -178,6 +146,74 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
             }}
             editingOrder={prepareOrderForEdit()}
           />
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  if (showPaymentDialog) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Payment</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="border rounded-lg p-4">
+              <h3 className="font-semibold mb-2">Order Summary</h3>
+              <div className="space-y-2">
+                {order.items.map((item, index) => (
+                  <div key={index} className="flex justify-between text-sm">
+                    <span>{item.quantity}x {item.name}</span>
+                    <span>₹{item.price ? (item.price * item.quantity).toFixed(2) : '0.00'}</span>
+                  </div>
+                ))}
+                
+                <div className="border-t pt-2 mt-2">
+                  <div className="flex justify-between">
+                    <span>Subtotal</span>
+                    <span>₹{total.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>Tax (10%)</span>
+                    <span>₹{(total * 0.1).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between font-bold mt-2">
+                    <span>Total</span>
+                    <span>₹{(total * 1.1).toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Payment Method</label>
+              <Select defaultValue="cash">
+                <SelectTrigger>
+                  <SelectValue placeholder="Select payment method" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="card">Card</SelectItem>
+                  <SelectItem value="upi">UPI</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowPaymentDialog(false)}>
+                Cancel
+              </Button>
+              <Button variant="outline" onClick={handlePrintBill}>
+                <Printer className="w-4 h-4 mr-2" />
+                Print Bill
+              </Button>
+              <Button onClick={() => handleUpdateStatus('completed')}>
+                Complete Payment
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     );
@@ -255,19 +291,9 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
               variant="secondary" 
               className="bg-purple-600 hover:bg-purple-700 text-white"
               onClick={handleProceedToPayment}
-              disabled={showPaymentProcessing}
             >
-              {showPaymentProcessing ? (
-                <span className="flex items-center">
-                  <DollarSign className="w-4 h-4 mr-2 animate-spin" />
-                  Processing...
-                </span>
-              ) : (
-                <span className="flex items-center">
-                  <DollarSign className="w-4 h-4 mr-2" />
-                  Proceed to Payment
-                </span>
-              )}
+              <DollarSign className="w-4 h-4 mr-2" />
+              Proceed to Payment
             </Button>
           )}
           

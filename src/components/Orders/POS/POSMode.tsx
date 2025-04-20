@@ -2,21 +2,16 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { ToggleLeft, ToggleRight } from "lucide-react";
 import POSHeader from "./POSHeader";
 import ActiveOrdersList from "../ActiveOrdersList";
 import MenuCategories from "../MenuCategories";
 import MenuItemsGrid from "../MenuItemsGrid";
 import CurrentOrder from "../CurrentOrder";
 import PaymentDialog from "./PaymentDialog";
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import type { OrderItem } from "@/types/orders";
-
-export interface TableData {
-  id: string;
-  name: string;
-  capacity: number;
-  status: string;
-}
+import type { OrderItem, TableData } from "@/types/orders";
 
 const POSMode = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
@@ -24,6 +19,7 @@ const POSMode = () => {
   const [orderType, setOrderType] = useState("Dine-In");
   const [currentOrderItems, setCurrentOrderItems] = useState<OrderItem[]>([]);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [showActiveOrders, setShowActiveOrders] = useState(true);
   const { toast } = useToast();
 
   const { data: tables } = useQuery({
@@ -196,19 +192,40 @@ const POSMode = () => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 h-[calc(100vh-4rem)]">
       <div className="col-span-2 overflow-hidden flex flex-col bg-gray-100 dark:bg-gray-800">
-        <div className="p-4 border-b">
-          <POSHeader 
-            orderType={orderType}
-            setOrderType={setOrderType}
-            tableNumber={tableNumber}
-            setTableNumber={setTableNumber}
-            tables={tables}
-          />
-
-          <h2 className="text-lg font-semibold">Active Orders</h2>
-          <div className="overflow-auto">
-            <ActiveOrdersList />
+        <div className="p-4 border-b bg-white dark:bg-gray-900">
+          <div className="flex items-center justify-between mb-4">
+            <POSHeader 
+              orderType={orderType}
+              setOrderType={setOrderType}
+              tableNumber={tableNumber}
+              setTableNumber={setTableNumber}
+              tables={tables}
+            />
+            <Button 
+              variant="outline" 
+              onClick={() => setShowActiveOrders(!showActiveOrders)}
+              className="flex items-center gap-2"
+            >
+              {showActiveOrders ? (
+                <>
+                  <ToggleRight className="h-5 w-5" />
+                  <span>Hide Orders</span>
+                </>
+              ) : (
+                <>
+                  <ToggleLeft className="h-5 w-5" />
+                  <span>Show Orders</span>
+                </>
+              )}
+            </Button>
           </div>
+
+          {showActiveOrders && (
+            <div className="mb-4 h-[300px] overflow-auto">
+              <h2 className="text-lg font-semibold mb-2">Active Orders</h2>
+              <ActiveOrdersList />
+            </div>
+          )}
         </div>
 
         <div className="flex-1 overflow-auto">
@@ -216,7 +233,7 @@ const POSMode = () => {
             selectedCategory={selectedCategory}
             onSelectCategory={setSelectedCategory}
           />
-          <div className="overflow-auto h-[calc(100vh-24rem)]">
+          <div className="overflow-auto p-4">
             <MenuItemsGrid
               selectedCategory={selectedCategory}
               onSelectItem={handleAddItem}
