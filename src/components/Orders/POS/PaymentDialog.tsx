@@ -1,4 +1,3 @@
-
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import type { OrderItem } from "@/types/orders";
 
 interface PaymentDialogProps {
@@ -56,7 +56,7 @@ const PaymentDialog = ({ isOpen, onClose, orderItems, onSuccess }: PaymentDialog
     }
   };
 
-  const handleCompletePayment = () => {
+  const handleCompletePayment = async () => {
     if (!customerName.trim()) {
       toast({
         variant: "destructive",
@@ -64,6 +64,51 @@ const PaymentDialog = ({ isOpen, onClose, orderItems, onSuccess }: PaymentDialog
         description: "Please enter customer name to complete the payment",
       });
       return;
+    }
+    
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("restaurant_id")
+        .eq("id", (await supabase.auth.getUser()).data.user?.id)
+        .single();
+
+      if (profile?.restaurant_id) {
+        const { data: existingCustomers } = await supabase
+          .from("customers")
+          .select("id, total_spent, visit_count")
+          .eq("restaurant_id", profile.restaurant_id)
+          .eq("phone", customerPhone)
+          .maybeSingle();
+
+        const orderTotal = total;
+        
+        if (existingCustomers) {
+          await supabase
+            .from("customers")
+            .update({
+              total_spent: existingCustomers.total_spent + orderTotal,
+              visit_count: existingCustomers.visit_count + 1,
+              last_visit_date: new Date().toISOString(),
+              average_order_value: (existingCustomers.total_spent + orderTotal) / (existingCustomers.visit_count + 1)
+            })
+            .eq("id", existingCustomers.id);
+        } else {
+          await supabase
+            .from("customers")
+            .insert({
+              restaurant_id: profile.restaurant_id,
+              name: customerName,
+              phone: customerPhone,
+              total_spent: orderTotal,
+              visit_count: 1,
+              average_order_value: orderTotal,
+              last_visit_date: new Date().toISOString()
+            });
+        }
+      }
+    } catch (error) {
+      console.error("Error saving customer data:", error);
     }
     
     handlePrintBill();

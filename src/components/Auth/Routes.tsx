@@ -1,4 +1,3 @@
-
 import {
   BrowserRouter as Router,
   Routes as Switch,
@@ -20,7 +19,7 @@ import Settings from "@/pages/Settings";
 import KitchenDisplay from "../Kitchen/KitchenDisplay";
 import { useEffect, useState } from "react";
 import AI from "@/pages/AI";
-import BusinessDashboard from "@/pages/BusinessDashboard";
+import BusinessDashboard from "@/components/Analytics/BusinessDashboard";
 import Inventory from "@/pages/Inventory";
 import Suppliers from "@/pages/Suppliers";
 
@@ -29,7 +28,6 @@ const Routes = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check current auth state
     const checkUser = async () => {
       try {
         const { data } = await supabase.auth.getUser();
@@ -43,7 +41,6 @@ const Routes = () => {
     
     checkUser();
     
-    // Listen for auth changes
     const { data: authListener } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setUser(session?.user || null);

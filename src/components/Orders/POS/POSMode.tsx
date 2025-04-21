@@ -191,8 +191,8 @@ const POSMode = () => {
     }
   };
 
-  const handlePaymentSuccess = (customerName: string, customerPhone: string) => {
-    handleSendToKitchen({ name: customerName, phone: customerPhone });
+  const handlePaymentSuccess = () => {
+    handleSendToKitchen();
     setShowPaymentDialog(false);
     setCurrentOrderItems([]);
   };
