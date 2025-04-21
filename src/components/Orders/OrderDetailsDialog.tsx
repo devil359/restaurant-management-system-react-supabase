@@ -255,7 +255,7 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
                     <SelectValue placeholder="Select promotion" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No Promotion</SelectItem>
+                    <SelectItem value="no_promo">No Promotion</SelectItem>
                     {promotions.map((promo) => (
                       <SelectItem key={promo.id} value={promo.id}>
                         {promo.name} ({promo.discount_percentage}% off)
