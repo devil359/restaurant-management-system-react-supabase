@@ -32,36 +32,34 @@ const Customers = () => {
         throw new Error("No restaurant found for user");
       }
 
-      // Fetch customer data from customer_insights table
       const { data, error } = await supabase
-        .from("customer_insights")
+        .from("customers")
         .select("*")
         .eq("restaurant_id", userProfile.restaurant_id);
 
       if (error) throw error;
       
-      // Transform data to match our Customer interface
-      return data.map((item: any): Customer => ({
-        id: item.id || crypto.randomUUID(),
-        name: item.customer_name || 'Unknown Customer',
-        email: item.email || null,
-        phone: item.phone || null,
-        address: item.address || null,
-        birthday: item.birthday || null,
-        created_at: item.created_at || new Date().toISOString(),
-        restaurant_id: item.restaurant_id,
-        loyalty_points: item.loyalty_points || 0,
+      return data.map((customer): Customer => ({
+        id: customer.id,
+        name: customer.name,
+        email: customer.email || null,
+        phone: customer.phone || null,
+        address: customer.address || null,
+        birthday: customer.birthday || null,
+        created_at: customer.created_at,
+        restaurant_id: customer.restaurant_id,
+        loyalty_points: customer.loyalty_points,
         loyalty_tier: calculateLoyaltyTier(
-          item.total_spent || 0,
-          item.visit_count || 0,
-          calculateDaysSince(item.first_visit)
+          customer.total_spent || 0,
+          customer.visit_count || 0,
+          calculateDaysSince(customer.last_visit_date)
         ),
-        tags: item.tags || [],
-        preferences: item.preferences || null,
-        last_visit_date: item.last_visit || null,
-        total_spent: item.total_spent || 0,
-        visit_count: item.visit_count || 0,
-        average_order_value: item.average_order_value || 0
+        tags: customer.tags || [],
+        preferences: customer.preferences || null,
+        last_visit_date: customer.last_visit_date || null,
+        total_spent: customer.total_spent || 0,
+        visit_count: customer.visit_count || 0,
+        average_order_value: customer.average_order_value || 0
       }));
     },
   });
@@ -81,7 +79,6 @@ const Customers = () => {
         .eq("id", profile.user.id)
         .single();
         
-      // Fetch orders for the selected customer
       const { data, error } = await supabase
         .from("orders")
         .select("*")
@@ -172,9 +169,9 @@ const Customers = () => {
       // If editing existing customer
       if (customer.id) {
         const { data, error } = await supabase
-          .from("customer_insights")
+          .from("customers")
           .update({
-            customer_name: customer.name,
+            name: customer.name,
             email: customer.email,
             phone: customer.phone,
             address: customer.address,
@@ -191,19 +188,16 @@ const Customers = () => {
       // If creating new customer
       else {
         const { data, error } = await supabase
-          .from("customer_insights")
-          .upsert([
+          .from("customers")
+          .insert([
             {
-              customer_name: customer.name,
+              name: customer.name,
               email: customer.email,
               phone: customer.phone,
               address: customer.address,
               birthday: customer.birthday,
               preferences: customer.preferences,
               restaurant_id: userProfile.restaurant_id,
-              total_spent: 0,
-              visit_count: 0,
-              average_order_value: 0,
               tags: customer.tags || []
             }
           ])

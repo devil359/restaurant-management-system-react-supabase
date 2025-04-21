@@ -9,6 +9,68 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      customers: {
+        Row: {
+          address: string | null
+          average_order_value: number
+          birthday: string | null
+          created_at: string
+          email: string | null
+          id: string
+          last_visit_date: string | null
+          loyalty_points: number
+          name: string
+          phone: string | null
+          preferences: string | null
+          restaurant_id: string
+          tags: string[]
+          total_spent: number
+          visit_count: number
+        }
+        Insert: {
+          address?: string | null
+          average_order_value?: number
+          birthday?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          last_visit_date?: string | null
+          loyalty_points?: number
+          name: string
+          phone?: string | null
+          preferences?: string | null
+          restaurant_id: string
+          tags?: string[]
+          total_spent?: number
+          visit_count?: number
+        }
+        Update: {
+          address?: string | null
+          average_order_value?: number
+          birthday?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          last_visit_date?: string | null
+          loyalty_points?: number
+          name?: string
+          phone?: string | null
+          preferences?: string | null
+          restaurant_id?: string
+          tags?: string[]
+          total_spent?: number
+          visit_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customers_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_revenue_stats: {
         Row: {
           average_order_value: number
