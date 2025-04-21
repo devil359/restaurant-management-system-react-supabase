@@ -33,7 +33,7 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  useSidebar
+  useSidebar,
 } from "@/components/ui/sidebar";
 
 const Sidebar = () => {
@@ -46,13 +46,16 @@ const Sidebar = () => {
 
   const { data: allowedComponents = [] } = useQuery({
     queryKey: ["allowedComponents", restaurantId],
-    queryFn: () => restaurantId ? fetchAllowedComponents(restaurantId) : Promise.resolve([]),
+    queryFn: () =>
+      restaurantId ? fetchAllowedComponents(restaurantId) : Promise.resolve([]),
     enabled: !!restaurantId,
   });
 
   const getProfileData = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
       if (user) {
         const { data: profile, error } = await supabase
@@ -71,10 +74,10 @@ const Sidebar = () => {
           return;
         }
 
-        const displayName = profile?.first_name 
-          ? `${profile.first_name} ${profile.last_name || ''}`
-          : user.email?.split('@')[0] || 'User';
-        
+        const displayName = profile?.first_name
+          ? `${profile.first_name} ${profile.last_name || ""}`
+          : user.email?.split("@")[0] || "User";
+
         setStaffName(displayName.trim());
         setRestaurantId(profile?.restaurant_id || null);
       }
@@ -90,7 +93,7 @@ const Sidebar = () => {
   const handleSignOut = async () => {
     try {
       await supabase.auth.signOut();
-      navigate('/auth');
+      navigate("/auth");
       toast({
         title: "Signed out",
         description: "You have been successfully signed out.",
@@ -115,15 +118,21 @@ const Sidebar = () => {
     { name: "Rooms", href: "/rooms", icon: Bed, component: "rooms" },
     { name: "Suppliers", href: "/suppliers", icon: Truck, component: "suppliers" },
     { name: "Analytics", href: "/analytics", icon: BarChart3, component: "analytics" },
-    { name: "Business Dashboard", href: "/business-dashboard", icon: LayoutDashboard, component: "business_dashboard" },
+    {
+      name: "Business Dashboard",
+      href: "/business-dashboard",
+      icon: LayoutDashboard,
+      component: "business_dashboard",
+    },
     { name: "AI Assistant", href: "/ai", icon: Bot, component: "dashboard" },
     { name: "Kitchen Display", href: "/kitchen", icon: ChefHat, component: "dashboard" },
     { name: "Settings", href: "/settings", icon: Settings, component: "settings" },
   ];
 
-  const navigation = allowedComponents.length > 0
-    ? allNavigation.filter(item => allowedComponents.includes(item.component))
-    : allNavigation;
+  const navigation =
+    allowedComponents.length > 0
+      ? allNavigation.filter((item) => allowedComponents.includes(item.component))
+      : allNavigation;
 
   const mobileToggle = (
     <div className="fixed top-4 left-4 z-40 lg:hidden">
@@ -169,12 +178,13 @@ const Sidebar = () => {
             {navigation.map((item) => (
               <SidebarMenuItem key={item.name}>
                 <SidebarMenuButton
-                  asChild 
+                  asChild
                   isActive={location.pathname === item.href}
                   tooltip={item.name}
-                  className={location.pathname === item.href 
-                    ? "bg-white text-sidebar-purple hover:bg-white hover:text-sidebar-purple" 
-                    : "text-white hover:bg-sidebar-purple-dark"
+                  className={
+                    location.pathname === item.href
+                      ? "bg-white text-sidebar-purple hover:bg-white hover:text-sidebar-purple"
+                      : "text-white hover:bg-sidebar-purple-dark"
                   }
                 >
                   <NavLink to={item.href} className="flex items-center space-x-2">
@@ -193,15 +203,11 @@ const Sidebar = () => {
               {staffName ? staffName.charAt(0) : "?"}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate text-white">
-                {staffName || "Loading..."}
-              </p>
-              <p className="text-xs text-white/70 truncate">
-                Staff Member
-              </p>
+              <p className="text-sm font-medium truncate text-white">{staffName || "Loading..."}</p>
+              <p className="text-xs text-white/70 truncate">Staff Member</p>
             </div>
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               size="icon"
               onClick={handleSignOut}
               title="Sign Out"
