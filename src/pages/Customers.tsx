@@ -1,67 +1,23 @@
 
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import React, { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
-import {
-  Search,
-  Mail,
-  Phone,
-  MoreVertical,
-  UserPlus,
-  FileBarChart,
-  Filter,
-  Download,
-} from "lucide-react";
-import LoyaltyBadge from "@/components/Customers/LoyaltyBadge";
-
-type Customer = {
-  customer_name: string;
-  visit_count: number;
-  total_spent: number;
-  average_order_value: number;
-  first_visit: string;
-  last_visit: string;
-};
-
-const calculateLoyaltyTier = (
-  totalSpent: number,
-  visitCount: number,
-  daysSinceFirstVisit: number
-) => {
-  // Simplified loyalty tier calculation
-  if (totalSpent > 20000 && visitCount > 15) return "Diamond";
-  if (totalSpent > 10000 && visitCount > 10) return "Platinum";
-  if (totalSpent > 5000 && visitCount > 8) return "Gold";
-  if (totalSpent > 2500 && visitCount > 5) return "Silver";
-  if (totalSpent > 1000 || visitCount > 3) return "Bronze";
-  return "None";
-};
+import { useToast } from "@/hooks/use-toast";
+import CustomerList from "@/components/CRM/CustomerList";
+import CustomerDetail from "@/components/CRM/CustomerDetail";
+import CustomerDialog from "@/components/CRM/CustomerDialog";
+import { Customer, CustomerOrder, CustomerNote, CustomerActivity } from "@/types/customer";
+import { User } from "lucide-react";
 
 const Customers = () => {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState("all");
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [customerToEdit, setCustomerToEdit] = useState<Customer | null>(null);
 
-  // Fetch customers insights data
-  const { data: customerData = [], isLoading } = useQuery({
+  // Fetch customers data
+  const { data: customers = [], isLoading: isLoadingCustomers } = useQuery({
     queryKey: ["customers"],
     queryFn: async () => {
       const { data: profile } = await supabase.auth.getUser();
@@ -77,231 +33,339 @@ const Customers = () => {
         throw new Error("No restaurant found for user");
       }
 
+      // Fetch customer data from customer_insights table
       const { data, error } = await supabase
         .from("customer_insights")
         .select("*")
-        .eq("restaurant_id", userProfile.restaurant_id)
-        .order("total_spent", { ascending: false });
+        .eq("restaurant_id", userProfile.restaurant_id);
 
       if (error) throw error;
-      return data as Customer[];
+      
+      // Transform data to match our Customer interface
+      return data.map((item: any): Customer => ({
+        id: item.id || crypto.randomUUID(),
+        name: item.customer_name || 'Unknown Customer',
+        email: item.email || null,
+        phone: item.phone || null,
+        address: item.address || null,
+        birthday: item.birthday || null,
+        created_at: item.created_at || new Date().toISOString(),
+        restaurant_id: item.restaurant_id,
+        loyalty_points: item.loyalty_points || 0,
+        loyalty_tier: calculateLoyaltyTier(
+          item.total_spent || 0,
+          item.visit_count || 0,
+          calculateDaysSince(item.first_visit)
+        ),
+        tags: item.tags || [],
+        preferences: item.preferences || null,
+        last_visit_date: item.last_visit || null,
+        total_spent: item.total_spent || 0,
+        visit_count: item.visit_count || 0,
+        average_order_value: item.average_order_value || 0
+      }));
+    },
+  });
+  
+  // Fetch customer orders
+  const { data: customerOrders = [], isLoading: isLoadingOrders } = useQuery({
+    queryKey: ["customer-orders", selectedCustomer?.name],
+    queryFn: async () => {
+      if (!selectedCustomer) return [];
+      
+      const { data: profile } = await supabase.auth.getUser();
+      if (!profile.user) throw new Error("No user found");
+
+      const { data: userProfile } = await supabase
+        .from("profiles")
+        .select("restaurant_id")
+        .eq("id", profile.user.id)
+        .single();
+        
+      // Fetch orders for the selected customer
+      const { data, error } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("restaurant_id", userProfile?.restaurant_id)
+        .eq("customer_name", selectedCustomer.name)
+        .order("created_at", { ascending: false });
+        
+      if (error) throw error;
+      
+      return data.map((order): CustomerOrder => ({
+        id: order.id,
+        date: order.created_at,
+        amount: order.total,
+        order_id: order.id,
+        status: order.status,
+        items: order.items || []
+      }));
+    },
+    enabled: !!selectedCustomer,
+  });
+
+  // Mock data for customer notes (to be implemented with real backend later)
+  const mockNotes: CustomerNote[] = selectedCustomer ? [
+    {
+      id: '1',
+      customer_id: selectedCustomer.id,
+      content: 'Customer prefers corner tables near the window.',
+      created_at: new Date(new Date().setDate(new Date().getDate() - 14)).toISOString(),
+      created_by: 'John Manager'
+    },
+    {
+      id: '2',
+      customer_id: selectedCustomer.id,
+      content: 'Allergic to nuts. Always confirm ingredients with kitchen.',
+      created_at: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString(),
+      created_by: 'Sarah Server'
+    }
+  ] : [];
+
+  // Mock data for customer activities (to be implemented with real backend later)
+  const mockActivities: CustomerActivity[] = selectedCustomer ? [
+    {
+      id: '1',
+      customer_id: selectedCustomer.id,
+      activity_type: 'order_placed',
+      description: 'Placed an order for ₹2,350',
+      created_at: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString()
+    },
+    {
+      id: '2',
+      customer_id: selectedCustomer.id,
+      activity_type: 'email_sent',
+      description: 'Sent birthday discount promotion email',
+      created_at: new Date(new Date().setDate(new Date().getDate() - 12)).toISOString()
+    },
+    {
+      id: '3',
+      customer_id: selectedCustomer.id,
+      activity_type: 'note_added',
+      description: 'Staff added note about seating preferences',
+      created_at: new Date(new Date().setDate(new Date().getDate() - 14)).toISOString()
+    },
+    {
+      id: '4',
+      customer_id: selectedCustomer.id,
+      activity_type: 'tag_added',
+      description: 'Added tag "Wine Enthusiast"',
+      created_at: new Date(new Date().setDate(new Date().getDate() - 20)).toISOString()
+    }
+  ] : [];
+
+  // Mutation for adding/updating customer
+  const saveCustomer = useMutation({
+    mutationFn: async (customer: Partial<Customer>) => {
+      const { data: profile } = await supabase.auth.getUser();
+      if (!profile.user) throw new Error("No user found");
+
+      const { data: userProfile } = await supabase
+        .from("profiles")
+        .select("restaurant_id")
+        .eq("id", profile.user.id)
+        .single();
+        
+      if (!userProfile?.restaurant_id) {
+        throw new Error("No restaurant found for user");
+      }
+
+      // If editing existing customer
+      if (customer.id) {
+        const { data, error } = await supabase
+          .from("customer_insights")
+          .update({
+            customer_name: customer.name,
+            email: customer.email,
+            phone: customer.phone,
+            address: customer.address,
+            birthday: customer.birthday,
+            preferences: customer.preferences,
+            tags: customer.tags
+          })
+          .eq("id", customer.id)
+          .select();
+          
+        if (error) throw error;
+        return data;
+      } 
+      // If creating new customer
+      else {
+        const { data, error } = await supabase
+          .from("customer_insights")
+          .insert([
+            {
+              customer_name: customer.name,
+              email: customer.email,
+              phone: customer.phone,
+              address: customer.address,
+              birthday: customer.birthday,
+              preferences: customer.preferences,
+              restaurant_id: userProfile.restaurant_id,
+              total_spent: 0,
+              visit_count: 0,
+              average_order_value: 0,
+              tags: customer.tags || []
+            }
+          ])
+          .select();
+          
+        if (error) throw error;
+        return data;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      setDialogOpen(false);
+      setCustomerToEdit(null);
+      toast({
+        title: customerToEdit ? "Customer Updated" : "Customer Added",
+        description: customerToEdit
+          ? "The customer information has been successfully updated."
+          : "A new customer has been successfully added to your database.",
+      });
+    },
+    onError: (error) => {
+      console.error("Error saving customer:", error);
+      toast({
+        title: "Error",
+        description: "There was a problem saving the customer information.",
+        variant: "destructive",
+      });
     },
   });
 
-  const filteredCustomers = customerData.filter((customer) => {
-    const matchesSearch = customer.customer_name
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase());
-
-    // Apply tab filters
-    if (activeTab === "all") return matchesSearch;
-
-    const now = new Date();
-    const lastVisit = new Date(customer.last_visit);
-    const daysSinceLastVisit = Math.floor(
-      (now.getTime() - lastVisit.getTime()) / (1000 * 60 * 60 * 24)
-    );
-
-    if (activeTab === "recent" && daysSinceLastVisit <= 30) return matchesSearch;
-    if (activeTab === "high-value" && customer.total_spent >= 5000)
-      return matchesSearch;
-    if (activeTab === "inactive" && daysSinceLastVisit > 90)
-      return matchesSearch;
-
-    return false;
-  });
-
-  const calculateDaysSince = (dateString: string) => {
+  // Calculate loyalty tier based on customer data
+  function calculateLoyaltyTier(
+    totalSpent: number,
+    visitCount: number,
+    daysSinceFirstVisit: number
+  ): Customer['loyalty_tier'] {
+    // Simplified loyalty tier calculation
+    if (totalSpent > 20000 && visitCount > 15) return "Diamond";
+    if (totalSpent > 10000 && visitCount > 10) return "Platinum";
+    if (totalSpent > 5000 && visitCount > 8) return "Gold";
+    if (totalSpent > 2500 && visitCount > 5) return "Silver";
+    if (totalSpent > 1000 || visitCount > 3) return "Bronze";
+    return "None";
+  }
+  
+  // Calculate days since a given date
+  function calculateDaysSince(dateString?: string | null): number {
+    if (!dateString) return 0;
     const date = new Date(dateString);
     const now = new Date();
     return Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
-  if (isLoading) {
-    return (
-      <div className="p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 w-48 bg-muted rounded"></div>
-          <div className="h-12 bg-muted rounded"></div>
-          <div className="h-64 bg-muted rounded"></div>
-        </div>
-      </div>
-    );
   }
 
+  const handleSelectCustomer = (customer: Customer) => {
+    setSelectedCustomer(customer);
+  };
+
+  const handleAddCustomer = () => {
+    setCustomerToEdit(null);
+    setDialogOpen(true);
+  };
+
+  const handleEditCustomer = (customer: Customer) => {
+    setCustomerToEdit(customer);
+    setDialogOpen(true);
+  };
+
+  const handleFilterCustomers = (filters: any) => {
+    // Implement filtering logic (would update a state with filter criteria)
+    console.log("Filter applied:", filters);
+    // This would typically update a state that the CustomerList would use for filtering
+  };
+
+  const handleAddNote = (customerId: string, content: string) => {
+    // This would typically be implemented as a backend call
+    console.log("Add note for customer:", customerId, "Content:", content);
+  };
+
+  const handleAddTag = (customerId: string, tag: string) => {
+    // This would typically be implemented as a backend call
+    console.log("Add tag for customer:", customerId, "Tag:", tag);
+  };
+
+  const handleRemoveTag = (customerId: string, tag: string) => {
+    // This would typically be implemented as a backend call
+    console.log("Remove tag for customer:", customerId, "Tag:", tag);
+  };
+
   return (
-    <div className="p-6 space-y-6 bg-gradient-to-br from-purple-50 to-white dark:from-gray-900 dark:to-gray-800">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
-            Customer Relationship Management
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Track customer behavior, preferences, and loyalty
-          </p>
-        </div>
-        <Button className="bg-purple-600 hover:bg-purple-700">
-          <UserPlus className="mr-2 h-4 w-4" />
-          Add Customer
-        </Button>
+    <div className="p-6 h-screen flex flex-col">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
+          Customer Relationship Management
+        </h1>
+        <p className="text-muted-foreground">
+          Manage your customer relationships and track customer data
+        </p>
       </div>
 
-      <Card className="p-5 bg-white dark:bg-gray-800 shadow-md">
-        <div className="flex flex-col md:flex-row justify-between gap-4 mb-6">
-          <div className="relative w-full md:w-96">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
-            <Input
-              placeholder="Search customers..."
-              className="pl-10"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-          <div className="flex gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Filter className="h-4 w-4 mr-2" />
-                  Filter
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem>Show all fields</DropdownMenuItem>
-                <DropdownMenuItem>Only loyalty members</DropdownMenuItem>
-                <DropdownMenuItem>Birthday this month</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button variant="outline" size="sm">
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
-            <Button variant="secondary" size="sm">
-              <FileBarChart className="h-4 w-4 mr-2" />
-              Analytics
-            </Button>
+      {isLoadingCustomers && customers.length === 0 ? (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="animate-pulse space-y-4 w-full max-w-md">
+            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+            <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded"></div>
+            <div className="h-32 bg-gray-200 dark:bg-gray-700 rounded"></div>
           </div>
         </div>
+      ) : (
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 overflow-hidden">
+          <div className="lg:col-span-5 xl:col-span-4 h-[calc(100vh-180px)] overflow-hidden">
+            <CustomerList
+              customers={customers}
+              loading={isLoadingCustomers}
+              selectedCustomerId={selectedCustomer?.id || null}
+              onSelectCustomer={handleSelectCustomer}
+              onAddCustomer={handleAddCustomer}
+              onFilterCustomers={handleFilterCustomers}
+            />
+          </div>
 
-        <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-6">
-            <TabsTrigger value="all">All Customers</TabsTrigger>
-            <TabsTrigger value="recent">Recent Visitors</TabsTrigger>
-            <TabsTrigger value="high-value">High Value</TabsTrigger>
-            <TabsTrigger value="inactive">Inactive</TabsTrigger>
-          </TabsList>
+          <div className="lg:col-span-7 xl:col-span-8 h-[calc(100vh-180px)] overflow-hidden">
+            {customers.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-center p-8">
+                <div className="rounded-full bg-gray-100 dark:bg-gray-800 p-6 mb-4">
+                  <User className="h-12 w-12 text-gray-400" />
+                </div>
+                <h3 className="text-xl font-medium">No Customers Found</h3>
+                <p className="text-gray-500 dark:text-gray-400 mt-2 max-w-md">
+                  Your customer database is empty. Add your first customer to get started with the CRM module.
+                </p>
+                <button
+                  className="mt-4 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded"
+                  onClick={handleAddCustomer}
+                >
+                  Add Your First Customer
+                </button>
+              </div>
+            ) : (
+              <CustomerDetail
+                customer={selectedCustomer}
+                orders={customerOrders}
+                notes={mockNotes}
+                activities={mockActivities}
+                loading={isLoadingOrders}
+                onEditCustomer={handleEditCustomer}
+                onAddNote={handleAddNote}
+                onAddTag={handleAddTag}
+                onRemoveTag={handleRemoveTag}
+              />
+            )}
+          </div>
+        </div>
+      )}
 
-          <TabsContent value={activeTab} className="mt-0">
-            <div className="rounded-md border bg-card">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Loyalty Tier</TableHead>
-                    <TableHead className="text-right">Total Spent</TableHead>
-                    <TableHead className="text-right">Visits</TableHead>
-                    <TableHead className="text-right">Avg. Order</TableHead>
-                    <TableHead>Last Visit</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredCustomers.map((customer, i) => {
-                    const firstVisitDays = calculateDaysSince(customer.first_visit);
-                    
-                    const loyaltyTier = calculateLoyaltyTier(
-                      customer.total_spent,
-                      customer.visit_count,
-                      firstVisitDays
-                    );
-                    
-                    return (
-                      <TableRow key={i}>
-                        <TableCell className="font-medium">
-                          {customer.customer_name}
-                        </TableCell>
-                        <TableCell>
-                          <LoyaltyBadge tier={loyaltyTier as any} />
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          {formatCurrency(customer.total_spent)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {customer.visit_count}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatCurrency(customer.average_order_value)}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-col">
-                            <span>{formatDate(customer.last_visit)}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {calculateDaysSince(customer.last_visit)} days ago
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="icon" title="Send Email">
-                              <Mail className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" title="Call Customer">
-                              <Phone className="h-4 w-4" />
-                            </Button>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem>View Details</DropdownMenuItem>
-                                <DropdownMenuItem>Edit Customer</DropdownMenuItem>
-                                <DropdownMenuItem>Order History</DropdownMenuItem>
-                                <DropdownMenuItem>Send Promotion</DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                  
-                  {filteredCustomers.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8">
-                        <div className="flex flex-col items-center justify-center text-muted-foreground">
-                          <Search className="h-8 w-8 mb-2" />
-                          <p>No customers found</p>
-                          <p className="text-sm">
-                            Try adjusting your search or filters
-                          </p>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </Card>
+      <CustomerDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        customer={customerToEdit}
+        onSave={saveCustomer.mutate}
+        isLoading={saveCustomer.isPending}
+      />
     </div>
   );
 };
