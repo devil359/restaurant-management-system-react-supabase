@@ -9,15 +9,42 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import OrderList from "../OrderList";
 import OrderStats from "../OrderStats";
 import AddOrderForm from "../AddOrderForm";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { startOfToday, subDays, subMonths, startOfDay, endOfDay } from "date-fns";
 import type { Order } from "@/types/orders";
 
 const OrdersView = () => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  const [dateFilter, setDateFilter] = useState<string>("today");
   const isMobile = useIsMobile();
 
+  const getDateRange = (filter: string) => {
+    const now = new Date();
+    switch (filter) {
+      case "today":
+        return { start: startOfDay(now), end: endOfDay(now) };
+      case "yesterday":
+        return { 
+          start: startOfDay(subDays(now, 1)), 
+          end: endOfDay(subDays(now, 1)) 
+        };
+      case "last7days":
+        return { start: startOfDay(subDays(now, 7)), end: endOfDay(now) };
+      case "last30days":
+        return { start: startOfDay(subDays(now, 30)), end: endOfDay(now) };
+      case "lastMonth":
+        return { 
+          start: startOfDay(subMonths(now, 1)), 
+          end: endOfDay(subDays(now, 1)) 
+        };
+      default:
+        return { start: startOfToday(), end: endOfDay(now) };
+    }
+  };
+
   const { data: orders, refetch: refetchOrders } = useQuery({
-    queryKey: ['orders'],
+    queryKey: ['orders', dateFilter],
     queryFn: async () => {
       const { data: profile } = await supabase
         .from("profiles")
@@ -29,10 +56,14 @@ const OrdersView = () => {
         throw new Error("No restaurant found for user");
       }
 
+      const dateRange = getDateRange(dateFilter);
+      
       const { data, error } = await supabase
         .from('orders')
         .select('*')
         .eq('restaurant_id', profile.restaurant_id)
+        .gte('created_at', dateRange.start.toISOString())
+        .lte('created_at', dateRange.end.toISOString())
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -55,9 +86,23 @@ const OrdersView = () => {
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg text-muted-foreground">
-          Manage and track your restaurant orders
-        </h2>
+        <div className="flex items-center gap-4">
+          <h2 className="text-lg text-muted-foreground">
+            Manage and track your restaurant orders
+          </h2>
+          <Select value={dateFilter} onValueChange={setDateFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select time range" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="today">Today</SelectItem>
+              <SelectItem value="yesterday">Yesterday</SelectItem>
+              <SelectItem value="last7days">Last 7 Days</SelectItem>
+              <SelectItem value="last30days">Last 30 Days</SelectItem>
+              <SelectItem value="lastMonth">Last Month</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <Button 
           onClick={() => setShowAddForm(true)}
           className="bg-purple-600 hover:bg-purple-700"

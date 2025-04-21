@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import Stats from "@/components/Dashboard/Stats";
@@ -29,10 +28,14 @@ const Index = () => {
         throw new Error("No restaurant found for user");
       }
 
+      const today = new Date();
+      
       const { data, error } = await supabase
         .from("orders")
         .select("*")
         .eq("restaurant_id", userProfile.restaurant_id)
+        .gte('created_at', startOfDay(today).toISOString())
+        .lte('created_at', endOfDay(today).toISOString())
         .order("created_at", { ascending: false });
 
       if (error) throw error;
