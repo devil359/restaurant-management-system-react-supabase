@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -45,7 +44,6 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [discountPercent, setDiscountPercent] = useState(0);
   
-  // Fetch available promotions for discount selection
   const { data: promotions } = useQuery({
     queryKey: ["promotions"],
     queryFn: async () => {
@@ -71,15 +69,13 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
   
   if (!order) return null;
 
-  // Calculate total - use the provided price from the item itself
   const subtotal = order.items.reduce((sum, item) => {
-    // Make sure we're using the actual price from the menu item
     const price = item.price || 0;
     return sum + (item.quantity * price);
   }, 0);
   
   const discount = subtotal * (discountPercent / 100);
-  const taxRate = 0.1; // 10% tax
+  const taxRate = 0.1;
   const tax = (subtotal - discount) * taxRate;
   const total = subtotal - discount + tax;
 
@@ -155,7 +151,6 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
     }
 
     try {
-      // Update order status to completed
       const { error } = await supabase
         .from("kitchen_orders")
         .update({ 
@@ -165,7 +160,6 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
         
       if (error) throw error;
       
-      // Add a record to customer_insights if it doesn't exist, or update if it does
       const { data: profile } = await supabase
         .from("profiles")
         .select("restaurant_id")
@@ -181,7 +175,6 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
           .maybeSingle();
           
         if (existingCustomer) {
-          // Update existing customer
           await supabase
             .from("customer_insights")
             .update({
@@ -190,21 +183,20 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
               average_order_value: (((existingCustomer.total_spent || 0) + total) / ((existingCustomer.visit_count || 0) + 1)),
               last_visit: new Date().toISOString()
             })
-            .eq("customer_name", customerName)
-            .eq("restaurant_id", profile.restaurant_id);
+            .eq("id", existingCustomer.id);
         } else {
-          // Create new customer record
-          await supabase
-            .from("customer_insights")
-            .insert({
-              customer_name: customerName,
-              restaurant_id: profile.restaurant_id,
-              visit_count: 1,
-              total_spent: total,
-              average_order_value: total,
-              first_visit: new Date().toISOString(),
-              last_visit: new Date().toISOString()
-            });
+          const customerData = {
+            id: crypto.randomUUID(),
+            customer_name: customerName,
+            restaurant_id: profile.restaurant_id,
+            visit_count: 1,
+            total_spent: total,
+            average_order_value: total,
+            first_visit: new Date().toISOString(),
+            last_visit: new Date().toISOString()
+          };
+          
+          await supabase.from("customer_insights").insert([customerData]);
         }
       }
       
@@ -225,10 +217,8 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
     }
   };
 
-  // Convert the kitchen order to the format expected by AddOrderForm
   const prepareOrderForEdit = (): Order | null => {
     try {
-      // Create a synthetic order object matching the Order interface
       return {
         id: order.id,
         customer_name: order.source,
@@ -236,7 +226,7 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
         total: subtotal,
         status: order.status,
         created_at: order.created_at,
-        restaurant_id: "", // Will be filled by the form
+        restaurant_id: "",
         updated_at: new Date().toISOString()
       };
     } catch (error) {

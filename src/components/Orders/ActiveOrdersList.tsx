@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, subDays, isToday } from "date-fns";
 import OrderDetailsDialog from "./OrderDetailsDialog";
-import type { ActiveOrder } from "@/types/orders";
+import type { ActiveOrder, OrderItem } from "@/types/orders";
 
 interface OrderItemDisplay {
   name: string;
@@ -68,7 +68,16 @@ const ActiveOrdersList = () => {
       
       if (error) throw error;
       
-      return data as ActiveOrder[];
+      // Transform the data to ensure items are properly typed as OrderItem[]
+      return (data || []).map(order => ({
+        ...order,
+        items: (order.items as any[] || []).map(item => ({
+          id: item.id || crypto.randomUUID(),
+          name: item.name,
+          price: item.price || 0,
+          quantity: item.quantity || 1
+        }))
+      })) as ActiveOrder[];
     },
     refetchInterval: 10000, // Refetch every 10 seconds
   });

@@ -72,17 +72,20 @@ const AddCustomerDialog = ({ open, onOpenChange, onSuccess }: AddCustomerDialogP
       // Create new customer
       const now = new Date().toISOString();
       
+      const customerData = {
+        id: crypto.randomUUID(),
+        customer_name: data.name,
+        restaurant_id: userProfile.restaurant_id,
+        visit_count: 0,
+        total_spent: 0,
+        average_order_value: 0,
+        first_visit: now,
+        last_visit: now
+      };
+      
       const { error } = await supabase
         .from("customer_insights")
-        .insert({
-          customer_name: data.name,
-          restaurant_id: userProfile.restaurant_id,
-          visit_count: 0,
-          total_spent: 0,
-          average_order_value: 0,
-          first_visit: now,
-          last_visit: now
-        });
+        .insert([customerData]);
 
       if (error) throw error;
 

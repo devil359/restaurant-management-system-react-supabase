@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -26,7 +25,6 @@ const PaymentDialog = ({ isOpen, onClose, orderItems, onSuccess }: PaymentDialog
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [discountPercent, setDiscountPercent] = useState(0);
   
-  // Fetch available promotions for discount selection
   const { data: promotions } = useQuery({
     queryKey: ["promotions"],
     queryFn: async () => {
@@ -84,58 +82,56 @@ const PaymentDialog = ({ isOpen, onClose, orderItems, onSuccess }: PaymentDialog
   };
 
   const handleCompletePayment = async () => {
-    if (!customerName.trim()) {
+    if (!customerName) {
       toast({
         variant: "destructive",
-        title: "Customer name required",
-        description: "Please enter customer name to complete payment",
+        title: "Customer Name Required",
+        description: "Please enter customer name to continue.",
       });
       return;
     }
 
     try {
-      // Get restaurant_id
       const { data: profile } = await supabase
         .from("profiles")
         .select("restaurant_id")
         .eq("id", (await supabase.auth.getUser()).data.user?.id)
         .single();
 
-      if (profile?.restaurant_id) {
-        // Add to customer_insights if this is a new customer or update if existing
-        const { data: existingCustomer } = await supabase
+      if (!profile?.restaurant_id) {
+        throw new Error("Restaurant ID not found for current user");
+      }
+
+      const { data: existingCustomer } = await supabase
+        .from("customer_insights")
+        .select("*")
+        .eq("customer_name", customerName)
+        .eq("restaurant_id", profile.restaurant_id)
+        .maybeSingle();
+
+      if (existingCustomer) {
+        await supabase
           .from("customer_insights")
-          .select("*")
-          .eq("customer_name", customerName)
-          .eq("restaurant_id", profile.restaurant_id)
-          .maybeSingle();
-          
-        if (existingCustomer) {
-          // Update existing customer
-          await supabase
-            .from("customer_insights")
-            .update({
-              visit_count: (existingCustomer.visit_count || 0) + 1,
-              total_spent: (existingCustomer.total_spent || 0) + total,
-              average_order_value: (((existingCustomer.total_spent || 0) + total) / ((existingCustomer.visit_count || 0) + 1)),
-              last_visit: new Date().toISOString()
-            })
-            .eq("customer_name", customerName)
-            .eq("restaurant_id", profile.restaurant_id);
-        } else {
-          // Create new customer record
-          await supabase
-            .from("customer_insights")
-            .insert({
-              customer_name: customerName,
-              restaurant_id: profile.restaurant_id,
-              visit_count: 1,
-              total_spent: total,
-              average_order_value: total,
-              first_visit: new Date().toISOString(),
-              last_visit: new Date().toISOString()
-            });
-        }
+          .update({
+            visit_count: (existingCustomer.visit_count || 0) + 1,
+            total_spent: (existingCustomer.total_spent || 0) + total,
+            average_order_value: (((existingCustomer.total_spent || 0) + total) / ((existingCustomer.visit_count || 0) + 1)),
+            last_visit: new Date().toISOString()
+          })
+          .eq("id", existingCustomer.id);
+      } else {
+        const customerData = {
+          id: crypto.randomUUID(),
+          customer_name: customerName,
+          restaurant_id: profile.restaurant_id,
+          visit_count: 1,
+          total_spent: total,
+          average_order_value: total,
+          first_visit: new Date().toISOString(),
+          last_visit: new Date().toISOString()
+        };
+        
+        await supabase.from("customer_insights").insert([customerData]);
       }
 
       handlePrintBill();
@@ -145,11 +141,11 @@ const PaymentDialog = ({ isOpen, onClose, orderItems, onSuccess }: PaymentDialog
       });
       onSuccess();
     } catch (error) {
-      console.error('Error processing payment:', error);
+      console.error("Payment error:", error);
       toast({
         variant: "destructive",
         title: "Payment Failed",
-        description: "An error occurred while processing payment",
+        description: "There was an error processing your payment."
       });
     }
   };
