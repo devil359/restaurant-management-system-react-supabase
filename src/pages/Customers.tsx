@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -181,7 +180,7 @@ const Customers = () => {
             address: customer.address,
             birthday: customer.birthday,
             preferences: customer.preferences,
-            tags: customer.tags
+            tags: customer.tags || []
           })
           .eq("id", customer.id)
           .select();
@@ -193,7 +192,7 @@ const Customers = () => {
       else {
         const { data, error } = await supabase
           .from("customer_insights")
-          .insert([
+          .upsert([
             {
               customer_name: customer.name,
               email: customer.email,

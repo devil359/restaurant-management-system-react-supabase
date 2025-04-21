@@ -8,7 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { 
   Edit, Mail, Phone, MapPin, Calendar, Settings, 
   Tag, Plus, Trash2, Send, MessageSquare, FileText, 
-  AlertCircle, Clock, BarChart3, Coffee
+  AlertCircle, Clock, BarChart3, Coffee, User
 } from "lucide-react";
 import { formatDate, formatCurrency, calculateDaysSince } from "@/utils/formatters";
 import { Customer, CustomerOrder, CustomerNote, CustomerActivity } from "@/types/customer";
