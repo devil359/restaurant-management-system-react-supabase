@@ -1,15 +1,12 @@
-import { useState } from "react";
+
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Printer, User, Phone } from "lucide-react";
+import { Printer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import type { OrderItem } from "@/types/orders";
-import { useQuery } from "@tanstack/react-query";
 
 interface PaymentDialogProps {
   isOpen: boolean;
@@ -20,38 +17,10 @@ interface PaymentDialogProps {
 
 const PaymentDialog = ({ isOpen, onClose, orderItems, onSuccess }: PaymentDialogProps) => {
   const { toast } = useToast();
-  const [customerName, setCustomerName] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("cash");
-  const [discountPercent, setDiscountPercent] = useState(0);
-  
-  const { data: promotions } = useQuery({
-    queryKey: ["promotions"],
-    queryFn: async () => {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("restaurant_id")
-        .eq("id", (await supabase.auth.getUser()).data.user?.id)
-        .single();
-
-      if (!profile?.restaurant_id) return [];
-
-      const { data, error } = await supabase
-        .from("promotion_campaigns")
-        .select("*")
-        .eq("restaurant_id", profile.restaurant_id)
-        .gte("end_date", new Date().toISOString());
-
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: isOpen
-  });
   
   const subtotal = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const discount = subtotal * (discountPercent / 100);
-  const tax = (subtotal - discount) * 0.10; // 10% tax
-  const total = subtotal - discount + tax;
+  const tax = subtotal * 0.10; // 10% tax
+  const total = subtotal + tax;
 
   const handlePrintBill = async () => {
     try {
@@ -81,73 +50,13 @@ const PaymentDialog = ({ isOpen, onClose, orderItems, onSuccess }: PaymentDialog
     }
   };
 
-  const handleCompletePayment = async () => {
-    if (!customerName) {
-      toast({
-        variant: "destructive",
-        title: "Customer Name Required",
-        description: "Please enter customer name to continue.",
-      });
-      return;
-    }
-
-    try {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("restaurant_id")
-        .eq("id", (await supabase.auth.getUser()).data.user?.id)
-        .single();
-
-      if (!profile?.restaurant_id) {
-        throw new Error("Restaurant ID not found for current user");
-      }
-
-      const { data: existingCustomer } = await supabase
-        .from("customer_insights")
-        .select("*")
-        .eq("customer_name", customerName)
-        .eq("restaurant_id", profile.restaurant_id)
-        .maybeSingle();
-
-      if (existingCustomer) {
-        await supabase
-          .from("customer_insights")
-          .update({
-            visit_count: (existingCustomer.visit_count || 0) + 1,
-            total_spent: (existingCustomer.total_spent || 0) + total,
-            average_order_value: (((existingCustomer.total_spent || 0) + total) / ((existingCustomer.visit_count || 0) + 1)),
-            last_visit: new Date().toISOString()
-          })
-          .eq("id", existingCustomer.id);
-      } else {
-        const customerData = {
-          id: crypto.randomUUID(),
-          customer_name: customerName,
-          restaurant_id: profile.restaurant_id,
-          visit_count: 1,
-          total_spent: total,
-          average_order_value: total,
-          first_visit: new Date().toISOString(),
-          last_visit: new Date().toISOString()
-        };
-        
-        await supabase.from("customer_insights").insert([customerData]);
-      }
-
-      handlePrintBill();
-      toast({
-        title: "Payment Successful",
-        description: "Order has been completed",
-      });
-      onSuccess();
-    } catch (error) {
-      console.error("Payment error:", error);
-      toast({
-        variant: "destructive",
-        title: "Payment Failed",
-        description: "There was an error processing your payment."
-      });
-    }
+  const handleCompletePayment = () => {
+    handlePrintBill();
+    toast({
+      title: "Payment Successful",
+      description: "Order has been completed",
+    });
+    onSuccess();
   };
 
   return (
@@ -156,34 +65,6 @@ const PaymentDialog = ({ isOpen, onClose, orderItems, onSuccess }: PaymentDialog
         <div className="p-4">
           <h2 className="text-2xl font-bold mb-4">Payment</h2>
           <div className="space-y-4">
-            <div className="space-y-3">
-              <div className="flex gap-2 items-center">
-                <User className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Customer Details</span>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Customer Name *</label>
-                  <Input 
-                    placeholder="Enter customer name" 
-                    value={customerName} 
-                    onChange={(e) => setCustomerName(e.target.value)} 
-                    className="h-8"
-                    required
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Phone Number</label>
-                  <Input 
-                    placeholder="Enter phone number" 
-                    value={customerPhone} 
-                    onChange={(e) => setCustomerPhone(e.target.value)} 
-                    className="h-8"
-                  />
-                </div>
-              </div>
-            </div>
-            
             <div id="payment-summary" className="border rounded p-4">
               <h3 className="font-semibold mb-2">Order Summary</h3>
               {orderItems.map((item) => (
@@ -197,51 +78,6 @@ const PaymentDialog = ({ isOpen, onClose, orderItems, onSuccess }: PaymentDialog
                   <span>Subtotal</span>
                   <span>₹{subtotal.toFixed(2)}</span>
                 </div>
-                
-                <div className="flex justify-between items-center mt-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm">Discount</span>
-                    <Select value={discountPercent.toString()} onValueChange={(value) => setDiscountPercent(Number(value))}>
-                      <SelectTrigger className="h-7 w-28">
-                        <SelectValue placeholder="Select discount" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="0">0%</SelectItem>
-                        <SelectItem value="5">5%</SelectItem>
-                        <SelectItem value="10">10%</SelectItem>
-                        <SelectItem value="15">15%</SelectItem>
-                        <SelectItem value="20">20%</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <span>-₹{discount.toFixed(2)}</span>
-                </div>
-                
-                {promotions?.length > 0 && (
-                  <div className="flex justify-between items-center mt-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm">Promotion</span>
-                      <Select onValueChange={(value) => {
-                        const selectedPromo = promotions.find(p => p.id === value);
-                        if (selectedPromo) {
-                          setDiscountPercent(selectedPromo.discount_percentage);
-                        }
-                      }}>
-                        <SelectTrigger className="h-7 w-40">
-                          <SelectValue placeholder="Select promotion" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {promotions.map(promo => (
-                            <SelectItem key={promo.id} value={promo.id}>
-                              {promo.name} ({promo.discount_percentage}%)
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                )}
-                
                 <div className="flex justify-between">
                   <span>Tax (10%)</span>
                   <span>₹{tax.toFixed(2)}</span>
@@ -255,7 +91,7 @@ const PaymentDialog = ({ isOpen, onClose, orderItems, onSuccess }: PaymentDialog
             
             <div>
               <h3 className="font-semibold mb-2">Payment Method</h3>
-              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+              <Select defaultValue="cash">
                 <SelectTrigger>
                   <SelectValue placeholder="Select payment method" />
                 </SelectTrigger>

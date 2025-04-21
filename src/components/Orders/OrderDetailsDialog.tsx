@@ -2,9 +2,8 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { formatDistanceToNow } from "date-fns";
-import { Printer, Edit, DollarSign, Check, User, Phone } from "lucide-react";
+import { Printer, Edit, DollarSign, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import html2canvas from "html2canvas";
@@ -12,7 +11,6 @@ import jsPDF from "jspdf";
 import AddOrderForm from "./AddOrderForm";
 import { Order } from "@/types/orders";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useQuery } from "@tanstack/react-query";
 
 interface OrderItem {
   name: string;
@@ -39,45 +37,15 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
   const { toast } = useToast();
   const [showEditForm, setShowEditForm] = useState(false);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
-  const [customerName, setCustomerName] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("cash");
-  const [discountPercent, setDiscountPercent] = useState(0);
-  
-  const { data: promotions } = useQuery({
-    queryKey: ["promotions"],
-    queryFn: async () => {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("restaurant_id")
-        .eq("id", (await supabase.auth.getUser()).data.user?.id)
-        .single();
-
-      if (!profile?.restaurant_id) return [];
-
-      const { data, error } = await supabase
-        .from("promotion_campaigns")
-        .select("*")
-        .eq("restaurant_id", profile.restaurant_id)
-        .gte("end_date", new Date().toISOString());
-
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: showPaymentDialog
-  });
   
   if (!order) return null;
 
-  const subtotal = order.items.reduce((sum, item) => {
+  // Calculate total - use the provided price from the item itself
+  const total = order.items.reduce((sum, item) => {
+    // Make sure we're using the actual price from the menu item
     const price = item.price || 0;
     return sum + (item.quantity * price);
   }, 0);
-  
-  const discount = subtotal * (discountPercent / 100);
-  const taxRate = 0.1;
-  const tax = (subtotal - discount) * taxRate;
-  const total = subtotal - discount + tax;
 
   const handlePrintBill = async () => {
     try {
@@ -140,93 +108,18 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
     setShowEditForm(true);
   };
 
-  const handleCompletePayment = async () => {
-    if (!customerName.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Customer name required",
-        description: "Please enter customer name to complete payment",
-      });
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from("kitchen_orders")
-        .update({ 
-          status: "completed",
-        })
-        .eq("id", order.id);
-        
-      if (error) throw error;
-      
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("restaurant_id")
-        .eq("id", (await supabase.auth.getUser()).data.user?.id)
-        .single();
-        
-      if (profile?.restaurant_id) {
-        const { data: existingCustomer } = await supabase
-          .from("customer_insights")
-          .select("*")
-          .eq("customer_name", customerName)
-          .eq("restaurant_id", profile.restaurant_id)
-          .maybeSingle();
-          
-        if (existingCustomer) {
-          await supabase
-            .from("customer_insights")
-            .update({
-              visit_count: (existingCustomer.visit_count || 0) + 1,
-              total_spent: (existingCustomer.total_spent || 0) + total,
-              average_order_value: (((existingCustomer.total_spent || 0) + total) / ((existingCustomer.visit_count || 0) + 1)),
-              last_visit: new Date().toISOString()
-            })
-            .eq("id", existingCustomer.id);
-        } else {
-          const customerData = {
-            id: crypto.randomUUID(),
-            customer_name: customerName,
-            restaurant_id: profile.restaurant_id,
-            visit_count: 1,
-            total_spent: total,
-            average_order_value: total,
-            first_visit: new Date().toISOString(),
-            last_visit: new Date().toISOString()
-          };
-          
-          await supabase.from("customer_insights").insert([customerData]);
-        }
-      }
-      
-      toast({
-        title: "Payment Completed",
-        description: "The order has been completed successfully",
-      });
-      
-      handlePrintBill();
-      onClose();
-    } catch (error) {
-      console.error('Error completing payment:', error);
-      toast({
-        variant: "destructive",
-        title: "Payment Failed",
-        description: "Failed to process payment",
-      });
-    }
-  };
-
+  // Convert the kitchen order to the format expected by AddOrderForm
   const prepareOrderForEdit = (): Order | null => {
     try {
+      // Create a synthetic order object matching the Order interface
       return {
         id: order.id,
         customer_name: order.source,
         items: order.items.map(item => `${item.quantity}x ${item.name}`),
-        total: subtotal,
+        total: total,
         status: order.status,
         created_at: order.created_at,
-        restaurant_id: "",
+        restaurant_id: "", // Will be filled by the form
         updated_at: new Date().toISOString()
       };
     } catch (error) {
@@ -267,34 +160,6 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
           </DialogHeader>
           
           <div className="space-y-4">
-            <div className="space-y-3">
-              <div className="flex gap-2 items-center">
-                <User className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Customer Details</span>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Customer Name *</label>
-                  <Input 
-                    placeholder="Enter customer name" 
-                    value={customerName} 
-                    onChange={(e) => setCustomerName(e.target.value)} 
-                    className="h-8"
-                    required
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Phone Number</label>
-                  <Input 
-                    placeholder="Enter phone number" 
-                    value={customerPhone} 
-                    onChange={(e) => setCustomerPhone(e.target.value)} 
-                    className="h-8"
-                  />
-                </div>
-              </div>
-            </div>
-
             <div className="border rounded-lg p-4">
               <h3 className="font-semibold mb-2">Order Summary</h3>
               <div className="space-y-2">
@@ -308,60 +173,15 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
                 <div className="border-t pt-2 mt-2">
                   <div className="flex justify-between">
                     <span>Subtotal</span>
-                    <span>₹{subtotal.toFixed(2)}</span>
+                    <span>₹{total.toFixed(2)}</span>
                   </div>
-                  
-                  <div className="flex justify-between items-center mt-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm">Discount</span>
-                      <Select value={discountPercent.toString()} onValueChange={(value) => setDiscountPercent(Number(value))}>
-                        <SelectTrigger className="h-7 w-28">
-                          <SelectValue placeholder="Select discount" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="0">0%</SelectItem>
-                          <SelectItem value="5">5%</SelectItem>
-                          <SelectItem value="10">10%</SelectItem>
-                          <SelectItem value="15">15%</SelectItem>
-                          <SelectItem value="20">20%</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <span>-₹{discount.toFixed(2)}</span>
-                  </div>
-                  
-                  {promotions?.length > 0 && (
-                    <div className="flex justify-between items-center mt-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm">Promotion</span>
-                        <Select onValueChange={(value) => {
-                          const selectedPromo = promotions.find(p => p.id === value);
-                          if (selectedPromo) {
-                            setDiscountPercent(selectedPromo.discount_percentage);
-                          }
-                        }}>
-                          <SelectTrigger className="h-7 w-40">
-                            <SelectValue placeholder="Select promotion" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {promotions.map(promo => (
-                              <SelectItem key={promo.id} value={promo.id}>
-                                {promo.name} ({promo.discount_percentage}%)
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  )}
-                  
                   <div className="flex justify-between text-sm text-muted-foreground">
                     <span>Tax (10%)</span>
-                    <span>₹{tax.toFixed(2)}</span>
+                    <span>₹{(total * 0.1).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between font-bold mt-2">
                     <span>Total</span>
-                    <span>₹{total.toFixed(2)}</span>
+                    <span>₹{(total * 1.1).toFixed(2)}</span>
                   </div>
                 </div>
               </div>
@@ -369,7 +189,7 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
 
             <div className="space-y-2">
               <label className="text-sm font-medium">Payment Method</label>
-              <Select defaultValue="cash" onValueChange={setPaymentMethod}>
+              <Select defaultValue="cash">
                 <SelectTrigger>
                   <SelectValue placeholder="Select payment method" />
                 </SelectTrigger>
@@ -389,7 +209,7 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
                 <Printer className="w-4 h-4 mr-2" />
                 Print Bill
               </Button>
-              <Button onClick={handleCompletePayment}>
+              <Button onClick={() => handleUpdateStatus('completed')}>
                 Complete Payment
               </Button>
             </div>
@@ -444,7 +264,7 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
               <div className="mt-4 pt-2 border-t">
                 <div className="flex justify-between font-semibold">
                   <span>Total</span>
-                  <span>₹{subtotal.toFixed(2)}</span>
+                  <span>₹{total.toFixed(2)}</span>
                 </div>
               </div>
             </Card>

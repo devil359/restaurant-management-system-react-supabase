@@ -1,187 +1,341 @@
 
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
+import { Search, Filter, Calendar } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import { formatDistanceToNow, subDays, startOfDay, isWithinInterval } from "date-fns";
+import type { Json } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { format, subDays, isToday } from "date-fns";
 import OrderDetailsDialog from "./OrderDetailsDialog";
-import type { ActiveOrder, OrderItem } from "@/types/orders";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-interface OrderItemDisplay {
+interface OrderItem {
   name: string;
   quantity: number;
+  notes?: string[];
   price?: number;
 }
 
-const ActiveOrdersList = () => {
-  const [selectedOrder, setSelectedOrder] = useState<ActiveOrder | null>(null);
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  const [timeFilter, setTimeFilter] = useState<string>("today");
+interface ActiveOrder {
+  id: string;
+  source: string;
+  status: "new" | "preparing" | "ready" | "completed"; // Added "completed" to the type
+  items: OrderItem[];
+  created_at: string;
+}
 
-  const { data: activeOrders = [], isLoading } = useQuery({
-    queryKey: ["active-orders", timeFilter],
-    queryFn: async () => {
+const ActiveOrdersList = () => {
+  const [activeOrders, setActiveOrders] = useState<ActiveOrder[]>([]);
+  const [selectedOrder, setSelectedOrder] = useState<ActiveOrder | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState("today");
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchActiveOrders = async () => {
       const { data: profile } = await supabase
         .from("profiles")
         .select("restaurant_id")
         .eq("id", (await supabase.auth.getUser()).data.user?.id)
         .single();
 
-      if (!profile?.restaurant_id) throw new Error("No restaurant found");
+      if (!profile?.restaurant_id) return;
 
-      let query = supabase
+      const { data: orders } = await supabase
         .from("kitchen_orders")
         .select("*")
         .eq("restaurant_id", profile.restaurant_id)
-        .neq("status", "completed")  // Exclude completed orders
+        .not("status", "eq", "completed")
         .order("created_at", { ascending: false });
 
-      // Apply time filter
-      if (timeFilter === "today") {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        query = query.gte("created_at", today.toISOString());
-      } else if (timeFilter === "yesterday") {
-        const yesterday = subDays(new Date(), 1);
-        yesterday.setHours(0, 0, 0, 0);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        query = query.gte("created_at", yesterday.toISOString()).lt("created_at", today.toISOString());
-      } else if (timeFilter === "last7days") {
-        const lastWeek = subDays(new Date(), 7);
-        query = query.gte("created_at", lastWeek.toISOString());
-      } else if (timeFilter === "month") {
-        // Month to date
-        const firstDayOfMonth = new Date();
-        firstDayOfMonth.setDate(1);
-        firstDayOfMonth.setHours(0, 0, 0, 0);
-        query = query.gte("created_at", firstDayOfMonth.toISOString());
+      if (orders) {
+        const formattedOrders: ActiveOrder[] = orders.map(order => ({
+          id: order.id,
+          source: order.source,
+          status: order.status as "new" | "preparing" | "ready" | "completed",
+          items: parseOrderItems(order.items),
+          created_at: order.created_at
+        }));
+        
+        setActiveOrders(formattedOrders);
       }
+    };
 
-      const { data, error } = await query;
+    fetchActiveOrders();
+
+    function parseOrderItems(items: Json): OrderItem[] {
+      if (!items) return [];
       
-      if (error) throw error;
-      
-      // Transform the data to ensure items are properly typed as OrderItem[]
-      return (data || []).map(order => ({
-        ...order,
-        items: (order.items as any[] || []).map(item => ({
-          id: item.id || crypto.randomUUID(),
-          name: item.name,
-          price: item.price || 0,
-          quantity: item.quantity || 1
-        }))
-      })) as ActiveOrder[];
-    },
-    refetchInterval: 10000, // Refetch every 10 seconds
-  });
+      try {
+        if (Array.isArray(items)) {
+          return items.map(item => {
+            const itemObj = item as Record<string, any>;
+            return {
+              name: typeof itemObj.name === 'string' ? itemObj.name : "Unknown Item",
+              quantity: typeof itemObj.quantity === 'number' ? itemObj.quantity : 1,
+              notes: Array.isArray(itemObj.notes) ? itemObj.notes : [],
+              price: typeof itemObj.price === 'number' ? itemObj.price : undefined,
+            };
+          });
+        }
+        
+        const parsedItems = typeof items === 'string' ? JSON.parse(items) : items;
+        
+        if (Array.isArray(parsedItems)) {
+          return parsedItems.map(item => {
+            const itemObj = item as Record<string, any>;
+            return {
+              name: typeof itemObj.name === 'string' ? itemObj.name : "Unknown Item",
+              quantity: typeof itemObj.quantity === 'number' ? itemObj.quantity : 1,
+              notes: Array.isArray(itemObj.notes) ? itemObj.notes : [],
+              price: typeof itemObj.price === 'number' ? itemObj.price : undefined,
+            };
+          });
+        }
+        
+        return [];
+      } catch (error) {
+        console.error("Error parsing order items:", error);
+        return [];
+      }
+    }
 
-  const handleOrderClick = (order: ActiveOrder) => {
-    setSelectedOrder(order);
-    setIsDetailsOpen(true);
-  };
+    const channel = supabase
+      .channel("kitchen-orders-changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "kitchen_orders",
+        },
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            const newOrder = payload.new;
+            const formattedOrder: ActiveOrder = {
+              id: newOrder.id,
+              source: newOrder.source,
+              status: newOrder.status as "new" | "preparing" | "ready" | "completed",
+              items: parseOrderItems(newOrder.items),
+              created_at: newOrder.created_at
+            };
+            
+            setActiveOrders((prev) => [formattedOrder, ...prev]);
+          } else if (payload.eventType === "UPDATE") {
+            const updatedOrder = payload.new;
+            
+            setActiveOrders((prev) =>
+              prev.map((order) =>
+                order.id === updatedOrder.id 
+                  ? {
+                      ...order,
+                      status: updatedOrder.status as "new" | "preparing" | "ready" | "completed",
+                      items: parseOrderItems(updatedOrder.items)
+                    } 
+                  : order
+              ).filter(order => order.status !== "completed")
+            );
+            
+            if (updatedOrder.status === "ready") {
+              toast({
+                title: "Order Ready!",
+                description: `Order from ${updatedOrder.source} is ready for pickup`,
+              });
+              const audio = new Audio("/notification.mp3");
+              audio.play().catch(console.error);
+            }
+          }
+        }
+      )
+      .subscribe();
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "new":
-        return "bg-blue-100 text-blue-700";
-      case "preparing":
-        return "bg-yellow-100 text-yellow-800";
-      case "ready":
-        return "bg-green-100 text-green-700";
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [toast]);
+
+  // Apply date filtering
+  const getDateFilteredOrders = (orders: ActiveOrder[]) => {
+    const today = new Date();
+    
+    switch (dateFilter) {
+      case "today":
+        return orders.filter(order => 
+          new Date(order.created_at) >= startOfDay(today)
+        );
+      case "yesterday":
+        return orders.filter(order => 
+          isWithinInterval(new Date(order.created_at), {
+            start: startOfDay(subDays(today, 1)),
+            end: startOfDay(today)
+          })
+        );
+      case "last7days":
+        return orders.filter(order => 
+          new Date(order.created_at) >= subDays(today, 7)
+        );
+      case "thisMonth":
+        return orders.filter(order => {
+          const orderDate = new Date(order.created_at);
+          return orderDate.getMonth() === today.getMonth() && 
+                 orderDate.getFullYear() === today.getFullYear();
+        });
       default:
-        return "bg-gray-100 text-gray-800";
+        return orders;
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 h-52 overflow-auto">
-        {[1, 2, 3, 4].map((i) => (
-          <Card key={i} className="animate-pulse">
-            <CardContent className="p-3">
-              <div className="h-4 w-24 bg-gray-200 rounded mb-2"></div>
-              <div className="h-3 w-full bg-gray-200 rounded mb-1"></div>
-              <div className="h-3 w-2/3 bg-gray-200 rounded"></div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    );
-  }
+  // Filter orders based on search term, status, and date
+  const filteredOrders = getDateFilteredOrders(activeOrders).filter(order => {
+    // Filter by status
+    if (statusFilter !== "all" && order.status !== statusFilter) {
+      return false;
+    }
+
+    // Filter by search term
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      // Search in source
+      if (order.source.toLowerCase().includes(searchLower)) {
+        return true;
+      }
+      // Search in items
+      return order.items.some(item => 
+        item.name.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    return true;
+  });
+
+  // Calculate total for an order
+  const calculateOrderTotal = (items: OrderItem[]): number => {
+    return items.reduce((sum, item) => {
+      const price = typeof item.price === 'number' ? item.price : 0;
+      return sum + (price * item.quantity);
+    }, 0);
+  };
+
+  const getCardStyleByStatus = (status: string) => {
+    switch (status) {
+      case "preparing":
+        return "bg-[#fee2e2] border-l-4 border-red-400";
+      case "ready":
+        return "bg-[#F2FCE2] border-l-4 border-green-400";
+      default:
+        return "bg-white border";
+    }
+  };
+
+  const handleEditOrder = (orderId: string) => {
+    // Will be implemented in OrderDetailsDialog
+  };
 
   return (
-    <div className="space-y-3">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold">Active Orders</h3>
-        <Select value={timeFilter} onValueChange={setTimeFilter}>
-          <SelectTrigger className="w-[160px] h-8">
-            <SelectValue placeholder="Filter by time" />
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-2 mb-4">
+        <div className="flex-1 relative min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+          <Input
+            placeholder="Search orders..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[180px]">
+            <Filter className="mr-2 h-4 w-4" />
+            <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="today">Today</SelectItem>
-            <SelectItem value="yesterday">Yesterday</SelectItem>
-            <SelectItem value="last7days">Last 7 Days</SelectItem>
-            <SelectItem value="month">Month to Date</SelectItem>
+            <SelectItem value="all">All Orders</SelectItem>
+            <SelectItem value="new">New Orders</SelectItem>
+            <SelectItem value="preparing">Preparing</SelectItem>
+            <SelectItem value="ready">Ready</SelectItem>
           </SelectContent>
         </Select>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 h-[300px] overflow-auto">
-        {activeOrders.length > 0 ? (
-          activeOrders.map((order) => (
-            <Button
-              key={order.id}
-              variant="outline"
-              className="h-auto p-0 overflow-hidden"
-              onClick={() => handleOrderClick(order)}
+      <div className="mb-4">
+        <Tabs defaultValue="today" value={dateFilter} onValueChange={setDateFilter}>
+          <TabsList>
+            <TabsTrigger value="today">Today</TabsTrigger>
+            <TabsTrigger value="yesterday">Yesterday</TabsTrigger>
+            <TabsTrigger value="last7days">Last 7 Days</TabsTrigger>
+            <TabsTrigger value="thisMonth">This Month</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+      
+      <div className="h-[calc(70vh-180px)] overflow-auto">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          {filteredOrders.length > 0 ? filteredOrders.map((order) => (
+            <Card 
+              key={order.id} 
+              className={`p-4 hover:shadow-md transition-shadow cursor-pointer ${getCardStyleByStatus(order.status)}`}
+              onClick={() => setSelectedOrder(order)}
             >
-              <Card className="w-full border-0 shadow-none">
-                <CardContent className="p-3 text-left">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="font-semibold truncate">{order.source}</span>
-                    <Badge className={`${getStatusColor(order.status)} capitalize`}>
-                      {order.status}
-                    </Badge>
-                  </div>
+              <div className="flex flex-col h-full">
+                <div className="flex items-start justify-between mb-2">
+                  <h3 className="font-semibold text-sm truncate mr-2 flex-1">{order.source}</h3>
+                  <span className="text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700">
+                    {order.status}
+                  </span>
+                </div>
+                
+                <div className="space-y-2 flex-1">
                   <div className="text-xs text-muted-foreground">
-                    {format(new Date(order.created_at), "h:mm a")}
-                    {isToday(new Date(order.created_at)) ? " (Today)" : ""}
+                    {formatDistanceToNow(new Date(order.created_at), { addSuffix: true })}
                   </div>
-                  <div className="mt-1 text-sm">
-                    {order.items
-                      .slice(0, 2)
-                      .map(
-                        (item: OrderItemDisplay) =>
-                          `${item.quantity}x ${item.name}`
-                      )
-                      .join(", ")}
-                    {order.items.length > 2 && "..."}
+                  
+                  <ul className="text-xs space-y-1 max-h-16 overflow-y-auto">
+                    {order.items.map((item, index) => (
+                      <li key={index} className="flex justify-between">
+                        <span className="truncate flex-1">{item.quantity}x {item.name}</span>
+                        <span className="pl-1">₹{item.price ? (item.price * item.quantity).toFixed(2) : '0.00'}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="mt-2 pt-2 border-t flex justify-between items-center">
+                  <div className="font-semibold text-sm">
+                    Total: ₹{calculateOrderTotal(order.items).toFixed(2)}
                   </div>
-                </CardContent>
-              </Card>
-            </Button>
-          ))
-        ) : (
-          <div className="col-span-2 flex items-center justify-center h-32 border rounded bg-muted/20">
-            <p className="text-muted-foreground">No active orders found</p>
-          </div>
-        )}
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="text-xs"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedOrder(order);
+                    }}
+                  >
+                    View Details
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          )) : (
+            <div className="col-span-full text-center p-4 text-muted-foreground">
+              No orders found matching your filters
+            </div>
+          )}
+        </div>
       </div>
 
       <OrderDetailsDialog
-        isOpen={isDetailsOpen}
-        onClose={() => {
-          setIsDetailsOpen(false);
-          setSelectedOrder(null);
-        }}
+        isOpen={selectedOrder !== null}
+        onClose={() => setSelectedOrder(null)}
         order={selectedOrder}
+        onPrintBill={() => {}}
+        onEditOrder={() => {}}
       />
     </div>
   );

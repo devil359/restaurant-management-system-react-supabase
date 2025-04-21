@@ -17,55 +17,7 @@ import Customers from "@/pages/Customers";
 import Analytics from "@/pages/Analytics";
 import Settings from "@/pages/Settings";
 import KitchenDisplay from "../Kitchen/KitchenDisplay";
-import CustomerManagement from "@/pages/CustomerManagement";
 import { useEffect, useState } from "react";
-
-const routes = [
-  {
-    path: "/",
-    component: Index,
-  },
-  {
-    path: "/orders",
-    component: Orders,
-  },
-  {
-    path: "/rooms",
-    component: Rooms,
-  },
-  {
-    path: "/staff",
-    component: Staff,
-  },
-  {
-    path: "/menu",
-    component: Menu,
-  },
-  {
-    path: "/tables",
-    component: Tables,
-  },
-  {
-    path: "/reservations",
-    component: Reservations,
-  },
-  {
-    path: "/customers",
-    component: CustomerManagement,
-  },
-  {
-    path: "/analytics",
-    component: Analytics,
-  },
-  {
-    path: "/settings",
-    component: Settings,
-  },
-  {
-    path: "/kitchen",
-    component: KitchenDisplay,
-  },
-];
 
 const Routes = () => {
   const [user, setUser] = useState<any>(null);
@@ -118,17 +70,99 @@ const Routes = () => {
 
   return (
     <Switch>
-      {routes.map((route) => (
-        <Route
-          key={route.path}
-          path={route.path}
-          element={
-            <ComponentAccessGuard>
-              <route.component />
-            </ComponentAccessGuard>
-          }
-        />
-      ))}
+      <Route
+        path="/"
+        element={
+          <ComponentAccessGuard>
+            <Index />
+          </ComponentAccessGuard>
+        }
+      />
+      <Route
+        path="/auth"
+        element={
+          <LoginRegisterAccessGuard>
+            <Auth />
+          </LoginRegisterAccessGuard>
+        }
+      />
+      <Route
+        path="/orders"
+        element={
+          <ComponentAccessGuard>
+            <Orders />
+          </ComponentAccessGuard>
+        }
+      />
+      <Route
+        path="/rooms"
+        element={
+          <ComponentAccessGuard>
+            <Rooms />
+          </ComponentAccessGuard>
+        }
+      />
+      <Route
+        path="/staff"
+        element={
+          <ComponentAccessGuard>
+            <Staff />
+          </ComponentAccessGuard>
+        }
+      />
+      <Route
+        path="/menu"
+        element={
+          <ComponentAccessGuard>
+            <Menu />
+          </ComponentAccessGuard>
+        }
+      />
+      <Route
+        path="/tables"
+        element={
+          <ComponentAccessGuard>
+            <Tables />
+          </ComponentAccessGuard>
+        }
+      />
+      <Route
+        path="/reservations"
+        element={
+          <ComponentAccessGuard>
+            <Reservations />
+          </ComponentAccessGuard>
+        }
+      />
+      <Route
+        path="/customers"
+        element={
+          <ComponentAccessGuard>
+            <Customers />
+          </ComponentAccessGuard>
+        }
+      />
+      <Route
+        path="/analytics"
+        element={
+          <ComponentAccessGuard>
+            <Analytics />
+          </ComponentAccessGuard>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <ComponentAccessGuard>
+            <Settings />
+          </ComponentAccessGuard>
+        }
+      />
+      <Route path="/kitchen" element={
+        <ComponentAccessGuard>
+          <KitchenDisplay />
+        </ComponentAccessGuard>
+      } />
     </Switch>
   );
 };
