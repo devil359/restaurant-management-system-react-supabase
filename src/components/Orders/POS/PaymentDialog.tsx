@@ -1,11 +1,14 @@
 
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Printer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import { useState } from "react";
 import type { OrderItem } from "@/types/orders";
 
 interface PaymentDialogProps {
@@ -17,6 +20,9 @@ interface PaymentDialogProps {
 
 const PaymentDialog = ({ isOpen, onClose, orderItems, onSuccess }: PaymentDialogProps) => {
   const { toast } = useToast();
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("cash");
   
   const subtotal = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const tax = subtotal * 0.10; // 10% tax
@@ -51,10 +57,19 @@ const PaymentDialog = ({ isOpen, onClose, orderItems, onSuccess }: PaymentDialog
   };
 
   const handleCompletePayment = () => {
+    if (!customerName.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Customer name required",
+        description: "Please enter customer name to complete the payment",
+      });
+      return;
+    }
+    
     handlePrintBill();
     toast({
       title: "Payment Successful",
-      description: "Order has been completed",
+      description: `Order for ${customerName} has been completed`,
     });
     onSuccess();
   };
@@ -65,6 +80,30 @@ const PaymentDialog = ({ isOpen, onClose, orderItems, onSuccess }: PaymentDialog
         <div className="p-4">
           <h2 className="text-2xl font-bold mb-4">Payment</h2>
           <div className="space-y-4">
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="customerName">Customer Name*</Label>
+                  <Input 
+                    id="customerName"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    placeholder="Enter customer name"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="customerPhone">Customer Phone</Label>
+                  <Input 
+                    id="customerPhone"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    placeholder="Enter phone number"
+                  />
+                </div>
+              </div>
+            </div>
+
             <div id="payment-summary" className="border rounded p-4">
               <h3 className="font-semibold mb-2">Order Summary</h3>
               {orderItems.map((item) => (
@@ -91,7 +130,7 @@ const PaymentDialog = ({ isOpen, onClose, orderItems, onSuccess }: PaymentDialog
             
             <div>
               <h3 className="font-semibold mb-2">Payment Method</h3>
-              <Select defaultValue="cash">
+              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select payment method" />
                 </SelectTrigger>

@@ -19,6 +19,10 @@ import Analytics from "@/pages/Analytics";
 import Settings from "@/pages/Settings";
 import KitchenDisplay from "../Kitchen/KitchenDisplay";
 import { useEffect, useState } from "react";
+import AI from "@/pages/AI";
+import BusinessDashboard from "@/pages/BusinessDashboard";
+import Inventory from "@/pages/Inventory";
+import Suppliers from "@/pages/Suppliers";
 
 const Routes = () => {
   const [user, setUser] = useState<any>(null);
@@ -159,11 +163,46 @@ const Routes = () => {
           </ComponentAccessGuard>
         }
       />
-      <Route path="/kitchen" element={
-        <ComponentAccessGuard>
-          <KitchenDisplay />
-        </ComponentAccessGuard>
-      } />
+      <Route 
+        path="/kitchen" 
+        element={
+          <ComponentAccessGuard>
+            <KitchenDisplay />
+          </ComponentAccessGuard>
+        }
+      />
+      <Route
+        path="/ai"
+        element={
+          <ComponentAccessGuard>
+            <AI />
+          </ComponentAccessGuard>
+        }
+      />
+      <Route
+        path="/business-dashboard"
+        element={
+          <ComponentAccessGuard>
+            <BusinessDashboard />
+          </ComponentAccessGuard>
+        }
+      />
+      <Route
+        path="/inventory"
+        element={
+          <ComponentAccessGuard>
+            <Inventory />
+          </ComponentAccessGuard>
+        }
+      />
+      <Route
+        path="/suppliers"
+        element={
+          <ComponentAccessGuard>
+            <Suppliers />
+          </ComponentAccessGuard>
+        }
+      />
     </Switch>
   );
 };

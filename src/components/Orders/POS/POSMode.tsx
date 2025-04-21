@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -120,7 +119,7 @@ const POSMode = () => {
     }
   };
 
-  const handleSendToKitchen = async () => {
+  const handleSendToKitchen = async (customerDetails?: { name: string, phone: string }) => {
     if (currentOrderItems.length === 0) {
       toast({
         variant: "destructive",
@@ -141,7 +140,10 @@ const POSMode = () => {
         throw new Error("No restaurant found for user");
       }
 
-      const orderSource = `${orderType === "Dine-In" ? "Table " + tableNumber : orderType}`;
+      const orderSource = customerDetails?.name 
+        ? `${customerDetails.name} ${customerDetails.phone ? '(' + customerDetails.phone + ')' : ''}`
+        : `${orderType === "Dine-In" ? "Table " + tableNumber : orderType}`;
+        
       const posOrderSource = `POS-${orderSource}`;
 
       const { error: kitchenError, data: kitchenOrder } = await supabase
@@ -165,7 +167,7 @@ const POSMode = () => {
         .from("orders")
         .insert({
           restaurant_id: profile.restaurant_id,
-          customer_name: posOrderSource,
+          customer_name: orderSource,
           items: currentOrderItems.map(item => `${item.quantity}x ${item.name}`),
           total: currentOrderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0),
           status: "pending"
@@ -187,6 +189,12 @@ const POSMode = () => {
         description: "Failed to send order to kitchen",
       });
     }
+  };
+
+  const handlePaymentSuccess = (customerName: string, customerPhone: string) => {
+    handleSendToKitchen({ name: customerName, phone: customerPhone });
+    setShowPaymentDialog(false);
+    setCurrentOrderItems([]);
   };
 
   return (
@@ -249,7 +257,7 @@ const POSMode = () => {
           onUpdateQuantity={handleUpdateQuantity}
           onRemoveItem={handleRemoveItem}
           onHoldOrder={handleHoldOrder}
-          onSendToKitchen={handleSendToKitchen}
+          onSendToKitchen={() => handleSendToKitchen()}
           onProceedToPayment={() => setShowPaymentDialog(true)}
           onClearOrder={handleClearOrder}
         />
@@ -259,10 +267,7 @@ const POSMode = () => {
         isOpen={showPaymentDialog}
         onClose={() => setShowPaymentDialog(false)}
         orderItems={currentOrderItems}
-        onSuccess={() => {
-          setShowPaymentDialog(false);
-          setCurrentOrderItems([]);
-        }}
+        onSuccess={handlePaymentSuccess}
       />
     </div>
   );
