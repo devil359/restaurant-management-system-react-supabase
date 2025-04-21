@@ -9,6 +9,7 @@ import "./App.css";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import Sidebar from "./components/Layout/Sidebar";
 import { useIsMobile } from "./hooks/use-mobile";
+import { SidebarProvider } from "./components/ui/sidebar";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -34,14 +35,16 @@ function App() {
               {/* You can add other Routes here if needed */}
               <Route path="*" element={
                 <div className="flex h-screen w-full">
-                  <Sidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
-                  <main
-                    className={`flex-1 overflow-auto transition-all duration-300 ${
-                      isCollapsed ? "ml-16" : "ml-64"
-                    }`}
-                  >
-                    <AppRoutes />
-                  </main>
+                  <SidebarProvider>
+                    <Sidebar />
+                    <main
+                      className={`flex-1 overflow-auto transition-all duration-300 ${
+                        isCollapsed ? "ml-16" : "ml-64"
+                      }`}
+                    >
+                      <AppRoutes />
+                    </main>
+                  </SidebarProvider>
                 </div>
               } />
             </ReactRoutes>

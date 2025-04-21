@@ -18,3 +18,11 @@ export interface OrderItem {
   quantity: number;
   modifiers?: string[];
 }
+
+export interface TableData {
+  id: string;
+  name: string;
+  status: string;
+  capacity: number;
+  restaurant_id: string;
+}
