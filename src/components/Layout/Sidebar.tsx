@@ -10,7 +10,7 @@ import {
   BarChart3,
   Users,
   Store,
-  Kitchen,
+  ChefHat,
   LogOut,
   Utensils,
   Menu,
@@ -95,7 +95,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }: SidebarProps) => {
         />
         <NavItem
           to="/kitchen"
-          icon={<Kitchen />}
+          icon={<ChefHat />}
           text="Kitchen"
           active={isActive("/kitchen")}
           isCollapsed={isCollapsed}
