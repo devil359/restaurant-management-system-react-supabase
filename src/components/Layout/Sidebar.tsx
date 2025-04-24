@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -17,6 +18,7 @@ import {
   LayoutDashboard,
   Bot,
   ChefHat,
+  UserIcon,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { useQuery } from "@tanstack/react-query";
@@ -112,8 +114,8 @@ const Sidebar = () => {
     { name: "Menu", href: "/menu", icon: Utensils, component: "menu" },
     { name: "Orders", href: "/orders", icon: ShoppingCart, component: "orders" },
     { name: "Tables", href: "/tables", icon: Coffee, component: "tables" },
-    { name: "Customers", href: "/customers", icon: Users, component: "customers" },
     { name: "Staff", href: "/staff", icon: Users, component: "staff" },
+    { name: "Customers", href: "/customers", icon: Users, component: "customers" },
     { name: "Inventory", href: "/inventory", icon: PackageOpen, component: "inventory" },
     { name: "Rooms", href: "/rooms", icon: Bed, component: "rooms" },
     { name: "Suppliers", href: "/suppliers", icon: Truck, component: "suppliers" },
