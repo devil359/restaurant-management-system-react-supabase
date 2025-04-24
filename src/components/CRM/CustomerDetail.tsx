@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +17,7 @@ import { Customer, CustomerOrder, CustomerNote, CustomerActivity, LoyaltyTransac
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { LoyaltyBadge } from "@/components/Customers/LoyaltyBadge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface CustomerDetailProps {
   customer: Customer | null;
@@ -51,6 +52,73 @@ const CustomerDetail = ({
   const [loyaltyTransactions, setLoyaltyTransactions] = useState<LoyaltyTransaction[]>([]);
   const [loadingTransactions, setLoadingTransactions] = useState(false);
   const [showTransactionHistory, setShowTransactionHistory] = useState(false);
+  const [customerNotes, setCustomerNotes] = useState<CustomerNote[]>([]);
+  const [customerActivities, setCustomerActivities] = useState<CustomerActivity[]>([]);
+  const [isLoadingNotes, setIsLoadingNotes] = useState(false);
+  const [isLoadingActivities, setIsLoadingActivities] = useState(false);
+  const [preferences, setPreferences] = useState<string>(customer?.preferences || '');
+  const [isEditingPreferences, setIsEditingPreferences] = useState(false);
+  
+  // Load customer notes from database
+  useEffect(() => {
+    if (customer) {
+      loadCustomerNotes();
+      loadCustomerActivities();
+    }
+  }, [customer?.id]);
+  
+  const loadCustomerNotes = async () => {
+    if (!customer) return;
+    
+    setIsLoadingNotes(true);
+    try {
+      const { data, error } = await supabase
+        .from("customer_notes")
+        .select("*")
+        .eq("customer_id", customer.id)
+        .order("created_at", { ascending: false });
+        
+      if (error) throw error;
+      
+      setCustomerNotes(data || []);
+    } catch (error) {
+      console.error("Error loading customer notes:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load customer notes."
+      });
+    } finally {
+      setIsLoadingNotes(false);
+    }
+  };
+  
+  // Load customer activities from database
+  const loadCustomerActivities = async () => {
+    if (!customer) return;
+    
+    setIsLoadingActivities(true);
+    try {
+      const { data, error } = await supabase
+        .from("customer_activities")
+        .select("*")
+        .eq("customer_id", customer.id)
+        .order("created_at", { ascending: false });
+        
+      if (error) throw error;
+      
+      setCustomerActivities(data || []);
+    } catch (error) {
+      console.error("Error loading customer activities:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load customer activities."
+      });
+    } finally {
+      setIsLoadingActivities(false);
+    }
+  };
   
   // Enroll customer in loyalty program
   const enrollCustomer = useMutation({
@@ -59,10 +127,21 @@ const CustomerDetail = ({
       
       const { error } = await supabase
         .from("customers")
-        .update({ loyalty_enrolled: true })
+        .update({ 
+          loyalty_enrolled: true,
+          loyalty_points: 0
+        })
         .eq("id", customer.id);
         
       if (error) throw error;
+      
+      // Create activity entry for enrollment
+      await supabase.from("customer_activities").insert({
+        customer_id: customer.id,
+        restaurant_id: customer.restaurant_id,
+        activity_type: "promotion_sent",
+        description: "Enrolled in loyalty program"
+      });
       
       return { success: true };
     },
@@ -72,6 +151,10 @@ const CustomerDetail = ({
         title: "Customer Enrolled",
         description: "Customer has been successfully enrolled in the loyalty program."
       });
+      // Update the current customer in memory with enrolled status
+      if (customer) {
+        customer.loyalty_enrolled = true;
+      }
     },
     onError: (error) => {
       console.error("Error enrolling customer:", error);
@@ -99,6 +182,14 @@ const CustomerDetail = ({
         
       if (error) throw error;
       
+      // Create activity entry for unenrollment
+      await supabase.from("customer_activities").insert({
+        customer_id: customer.id,
+        restaurant_id: customer.restaurant_id,
+        activity_type: "promotion_sent",
+        description: "Removed from loyalty program"
+      });
+      
       return { success: true };
     },
     onSuccess: () => {
@@ -107,6 +198,10 @@ const CustomerDetail = ({
         title: "Customer Unenrolled",
         description: "Customer has been removed from the loyalty program."
       });
+      // Update the current customer in memory with unenrolled status
+      if (customer) {
+        customer.loyalty_enrolled = false;
+      }
     },
     onError: (error) => {
       console.error("Error unenrolling customer:", error);
@@ -123,8 +218,6 @@ const CustomerDetail = ({
     mutationFn: async ({ amount, notes }: { amount: number; notes: string }) => {
       if (!customer) throw new Error("No customer selected");
       if (amount === 0) throw new Error("Points amount cannot be zero");
-      
-      const { data: user } = await supabase.auth.getUser();
       
       // Get current points
       const { data: currentCustomer, error: fetchError } = await supabase
@@ -147,6 +240,8 @@ const CustomerDetail = ({
         
       if (updateError) throw updateError;
       
+      const { data: userData } = await supabase.auth.getUser();
+      
       // Record transaction
       const { error: transactionError } = await supabase
         .from("loyalty_transactions")
@@ -157,10 +252,18 @@ const CustomerDetail = ({
           points: amount,
           source: 'manual',
           notes: notes,
-          created_by: user.data?.user?.id
+          created_by: userData.user?.id
         });
         
       if (transactionError) throw transactionError;
+      
+      // Add activity entry
+      await supabase.from("customer_activities").insert({
+        customer_id: customer.id,
+        restaurant_id: customer.restaurant_id,
+        activity_type: "promotion_sent",
+        description: `${amount > 0 ? 'Added' : 'Removed'} ${Math.abs(amount)} loyalty points manually`
+      });
       
       return { success: true };
     },
@@ -251,20 +354,205 @@ const CustomerDetail = ({
   
   const nextTierInfo = getNextTierInfo();
   
-  const handleAddNote = () => {
-    if (customer && newNote) {
-      onAddNote(customer.id, newNote);
-      setNewNote("");
+  // Handle adding notes
+  const handleAddNote = async () => {
+    if (!customer || !newNote) return;
+    
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      const createdBy = userData.user?.id || 'Unknown';
+      
+      const { data, error } = await supabase
+        .from('customer_notes')
+        .insert({
+          customer_id: customer.id,
+          restaurant_id: customer.restaurant_id,
+          content: newNote,
+          created_by: createdBy
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      // Add activity for note
+      await supabase.from('customer_activities').insert({
+        customer_id: customer.id,
+        restaurant_id: customer.restaurant_id,
+        activity_type: 'note_added',
+        description: 'Staff added note about customer'
+      });
+      
+      setNewNote('');
+      setCustomerNotes(prev => [data, ...prev]);
+      
+      toast({
+        title: "Note Added",
+        description: "Your note has been added successfully."
+      });
+      
+      // Also reload activities to show the note activity
+      loadCustomerActivities();
+    } catch (error) {
+      console.error('Error adding note:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to add note."
+      });
     }
   };
 
-  const handleAddTag = (e: React.FormEvent) => {
+  // Handle adding tags
+  const handleAddTag = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (customer && newTag) {
-      onAddTag(customer.id, newTag);
-      setNewTag("");
+    if (!customer || !newTag) return;
+
+    try {
+      // Check if customer already has this tag
+      if (customer.tags && customer.tags.includes(newTag)) {
+        toast({
+          variant: "destructive",
+          title: "Duplicate Tag",
+          description: "This tag already exists for this customer."
+        });
+        return;
+      }
+
+      // Create new tags array
+      const updatedTags = customer.tags ? [...customer.tags, newTag] : [newTag];
+
+      // Update customer tags in database
+      const { error } = await supabase
+        .from('customers')
+        .update({ tags: updatedTags })
+        .eq('id', customer.id);
+
+      if (error) throw error;
+
+      // Update local state
+      if (customer) {
+        customer.tags = updatedTags;
+      }
+
+      // Add activity
+      await supabase.from('customer_activities').insert({
+        customer_id: customer.id,
+        restaurant_id: customer.restaurant_id,
+        activity_type: 'tag_added',
+        description: `Added tag "${newTag}"`
+      });
+
+      setNewTag('');
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      loadCustomerActivities();
+
+      toast({
+        title: "Tag Added",
+        description: "Tag has been added to the customer."
+      });
+    } catch (error) {
+      console.error('Error adding tag:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to add tag."
+      });
     }
   };
+
+  // Handle removing tags
+  const handleRemoveTag = async (tag: string) => {
+    if (!customer) return;
+
+    try {
+      // Create new tags array without the removed tag
+      const updatedTags = customer.tags.filter(t => t !== tag);
+
+      // Update customer tags in database
+      const { error } = await supabase
+        .from('customers')
+        .update({ tags: updatedTags })
+        .eq('id', customer.id);
+
+      if (error) throw error;
+
+      // Update local state
+      if (customer) {
+        customer.tags = updatedTags;
+      }
+
+      // Add activity
+      await supabase.from('customer_activities').insert({
+        customer_id: customer.id,
+        restaurant_id: customer.restaurant_id,
+        activity_type: 'tag_removed',
+        description: `Removed tag "${tag}"`
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      loadCustomerActivities();
+
+      toast({
+        title: "Tag Removed",
+        description: "Tag has been removed from the customer."
+      });
+    } catch (error) {
+      console.error('Error removing tag:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to remove tag."
+      });
+    }
+  };
+
+  // Handle updating preferences
+  const handleUpdatePreferences = async () => {
+    if (!customer) return;
+
+    try {
+      const { error } = await supabase
+        .from('customers')
+        .update({ preferences: preferences })
+        .eq('id', customer.id);
+
+      if (error) throw error;
+
+      // Update local state
+      if (customer) {
+        customer.preferences = preferences;
+      }
+
+      setIsEditingPreferences(false);
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+
+      toast({
+        title: "Preferences Updated",
+        description: "Customer preferences have been updated successfully."
+      });
+    } catch (error) {
+      console.error('Error updating preferences:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update preferences."
+      });
+    }
+  };
+
+  // Handle canceling preference edit
+  const handleCancelPreferences = () => {
+    setPreferences(customer?.preferences || '');
+    setIsEditingPreferences(false);
+  };
+
+  // Initialize preferences when customer changes
+  useEffect(() => {
+    if (customer) {
+      setPreferences(customer.preferences || '');
+    }
+  }, [customer?.id, customer?.preferences]);
 
   if (!customer) {
     return (
@@ -484,7 +772,7 @@ const CustomerDetail = ({
                             {tag}
                             <button 
                               className="ml-1 h-4 w-4 rounded-full hover:bg-primary/20 inline-flex items-center justify-center" 
-                              onClick={() => onRemoveTag(customer.id, tag)}
+                              onClick={() => handleRemoveTag(tag)}
                             >
                               ×
                             </button>
@@ -511,16 +799,47 @@ const CustomerDetail = ({
                 </CardContent>
               </Card>
               
-              {customer.preferences && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Preferences</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p>{customer.preferences}</p>
-                  </CardContent>
-                </Card>
-              )}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex justify-between">
+                    <span>Preferences</span>
+                    {!isEditingPreferences && (
+                      <Button 
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setIsEditingPreferences(true)}
+                      >
+                        <PenSquare className="h-4 w-4 mr-2" />
+                        Edit
+                      </Button>
+                    )}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {isEditingPreferences ? (
+                    <div className="space-y-4">
+                      <Textarea 
+                        value={preferences} 
+                        onChange={(e) => setPreferences(e.target.value)} 
+                        placeholder="Customer preferences, dietary restrictions, etc."
+                        rows={4}
+                      />
+                      <div className="flex justify-end space-x-2">
+                        <Button variant="outline" onClick={handleCancelPreferences}>
+                          Cancel
+                        </Button>
+                        <Button onClick={handleUpdatePreferences}>
+                          Save
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm">
+                      {customer.preferences || "No preferences added yet."}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
               
               <Card>
                 <CardHeader>
@@ -637,7 +956,14 @@ const CustomerDetail = ({
                     </div>
                   </div>
                   
-                  {notes.length === 0 ? (
+                  {isLoadingNotes ? (
+                    <div className="flex justify-center py-4">
+                      <svg className="animate-spin h-6 w-6 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    </div>
+                  ) : customerNotes.length === 0 ? (
                     <div className="text-center py-6">
                       <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
                       <h3 className="text-lg font-medium">No Notes</h3>
@@ -647,7 +973,7 @@ const CustomerDetail = ({
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {notes.map((note) => (
+                      {customerNotes.map((note) => (
                         <div key={note.id} className="border rounded-md p-4">
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
@@ -677,7 +1003,14 @@ const CustomerDetail = ({
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {activities.length === 0 ? (
+                  {isLoadingActivities ? (
+                    <div className="flex justify-center py-4">
+                      <svg className="animate-spin h-6 w-6 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    </div>
+                  ) : customerActivities.length === 0 ? (
                     <div className="text-center py-6">
                       <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
                       <h3 className="text-lg font-medium">No Activity</h3>
@@ -689,7 +1022,7 @@ const CustomerDetail = ({
                     <div className="relative ps-4">
                       <div className="absolute left-0 top-2 bottom-2 w-px bg-border"></div>
                       <div className="space-y-6">
-                        {activities.map((activity) => (
+                        {customerActivities.map((activity) => (
                           <div key={activity.id} className="relative">
                             <div className="absolute -left-4 mt-1 w-2 h-2 rounded-full bg-primary"></div>
                             <div>

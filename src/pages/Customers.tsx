@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -48,7 +49,7 @@ const Customers = () => {
         birthday: customer.birthday || null,
         created_at: customer.created_at,
         restaurant_id: customer.restaurant_id,
-        loyalty_points: customer.loyalty_points,
+        loyalty_points: customer.loyalty_points || 0,
         loyalty_tier: calculateLoyaltyTier(
           customer.total_spent || 0,
           customer.visit_count || 0,
@@ -59,14 +60,16 @@ const Customers = () => {
         last_visit_date: customer.last_visit_date || null,
         total_spent: customer.total_spent || 0,
         visit_count: customer.visit_count || 0,
-        average_order_value: customer.average_order_value || 0
+        average_order_value: customer.average_order_value || 0,
+        loyalty_enrolled: customer.loyalty_enrolled || false,
+        loyalty_tier_id: customer.loyalty_tier_id
       }));
     },
   });
   
   // Fetch customer orders
   const { data: customerOrders = [], isLoading: isLoadingOrders } = useQuery({
-    queryKey: ["customer-orders", selectedCustomer?.name],
+    queryKey: ["customer-orders", selectedCustomer?.id],
     queryFn: async () => {
       if (!selectedCustomer) return [];
       
@@ -100,55 +103,76 @@ const Customers = () => {
     enabled: !!selectedCustomer,
   });
 
-  // Mock data for customer notes (to be implemented with real backend later)
-  const mockNotes: CustomerNote[] = selectedCustomer ? [
-    {
-      id: '1',
-      customer_id: selectedCustomer.id,
-      content: 'Customer prefers corner tables near the window.',
-      created_at: new Date(new Date().setDate(new Date().getDate() - 14)).toISOString(),
-      created_by: 'John Manager'
+  // Fetch customer notes
+  const { data: customerNotes = [], isLoading: isLoadingNotes } = useQuery({
+    queryKey: ["customer-notes", selectedCustomer?.id],
+    queryFn: async () => {
+      if (!selectedCustomer) return [];
+      
+      const { data, error } = await supabase
+        .from("customer_notes")
+        .select("*")
+        .eq("customer_id", selectedCustomer.id)
+        .order("created_at", { ascending: false });
+        
+      if (error) throw error;
+      
+      return data as CustomerNote[];
     },
-    {
-      id: '2',
-      customer_id: selectedCustomer.id,
-      content: 'Allergic to nuts. Always confirm ingredients with kitchen.',
-      created_at: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString(),
-      created_by: 'Sarah Server'
-    }
-  ] : [];
+    enabled: !!selectedCustomer,
+  });
 
-  // Mock data for customer activities (to be implemented with real backend later)
-  const mockActivities: CustomerActivity[] = selectedCustomer ? [
-    {
-      id: '1',
-      customer_id: selectedCustomer.id,
-      activity_type: 'order_placed',
-      description: 'Placed an order for ₹2,350',
-      created_at: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString()
+  // Fetch customer activities
+  const { data: customerActivities = [], isLoading: isLoadingActivities } = useQuery({
+    queryKey: ["customer-activities", selectedCustomer?.id],
+    queryFn: async () => {
+      if (!selectedCustomer) return [];
+      
+      const { data, error } = await supabase
+        .from("customer_activities")
+        .select("*")
+        .eq("customer_id", selectedCustomer.id)
+        .order("created_at", { ascending: false });
+        
+      if (error) throw error;
+      
+      return data as CustomerActivity[];
     },
-    {
-      id: '2',
-      customer_id: selectedCustomer.id,
-      activity_type: 'email_sent',
-      description: 'Sent birthday discount promotion email',
-      created_at: new Date(new Date().setDate(new Date().getDate() - 12)).toISOString()
-    },
-    {
-      id: '3',
-      customer_id: selectedCustomer.id,
-      activity_type: 'note_added',
-      description: 'Staff added note about seating preferences',
-      created_at: new Date(new Date().setDate(new Date().getDate() - 14)).toISOString()
-    },
-    {
-      id: '4',
-      customer_id: selectedCustomer.id,
-      activity_type: 'tag_added',
-      description: 'Added tag "Wine Enthusiast"',
-      created_at: new Date(new Date().setDate(new Date().getDate() - 20)).toISOString()
-    }
-  ] : [];
+    enabled: !!selectedCustomer,
+  });
+
+  // Create customer_notes and customer_activities tables if they don't exist
+  useEffect(() => {
+    const createTablesIfNeeded = async () => {
+      try {
+        // Check if customer_notes table exists
+        const { error: notesExistError } = await supabase
+          .from('customer_notes')
+          .select('id')
+          .limit(1);
+          
+        if (notesExistError && notesExistError.message.includes('does not exist')) {
+          // Create customer_notes table
+          await supabase.rpc('create_customer_notes_table');
+        }
+        
+        // Check if customer_activities table exists
+        const { error: activitiesExistError } = await supabase
+          .from('customer_activities')
+          .select('id')
+          .limit(1);
+          
+        if (activitiesExistError && activitiesExistError.message.includes('does not exist')) {
+          // Create customer_activities table
+          await supabase.rpc('create_customer_activities_table');
+        }
+      } catch (error) {
+        console.error("Error creating tables:", error);
+      }
+    };
+    
+    createTablesIfNeeded();
+  }, []);
 
   // Mutation for adding/updating customer
   const saveCustomer = useMutation({
@@ -198,7 +222,12 @@ const Customers = () => {
               birthday: customer.birthday,
               preferences: customer.preferences,
               restaurant_id: userProfile.restaurant_id,
-              tags: customer.tags || []
+              tags: customer.tags || [],
+              loyalty_enrolled: false,
+              loyalty_points: 0,
+              total_spent: 0,
+              visit_count: 0,
+              average_order_value: 0
             }
           ])
           .select();
@@ -271,19 +300,165 @@ const Customers = () => {
     // This would typically update a state that the CustomerList would use for filtering
   };
 
-  const handleAddNote = (customerId: string, content: string) => {
-    // This would typically be implemented as a backend call
-    console.log("Add note for customer:", customerId, "Content:", content);
+  // Handle adding notes
+  const handleAddNote = async (customerId: string, content: string) => {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      
+      // Get customer info for restaurant_id
+      const { data: customerData, error: customerError } = await supabase
+        .from('customers')
+        .select('restaurant_id')
+        .eq('id', customerId)
+        .single();
+        
+      if (customerError) throw customerError;
+      
+      // Insert note
+      const { error } = await supabase
+        .from('customer_notes')
+        .insert({
+          customer_id: customerId,
+          restaurant_id: customerData.restaurant_id,
+          content: content,
+          created_by: userData.user?.email || 'Staff'
+        });
+        
+      if (error) throw error;
+      
+      // Record activity
+      await supabase
+        .from('customer_activities')
+        .insert({
+          customer_id: customerId,
+          restaurant_id: customerData.restaurant_id,
+          activity_type: 'note_added',
+          description: 'Staff added note about customer'
+        });
+      
+      queryClient.invalidateQueries({ queryKey: ["customer-notes", customerId] });
+      queryClient.invalidateQueries({ queryKey: ["customer-activities", customerId] });
+      
+      toast({
+        title: "Note Added",
+        description: "Your note has been successfully added."
+      });
+    } catch (error) {
+      console.error("Error adding note:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to add note."
+      });
+    }
   };
 
-  const handleAddTag = (customerId: string, tag: string) => {
-    // This would typically be implemented as a backend call
-    console.log("Add tag for customer:", customerId, "Tag:", tag);
+  // Handle adding tag
+  const handleAddTag = async (customerId: string, tag: string) => {
+    if (!selectedCustomer) return;
+    
+    try {
+      // Check if customer already has this tag
+      if (selectedCustomer.tags && selectedCustomer.tags.includes(tag)) {
+        toast({
+          variant: "destructive",
+          title: "Duplicate Tag",
+          description: "This tag already exists for this customer."
+        });
+        return;
+      }
+
+      // Create new tags array
+      const updatedTags = selectedCustomer.tags ? [...selectedCustomer.tags, tag] : [tag];
+
+      // Update customer tags in database
+      const { error } = await supabase
+        .from('customers')
+        .update({ tags: updatedTags })
+        .eq('id', customerId);
+
+      if (error) throw error;
+
+      // Add activity
+      await supabase
+        .from('customer_activities')
+        .insert({
+          customer_id: customerId,
+          restaurant_id: selectedCustomer.restaurant_id,
+          activity_type: 'tag_added',
+          description: `Added tag "${tag}"`
+        });
+
+      // Update selected customer in local state
+      setSelectedCustomer({
+        ...selectedCustomer,
+        tags: updatedTags
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      queryClient.invalidateQueries({ queryKey: ["customer-activities", customerId] });
+
+      toast({
+        title: "Tag Added",
+        description: "Tag has been added to the customer."
+      });
+    } catch (error) {
+      console.error('Error adding tag:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to add tag."
+      });
+    }
   };
 
-  const handleRemoveTag = (customerId: string, tag: string) => {
-    // This would typically be implemented as a backend call
-    console.log("Remove tag for customer:", customerId, "Tag:", tag);
+  // Handle removing tag
+  const handleRemoveTag = async (customerId: string, tag: string) => {
+    if (!selectedCustomer) return;
+    
+    try {
+      // Create new tags array without the removed tag
+      const updatedTags = selectedCustomer.tags.filter(t => t !== tag);
+
+      // Update customer tags in database
+      const { error } = await supabase
+        .from('customers')
+        .update({ tags: updatedTags })
+        .eq('id', customerId);
+
+      if (error) throw error;
+
+      // Add activity
+      await supabase
+        .from('customer_activities')
+        .insert({
+          customer_id: customerId,
+          restaurant_id: selectedCustomer.restaurant_id,
+          activity_type: 'tag_removed',
+          description: `Removed tag "${tag}"`
+        });
+
+      // Update selected customer in local state
+      setSelectedCustomer({
+        ...selectedCustomer,
+        tags: updatedTags
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      queryClient.invalidateQueries({ queryKey: ["customer-activities", customerId] });
+
+      toast({
+        title: "Tag Removed",
+        description: "Tag has been removed from the customer."
+      });
+    } catch (error) {
+      console.error('Error removing tag:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to remove tag."
+      });
+    }
   };
 
   return (
@@ -339,9 +514,9 @@ const Customers = () => {
               <CustomerDetail
                 customer={selectedCustomer}
                 orders={customerOrders}
-                notes={mockNotes}
-                activities={mockActivities}
-                loading={isLoadingOrders}
+                notes={customerNotes}
+                activities={customerActivities}
+                loading={isLoadingOrders || isLoadingNotes || isLoadingActivities}
                 onEditCustomer={handleEditCustomer}
                 onAddNote={handleAddNote}
                 onAddTag={handleAddTag}

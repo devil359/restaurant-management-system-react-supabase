@@ -16,6 +16,8 @@ export interface Customer {
   total_spent: number;
   visit_count: number;
   average_order_value: number;
+  loyalty_enrolled: boolean;
+  loyalty_tier_id?: string | null;
 }
 
 export type LoyaltyTierType = 'None' | 'Bronze' | 'Silver' | 'Gold' | 'Platinum' | 'Diamond';
