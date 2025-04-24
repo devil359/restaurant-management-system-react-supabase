@@ -44,3 +44,64 @@ export interface CustomerActivity {
   description: string;
   created_at: string;
 }
+
+// Loyalty program types
+export interface LoyaltyProgram {
+  id: string;
+  restaurant_id: string;
+  is_enabled: boolean;
+  points_per_amount: number;
+  amount_per_point: number;
+  points_expiry_days: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LoyaltyTier {
+  id: string;
+  restaurant_id: string;
+  name: string;
+  points_required: number;
+  benefits: string[];
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LoyaltyReward {
+  id: string;
+  restaurant_id: string;
+  name: string;
+  description: string | null;
+  points_required: number;
+  reward_type: 'discount_amount' | 'discount_percentage' | 'free_item';
+  reward_value: number;
+  tier_id: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LoyaltyTransaction {
+  id: string;
+  customer_id: string;
+  restaurant_id: string;
+  transaction_type: 'earn' | 'redeem' | 'adjust' | 'expire';
+  points: number;
+  source: 'order' | 'manual' | 'system';
+  source_id: string | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface LoyaltyRedemption {
+  id: string;
+  customer_id: string;
+  restaurant_id: string;
+  reward_id: string;
+  order_id: string;
+  points_used: number;
+  discount_applied: number;
+  created_at: string;
+}

@@ -18,7 +18,10 @@ export type Database = {
           email: string | null
           id: string
           last_visit_date: string | null
+          loyalty_enrolled: boolean | null
           loyalty_points: number
+          loyalty_points_last_updated: string | null
+          loyalty_tier_id: string | null
           name: string
           phone: string | null
           preferences: string | null
@@ -35,7 +38,10 @@ export type Database = {
           email?: string | null
           id?: string
           last_visit_date?: string | null
+          loyalty_enrolled?: boolean | null
           loyalty_points?: number
+          loyalty_points_last_updated?: string | null
+          loyalty_tier_id?: string | null
           name: string
           phone?: string | null
           preferences?: string | null
@@ -52,7 +58,10 @@ export type Database = {
           email?: string | null
           id?: string
           last_visit_date?: string | null
+          loyalty_enrolled?: boolean | null
           loyalty_points?: number
+          loyalty_points_last_updated?: string | null
+          loyalty_tier_id?: string | null
           name?: string
           phone?: string | null
           preferences?: string | null
@@ -62,6 +71,13 @@ export type Database = {
           visit_count?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "customers_loyalty_tier_id_fkey"
+            columns: ["loyalty_tier_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_tiers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "customers_restaurant_id_fkey"
             columns: ["restaurant_id"]
@@ -203,6 +219,261 @@ export type Database = {
           },
           {
             foreignKeyName: "kitchen_orders_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loyalty_programs: {
+        Row: {
+          amount_per_point: number
+          created_at: string
+          id: string
+          is_enabled: boolean | null
+          points_expiry_days: number | null
+          points_per_amount: number
+          restaurant_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount_per_point?: number
+          created_at?: string
+          id?: string
+          is_enabled?: boolean | null
+          points_expiry_days?: number | null
+          points_per_amount?: number
+          restaurant_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount_per_point?: number
+          created_at?: string
+          id?: string
+          is_enabled?: boolean | null
+          points_expiry_days?: number | null
+          points_per_amount?: number
+          restaurant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_programs_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: true
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loyalty_redemptions: {
+        Row: {
+          created_at: string
+          customer_id: string
+          discount_applied: number
+          id: string
+          order_id: string
+          points_used: number
+          restaurant_id: string
+          reward_id: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          discount_applied: number
+          id?: string
+          order_id: string
+          points_used: number
+          restaurant_id: string
+          reward_id: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          discount_applied?: number
+          id?: string
+          order_id?: string
+          points_used?: number
+          restaurant_id?: string
+          reward_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_redemptions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_redemptions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_redemptions_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_redemptions_reward_id_fkey"
+            columns: ["reward_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_rewards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loyalty_rewards: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          points_required: number
+          restaurant_id: string
+          reward_type: string
+          reward_value: number
+          tier_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          points_required: number
+          restaurant_id: string
+          reward_type: string
+          reward_value: number
+          tier_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          points_required?: number
+          restaurant_id?: string
+          reward_type?: string
+          reward_value?: number
+          tier_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_rewards_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_rewards_tier_id_fkey"
+            columns: ["tier_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_tiers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loyalty_tiers: {
+        Row: {
+          benefits: Json | null
+          created_at: string
+          display_order: number
+          id: string
+          name: string
+          points_required: number
+          restaurant_id: string
+          updated_at: string
+        }
+        Insert: {
+          benefits?: Json | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          name: string
+          points_required: number
+          restaurant_id: string
+          updated_at?: string
+        }
+        Update: {
+          benefits?: Json | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          name?: string
+          points_required?: number
+          restaurant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_tiers_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loyalty_transactions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          id: string
+          notes: string | null
+          points: number
+          restaurant_id: string
+          source: string
+          source_id: string | null
+          transaction_type: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          id?: string
+          notes?: string | null
+          points: number
+          restaurant_id: string
+          source: string
+          source_id?: string | null
+          transaction_type: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          id?: string
+          notes?: string | null
+          points?: number
+          restaurant_id?: string
+          source?: string
+          source_id?: string | null
+          transaction_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_transactions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_transactions_restaurant_id_fkey"
             columns: ["restaurant_id"]
             isOneToOne: false
             referencedRelation: "restaurants"
@@ -1133,6 +1404,10 @@ export type Database = {
       }
     }
     Functions: {
+      calculate_customer_tier: {
+        Args: { customer_points: number; restaurant_id_param: string }
+        Returns: string
+      }
       has_active_subscription: {
         Args: { restaurant_id: string }
         Returns: boolean

@@ -1,18 +1,22 @@
 
-import React, { useState } from 'react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import React, { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { format } from "date-fns";
+import { User, Phone, Mail, MapPin, Calendar, Tag, PenSquare, Plus, Clock, FileText, Trash2, ShoppingCart, MessageSquare, Award, Coins, CreditCard } from "lucide-react";
+import { Customer, CustomerOrder, CustomerNote, CustomerActivity, LoyaltyTransaction } from "@/types/customer";
 import { Separator } from "@/components/ui/separator";
-import { 
-  Edit, Mail, Phone, MapPin, Calendar, Settings, 
-  Tag, Plus, Trash2, Send, MessageSquare, FileText, 
-  AlertCircle, Clock, BarChart3, Coffee, User
-} from "lucide-react";
-import { formatDate, formatCurrency, calculateDaysSince } from "@/utils/formatters";
-import { Customer, CustomerOrder, CustomerNote, CustomerActivity } from "@/types/customer";
-import LoyaltyBadge from "@/components/Customers/LoyaltyBadge";
+import { Progress } from "@/components/ui/progress";
+import { LoyaltyBadge } from "@/components/Customers/LoyaltyBadge";
 
 interface CustomerDetailProps {
   customer: Customer | null;
@@ -21,452 +25,886 @@ interface CustomerDetailProps {
   activities: CustomerActivity[];
   loading: boolean;
   onEditCustomer: (customer: Customer) => void;
-  onAddNote: (customerId: string, note: string) => void;
+  onAddNote: (customerId: string, content: string) => void;
   onAddTag: (customerId: string, tag: string) => void;
   onRemoveTag: (customerId: string, tag: string) => void;
 }
 
-const CustomerDetail: React.FC<CustomerDetailProps> = ({
+const CustomerDetail = ({
   customer,
-  orders = [],
-  notes = [],
-  activities = [],
+  orders,
+  notes,
+  activities,
   loading,
   onEditCustomer,
   onAddNote,
   onAddTag,
-  onRemoveTag,
-}) => {
-  const [activeTab, setActiveTab] = useState('overview');
+  onRemoveTag
+}: CustomerDetailProps) => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [newNote, setNewNote] = useState("");
+  const [newTag, setNewTag] = useState("");
+  const [loyaltyDialogOpen, setLoyaltyDialogOpen] = useState(false);
+  const [manualPointsAmount, setManualPointsAmount] = useState(0);
+  const [manualPointsNote, setManualPointsNote] = useState("");
+  const [loyaltyTransactions, setLoyaltyTransactions] = useState<LoyaltyTransaction[]>([]);
+  const [loadingTransactions, setLoadingTransactions] = useState(false);
+  const [showTransactionHistory, setShowTransactionHistory] = useState(false);
   
-  if (loading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <div className="animate-pulse space-y-4 w-full max-w-md">
-          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
-          <div className="h-40 bg-gray-200 dark:bg-gray-700 rounded"></div>
-          <div className="h-40 bg-gray-200 dark:bg-gray-700 rounded"></div>
-        </div>
-      </div>
-    );
-  }
+  // Enroll customer in loyalty program
+  const enrollCustomer = useMutation({
+    mutationFn: async () => {
+      if (!customer) throw new Error("No customer selected");
+      
+      const { error } = await supabase
+        .from("customers")
+        .update({ loyalty_enrolled: true })
+        .eq("id", customer.id);
+        
+      if (error) throw error;
+      
+      return { success: true };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      toast({
+        title: "Customer Enrolled",
+        description: "Customer has been successfully enrolled in the loyalty program."
+      });
+    },
+    onError: (error) => {
+      console.error("Error enrolling customer:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to enroll customer in loyalty program."
+      });
+    }
+  });
+  
+  // Unenroll customer from loyalty program
+  const unenrollCustomer = useMutation({
+    mutationFn: async () => {
+      if (!customer) throw new Error("No customer selected");
+      
+      const { error } = await supabase
+        .from("customers")
+        .update({ 
+          loyalty_enrolled: false,
+          loyalty_points: 0,
+          loyalty_tier_id: null
+        })
+        .eq("id", customer.id);
+        
+      if (error) throw error;
+      
+      return { success: true };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      toast({
+        title: "Customer Unenrolled",
+        description: "Customer has been removed from the loyalty program."
+      });
+    },
+    onError: (error) => {
+      console.error("Error unenrolling customer:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to unenroll customer from loyalty program."
+      });
+    }
+  });
+  
+  // Add manual loyalty points
+  const addManualPoints = useMutation({
+    mutationFn: async ({ amount, notes }: { amount: number; notes: string }) => {
+      if (!customer) throw new Error("No customer selected");
+      if (amount === 0) throw new Error("Points amount cannot be zero");
+      
+      const { data: user } = await supabase.auth.getUser();
+      
+      // Get current points
+      const { data: currentCustomer, error: fetchError } = await supabase
+        .from("customers")
+        .select("loyalty_points")
+        .eq("id", customer.id)
+        .single();
+        
+      if (fetchError) throw fetchError;
+      
+      const newPoints = (currentCustomer?.loyalty_points || 0) + amount;
+      
+      if (newPoints < 0) throw new Error("Cannot reduce points below zero");
+      
+      // Update customer points
+      const { error: updateError } = await supabase
+        .from("customers")
+        .update({ loyalty_points: newPoints })
+        .eq("id", customer.id);
+        
+      if (updateError) throw updateError;
+      
+      // Record transaction
+      const { error: transactionError } = await supabase
+        .from("loyalty_transactions")
+        .insert({
+          customer_id: customer.id,
+          restaurant_id: customer.restaurant_id,
+          transaction_type: amount > 0 ? 'earn' : 'adjust',
+          points: amount,
+          source: 'manual',
+          notes: notes,
+          created_by: user.data?.user?.id
+        });
+        
+      if (transactionError) throw transactionError;
+      
+      return { success: true };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      setManualPointsAmount(0);
+      setManualPointsNote("");
+      setLoyaltyDialogOpen(false);
+      toast({
+        title: "Points Updated",
+        description: "Customer loyalty points have been updated successfully."
+      });
+    },
+    onError: (error: any) => {
+      console.error("Error updating points:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to update loyalty points."
+      });
+    }
+  });
+  
+  // Load loyalty transactions
+  const loadTransactions = async () => {
+    if (!customer) return;
+    
+    setLoadingTransactions(true);
+    try {
+      const { data, error } = await supabase
+        .from("loyalty_transactions")
+        .select("*")
+        .eq("customer_id", customer.id)
+        .order("created_at", { ascending: false });
+        
+      if (error) throw error;
+      
+      setLoyaltyTransactions(data as LoyaltyTransaction[]);
+      setShowTransactionHistory(true);
+    } catch (error) {
+      console.error("Error loading transactions:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load loyalty transaction history."
+      });
+    } finally {
+      setLoadingTransactions(false);
+    }
+  };
+  
+  // Get next tier information
+  const getNextTierInfo = () => {
+    if (!customer) return null;
+    
+    // Mock tiers with points thresholds - replace with real data when available
+    const tiers = [
+      { name: "Bronze", points: 500 },
+      { name: "Silver", points: 1000 },
+      { name: "Gold", points: 2000 },
+      { name: "Platinum", points: 5000 },
+      { name: "Diamond", points: 10000 }
+    ];
+    
+    let currentTierIndex = -1;
+    for (let i = 0; i < tiers.length; i++) {
+      if (tiers[i].name === customer.loyalty_tier) {
+        currentTierIndex = i;
+        break;
+      }
+    }
+    
+    // If customer is at the highest tier or not enrolled
+    if (currentTierIndex === tiers.length - 1 || currentTierIndex === -1) {
+      return null;
+    }
+    
+    const nextTier = tiers[currentTierIndex + 1];
+    const pointsNeeded = nextTier.points - customer.loyalty_points;
+    const progress = Math.min(100, (customer.loyalty_points / nextTier.points) * 100);
+    
+    return {
+      nextTier: nextTier.name,
+      pointsNeeded,
+      progress
+    };
+  };
+  
+  const nextTierInfo = getNextTierInfo();
+  
+  const handleAddNote = () => {
+    if (customer && newNote) {
+      onAddNote(customer.id, newNote);
+      setNewNote("");
+    }
+  };
+
+  const handleAddTag = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (customer && newTag) {
+      onAddTag(customer.id, newTag);
+      setNewTag("");
+    }
+  };
 
   if (!customer) {
     return (
-      <div className="flex h-full flex-col items-center justify-center text-center p-8">
-        <div className="rounded-full bg-gray-100 dark:bg-gray-800 p-6 mb-4">
-          <User className="h-12 w-12 text-gray-400" />
-        </div>
-        <h3 className="text-lg font-medium">No Customer Selected</h3>
-        <p className="text-gray-500 dark:text-gray-400 mt-2 max-w-md">
-          Select a customer from the list to view their details, or add a new customer to get started.
+      <div className="h-full p-6 flex flex-col items-center justify-center">
+        <User className="h-16 w-16 text-muted-foreground" />
+        <h2 className="mt-4 text-xl font-medium">Select a customer</h2>
+        <p className="mt-2 text-muted-foreground text-center max-w-md">
+          Choose a customer from the list to view their details, orders, and activity history
         </p>
       </div>
     );
   }
 
-  // Organize customer stats
-  const stats = [
-    { label: 'Total Spent', value: formatCurrency(customer.total_spent), icon: <BarChart3 className="h-4 w-4" /> },
-    { label: 'Visits', value: customer.visit_count.toString(), icon: <Coffee className="h-4 w-4" /> },
-    { label: 'Avg. Order', value: formatCurrency(customer.average_order_value), icon: <FileText className="h-4 w-4" /> },
-    { 
-      label: 'Last Visit', 
-      value: customer.last_visit_date 
-        ? `${calculateDaysSince(customer.last_visit_date)} days ago` 
-        : 'Never', 
-      icon: <Clock className="h-4 w-4" /> 
-    },
-  ];
-
   return (
-    <div className="h-full overflow-auto">
-      {/* Header with actions */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-10">
-        <div>
-          <h2 className="text-xl font-bold">{customer.name}</h2>
-          <div className="flex items-center gap-2">
-            <LoyaltyBadge tier={customer.loyalty_tier} />
-            {customer.last_visit_date && (
-              <span className="text-sm text-gray-500 dark:text-gray-400">
-                Last visit: {formatDate(customer.last_visit_date)}
-              </span>
-            )}
+    <div className="h-full flex flex-col overflow-hidden">
+      {/* Customer header */}
+      <div className="px-6 py-4 border-b flex items-center justify-between bg-card">
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xl font-semibold">
+            {customer.name.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold">{customer.name}</h2>
+            <div className="flex items-center gap-2">
+              <LoyaltyBadge tier={customer.loyalty_tier} />
+              {customer.loyalty_enrolled && 
+                <Badge variant="outline" className="flex items-center gap-1">
+                  <Coins className="h-3 w-3" />
+                  {customer.loyalty_points} points
+                </Badge>
+              }
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onEditCustomer(customer)}
-          >
-            <Edit className="h-4 w-4 mr-1" /> Edit
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-          >
-            <Send className="h-4 w-4 mr-1" /> Message
-          </Button>
-        </div>
+        <Button onClick={() => onEditCustomer(customer)} variant="outline" className="flex items-center gap-2">
+          <PenSquare className="h-4 w-4" />
+          Edit Customer
+        </Button>
       </div>
 
-      {/* Tabs */}
-      <Tabs 
-        defaultValue="overview" 
-        value={activeTab} 
-        onValueChange={setActiveTab}
-        className="p-4"
-      >
-        <TabsList className="mb-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="orders">Orders</TabsTrigger>
-          <TabsTrigger value="notes">Notes</TabsTrigger>
-          <TabsTrigger value="activity">Activity Log</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="space-y-4">
-          {/* Contact Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-md flex items-center">
-                <div className="flex-1">Contact Information</div>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-8"
-                  onClick={() => onEditCustomer(customer)}
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {customer.email && (
-                <div className="flex items-center gap-2">
-                  <Mail className="h-4 w-4 text-gray-500" />
-                  <span>{customer.email}</span>
-                </div>
-              )}
-              {customer.phone && (
-                <div className="flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-gray-500" />
-                  <span>{customer.phone}</span>
-                </div>
-              )}
-              {customer.address && (
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-gray-500" />
-                  <span>{customer.address}</span>
-                </div>
-              )}
-              {customer.birthday && (
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-gray-500" />
-                  <span>{formatDate(customer.birthday)}</span>
-                </div>
-              )}
-              {!customer.email && !customer.phone && !customer.address && !customer.birthday && (
-                <div className="text-gray-500 text-center py-2">
-                  No contact information available
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Stats and Metrics */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-md">Customer Metrics</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {stats.map((stat, index) => (
-                  <div key={index} className="flex flex-col items-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 mb-2">
-                      {stat.icon}
-                    </div>
-                    <div className="text-sm font-medium text-gray-500 dark:text-gray-400">{stat.label}</div>
-                    <div className="text-lg font-bold">{stat.value}</div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Loyalty Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-md">Loyalty Program</CardTitle>
-              {customer.loyalty_tier !== 'None' && (
-                <CardDescription>
-                  Current tier: <LoyaltyBadge tier={customer.loyalty_tier} /> with {customer.loyalty_points} points
-                </CardDescription>
-              )}
-            </CardHeader>
-            <CardContent>
-              {customer.loyalty_tier === 'None' ? (
-                <div className="text-center py-3">
-                  <p className="text-gray-500">Not enrolled in loyalty program</p>
-                  <Button variant="link" className="mt-2">
-                    Enroll customer
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="flex items-center">
-                    <div className="flex-1">
-                      <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full">
-                        <div 
-                          className="h-2 bg-purple-500 rounded-full" 
-                          style={{ width: `${Math.min(100, customer.loyalty_points / 10)}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                    <span className="ml-2 text-sm font-medium">{customer.loyalty_points} pts</span>
-                  </div>
-                  
-                  <div className="flex justify-between text-sm">
-                    <span>Next reward at 1000 pts</span>
-                    <Button variant="link" size="sm" className="h-auto p-0">
-                      <Settings className="h-3 w-3 mr-1" /> Loyalty Settings
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Tags and Preferences */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-md">Tags & Preferences</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div>
-                  <div className="text-sm font-medium mb-2">Customer Tags</div>
-                  <div className="flex flex-wrap gap-2">
-                    {customer.tags?.length > 0 ? (
-                      customer.tags.map((tag, index) => (
-                        <Badge 
-                          key={index} 
-                          variant="secondary"
-                          className="flex items-center gap-1 px-2 py-1"
-                        >
-                          {tag}
-                          <button 
-                            onClick={() => onRemoveTag(customer.id, tag)}
-                            className="ml-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 p-0.5"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        </Badge>
-                      ))
-                    ) : (
-                      <span className="text-gray-500 text-sm">No tags</span>
-                    )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-6 w-6 p-0 rounded-full"
-                      onClick={() => onAddTag(customer.id, 'New Tag')} // This would open a dialog
-                    >
-                      <Plus className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-                
-                <Separator />
-                
-                <div>
-                  <div className="text-sm font-medium mb-2">Customer Preferences</div>
-                  <div className="bg-gray-50 dark:bg-gray-800 rounded p-3">
-                    {customer.preferences ? (
-                      <p className="text-sm">{customer.preferences}</p>
-                    ) : (
-                      <p className="text-gray-500 text-sm italic">No preferences recorded</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Recent Orders */}
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle className="text-md">Recent Orders</CardTitle>
-                <Button variant="link" className="p-0 h-auto" onClick={() => setActiveTab('orders')}>
-                  View All
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {orders.length > 0 ? (
-                <div className="space-y-3">
-                  {orders.slice(0, 3).map(order => (
-                    <div 
-                      key={order.id}
-                      className="flex justify-between items-center p-2 rounded border border-gray-200 dark:border-gray-700"
-                    >
+      {/* Customer content */}
+      <ScrollArea className="flex-1 overflow-auto">
+        <Tabs defaultValue="profile">
+          <div className="px-6 pt-4 border-b">
+            <TabsList>
+              <TabsTrigger value="profile">Profile</TabsTrigger>
+              <TabsTrigger value="orders">Orders</TabsTrigger>
+              <TabsTrigger value="notes">Notes</TabsTrigger>
+              <TabsTrigger value="activity">Activity</TabsTrigger>
+            </TabsList>
+          </div>
+          
+          <div className="p-6">
+            <TabsContent value="profile" className="space-y-6 mt-0">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Customer Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-start gap-2">
+                      <User className="w-4 h-4 mt-0.5 text-muted-foreground" />
                       <div>
-                        <div className="font-medium">{formatDate(order.date)}</div>
-                        <div className="text-xs text-gray-500">Order #{order.order_id.substring(0, 8)}</div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-bold">{formatCurrency(order.amount)}</div>
-                        <Badge variant="outline" className="text-xs">
-                          {order.status}
-                        </Badge>
+                        <div className="font-medium">{customer.name}</div>
+                        <div className="text-sm text-muted-foreground">Customer Name</div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-3 text-gray-500">
-                  No orders found for this customer
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="orders" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Order History</CardTitle>
-              <CardDescription>
-                Showing all orders for {customer.name}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {orders.length > 0 ? (
-                <div className="space-y-3">
-                  {orders.map(order => (
-                    <div 
-                      key={order.id}
-                      className="flex justify-between items-center p-3 rounded border border-gray-200 dark:border-gray-700"
-                    >
-                      <div className="flex-1">
-                        <div className="font-medium">{formatDate(order.date)}</div>
-                        <div className="text-xs text-gray-500">Order #{order.order_id.substring(0, 8)}</div>
-                      </div>
-                      <div className="flex-1">
-                        <div className="text-sm">
-                          {order.items.length} {order.items.length === 1 ? 'item' : 'items'}
+                    
+                    {customer.phone && (
+                      <div className="flex items-start gap-2">
+                        <Phone className="w-4 h-4 mt-0.5 text-muted-foreground" />
+                        <div>
+                          <div className="font-medium">{customer.phone}</div>
+                          <div className="text-sm text-muted-foreground">Phone Number</div>
                         </div>
-                        <Badge variant="outline" className="text-xs">
-                          {order.status}
-                        </Badge>
                       </div>
-                      <div className="text-right">
-                        <div className="font-bold">{formatCurrency(order.amount)}</div>
-                        <Button variant="link" size="sm" className="h-auto p-0 text-xs">
-                          View Details
+                    )}
+                    
+                    {customer.email && (
+                      <div className="flex items-start gap-2">
+                        <Mail className="w-4 h-4 mt-0.5 text-muted-foreground" />
+                        <div>
+                          <div className="font-medium">{customer.email}</div>
+                          <div className="text-sm text-muted-foreground">Email Address</div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {customer.address && (
+                      <div className="flex items-start gap-2">
+                        <MapPin className="w-4 h-4 mt-0.5 text-muted-foreground" />
+                        <div>
+                          <div className="font-medium">{customer.address}</div>
+                          <div className="text-sm text-muted-foreground">Address</div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {customer.birthday && (
+                      <div className="flex items-start gap-2">
+                        <Calendar className="w-4 h-4 mt-0.5 text-muted-foreground" />
+                        <div>
+                          <div className="font-medium">
+                            {format(new Date(customer.birthday), 'MMMM d, yyyy')}
+                          </div>
+                          <div className="text-sm text-muted-foreground">Birthday</div>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Customer Loyalty</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {customer.loyalty_enrolled ? (
+                      <>
+                        <div className="flex items-center gap-2 mb-4">
+                          <Award className="h-5 w-5 text-primary" />
+                          <div className="text-lg font-semibold">
+                            {customer.loyalty_tier} Tier Member
+                          </div>
+                        </div>
+                        
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium">Current Points</span>
+                          <Badge 
+                            variant="secondary" 
+                            className="text-sm flex items-center gap-1"
+                          >
+                            <Coins className="h-3.5 w-3.5" />
+                            {customer.loyalty_points} points
+                          </Badge>
+                        </div>
+                        
+                        {nextTierInfo ? (
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                              <span>Progress to {nextTierInfo.nextTier}</span>
+                              <span>{nextTierInfo.pointsNeeded} points needed</span>
+                            </div>
+                            <Progress value={nextTierInfo.progress} className="h-2" />
+                          </div>
+                        ) : (
+                          <div className="text-sm text-muted-foreground">
+                            Highest tier achieved
+                          </div>
+                        )}
+                        
+                        <Separator className="my-4" />
+                        
+                        <div className="space-y-3">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="w-full flex items-center gap-2"
+                            onClick={() => setLoyaltyDialogOpen(true)}
+                          >
+                            <CreditCard className="h-4 w-4" />
+                            Adjust Points
+                          </Button>
+                          
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="w-full flex items-center gap-2"
+                            onClick={loadTransactions}
+                          >
+                            <Clock className="h-4 w-4" />
+                            View Points History
+                          </Button>
+                          
+                          <Button 
+                            variant="destructive" 
+                            size="sm" 
+                            className="w-full"
+                            onClick={() => {
+                              if (window.confirm("Are you sure you want to remove this customer from the loyalty program? They will lose all accumulated points.")) {
+                                unenrollCustomer.mutate();
+                              }
+                            }}
+                          >
+                            Remove from Loyalty Program
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-6 text-center">
+                        <Award className="h-12 w-12 text-muted-foreground mb-3" />
+                        <h3 className="text-lg font-medium mb-2">Not Enrolled</h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          This customer is not enrolled in your loyalty program yet.
+                        </p>
+                        <Button onClick={() => enrollCustomer.mutate()} className="w-full">
+                          Enroll Customer
                         </Button>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <FileText className="h-10 w-10 mx-auto mb-2 opacity-40" />
-                  <p>No orders found for this customer</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="notes" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle>Customer Notes</CardTitle>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => onAddNote(customer.id, '')} // This would open a dialog
-                >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add Note
-                </Button>
+                    )}
+                  </CardContent>
+                </Card>
               </div>
-            </CardHeader>
-            <CardContent>
-              {notes.length > 0 ? (
-                <div className="space-y-4">
-                  {notes.map(note => (
-                    <div 
-                      key={note.id}
-                      className="p-3 rounded border border-gray-200 dark:border-gray-700"
-                    >
-                      <p className="text-sm mb-2">{note.content}</p>
-                      <div className="flex justify-between text-xs text-gray-500">
-                        <span>By: {note.created_by}</span>
-                        <span>{formatDate(note.created_at)}</span>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span>Customer Tags</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="mb-4">
+                    {customer.tags && customer.tags.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {customer.tags.map(tag => (
+                          <Badge key={tag} variant="secondary" className="flex items-center gap-1">
+                            {tag}
+                            <button 
+                              className="ml-1 h-4 w-4 rounded-full hover:bg-primary/20 inline-flex items-center justify-center" 
+                              onClick={() => onRemoveTag(customer.id, tag)}
+                            >
+                              ×
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-muted-foreground">No tags added yet</div>
+                    )}
+                  </div>
+                  
+                  <form onSubmit={handleAddTag} className="flex gap-2">
+                    <Input 
+                      value={newTag} 
+                      onChange={(e) => setNewTag(e.target.value)} 
+                      placeholder="Add a tag" 
+                      className="flex-1"
+                    />
+                    <Button type="submit" size="sm" variant="outline" disabled={!newTag}>
+                      <Tag className="h-4 w-4 mr-2" />
+                      Add
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+              
+              {customer.preferences && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Preferences</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p>{customer.preferences}</p>
+                  </CardContent>
+                </Card>
+              )}
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Statistics</CardTitle>
+                  <CardDescription>Customer behavior and spending patterns</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                    <div className="border rounded-md p-3">
+                      <div className="text-sm text-muted-foreground">Total Spent</div>
+                      <div className="text-2xl font-bold">₹{customer.total_spent.toLocaleString()}</div>
+                    </div>
+                    
+                    <div className="border rounded-md p-3">
+                      <div className="text-sm text-muted-foreground">Visit Count</div>
+                      <div className="text-2xl font-bold">{customer.visit_count}</div>
+                    </div>
+                    
+                    <div className="border rounded-md p-3">
+                      <div className="text-sm text-muted-foreground">Avg Order Value</div>
+                      <div className="text-2xl font-bold">₹{customer.average_order_value.toLocaleString()}</div>
+                    </div>
+                    
+                    <div className="border rounded-md p-3">
+                      <div className="text-sm text-muted-foreground">Last Visit</div>
+                      <div className="text-2xl font-bold">
+                        {customer.last_visit_date ? format(new Date(customer.last_visit_date), 'MMM d') : 'N/A'}
                       </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <MessageSquare className="h-10 w-10 mx-auto mb-2 opacity-40" />
-                  <p>No notes found for this customer</p>
-                  <Button 
-                    variant="link" 
-                    onClick={() => onAddNote(customer.id, '')}
-                  >
-                    Add your first note
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="activity" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Activity Log</CardTitle>
-              <CardDescription>
-                Recent activities and interactions
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {activities.length > 0 ? (
-                <div className="relative pl-6 border-l border-gray-200 dark:border-gray-700">
-                  {activities.map((activity, index) => (
-                    <div 
-                      key={activity.id}
-                      className={`relative pb-6 ${index === activities.length - 1 ? '' : ''}`}
-                    >
-                      <div className="absolute -left-[20px] w-5 h-5 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center border border-gray-200 dark:border-gray-700">
-                        {activity.activity_type === 'note_added' && <MessageSquare className="h-2.5 w-2.5" />}
-                        {activity.activity_type === 'email_sent' && <Mail className="h-2.5 w-2.5" />}
-                        {activity.activity_type === 'order_placed' && <FileText className="h-2.5 w-2.5" />}
-                        {activity.activity_type === 'tag_added' && <Tag className="h-2.5 w-2.5" />}
-                        {activity.activity_type === 'promotion_sent' && <Send className="h-2.5 w-2.5" />}
-                      </div>
-                      <div>
-                        <p className="text-sm">{activity.description}</p>
-                        <p className="text-xs text-gray-500">{formatDate(activity.created_at)}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="orders" className="space-y-6 mt-0">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Order History</CardTitle>
+                  <CardDescription>
+                    {orders.length} order{orders.length !== 1 ? 's' : ''} placed by this customer
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
+                    <div className="flex justify-center py-4">
+                      <svg className="animate-spin h-6 w-6 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    </div>
+                  ) : orders.length === 0 ? (
+                    <div className="text-center py-6">
+                      <ShoppingCart className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                      <h3 className="text-lg font-medium">No Orders Yet</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        This customer hasn't placed any orders yet.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {orders.map((order) => (
+                        <div key={order.id} className="border rounded-md p-4">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                                <span className="font-medium">Order #{order.order_id.substring(0, 8)}</span>
+                              </div>
+                              <div className="text-sm text-muted-foreground mt-1">
+                                {format(new Date(order.date), 'MMMM d, yyyy • h:mm a')}
+                              </div>
+                              <div className="mt-2 text-sm">
+                                {order.items.map((item, idx) => (
+                                  <div key={idx}>{item}</div>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-end">
+                              <span className="font-bold">₹{order.amount.toLocaleString()}</span>
+                              <Badge className="mt-1" variant={order.status === 'completed' ? 'default' : 'outline'}>
+                                {order.status}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="notes" className="mt-0">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Customer Notes</CardTitle>
+                  <CardDescription>
+                    Record important customer information for your team
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Textarea 
+                      placeholder="Add a note about this customer..." 
+                      value={newNote}
+                      onChange={(e) => setNewNote(e.target.value)}
+                      rows={3}
+                    />
+                    <div className="flex justify-end mt-2">
+                      <Button onClick={handleAddNote} disabled={!newNote} size="sm">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Note
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {notes.length === 0 ? (
+                    <div className="text-center py-6">
+                      <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                      <h3 className="text-lg font-medium">No Notes</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        No notes have been added for this customer yet.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {notes.map((note) => (
+                        <div key={note.id} className="border rounded-md p-4">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <p>{note.content}</p>
+                              <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
+                                <Clock className="h-3 w-3" />
+                                <span>{format(new Date(note.created_at), 'MMMM d, yyyy • h:mm a')}</span>
+                                <span>•</span>
+                                <span>{note.created_by}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            <TabsContent value="activity" className="mt-0">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Activity History</CardTitle>
+                  <CardDescription>
+                    Customer interactions and system events
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {activities.length === 0 ? (
+                    <div className="text-center py-6">
+                      <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                      <h3 className="text-lg font-medium">No Activity</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        No activity has been recorded for this customer yet.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="relative ps-4">
+                      <div className="absolute left-0 top-2 bottom-2 w-px bg-border"></div>
+                      <div className="space-y-6">
+                        {activities.map((activity) => (
+                          <div key={activity.id} className="relative">
+                            <div className="absolute -left-4 mt-1 w-2 h-2 rounded-full bg-primary"></div>
+                            <div>
+                              <p className="font-medium">{activity.description}</p>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {format(new Date(activity.created_at), 'MMMM d, yyyy • h:mm a')}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  ))}
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </div>
+        </Tabs>
+      </ScrollArea>
+      
+      {/* Loyalty Point Adjustment Dialog */}
+      <Dialog open={loyaltyDialogOpen} onOpenChange={setLoyaltyDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Adjust Loyalty Points</DialogTitle>
+            <DialogDescription>
+              Add or remove points from {customer.name}'s loyalty account
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Current Points</label>
+              <div className="px-3 py-2 rounded-md bg-muted flex items-center">
+                <Coins className="h-4 w-4 mr-2 text-muted-foreground" />
+                <span className="font-medium">{customer.loyalty_points} points</span>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Points to Add/Remove</label>
+              <Input
+                type="number"
+                value={manualPointsAmount}
+                onChange={(e) => setManualPointsAmount(parseInt(e.target.value) || 0)}
+                placeholder="Enter positive or negative value"
+              />
+              <div className="flex text-sm">
+                <button 
+                  type="button" 
+                  className="px-2 py-0.5 text-primary hover:underline"
+                  onClick={() => setManualPointsAmount(50)}
+                >
+                  +50
+                </button>
+                <button 
+                  type="button" 
+                  className="px-2 py-0.5 text-primary hover:underline"
+                  onClick={() => setManualPointsAmount(100)}
+                >
+                  +100
+                </button>
+                <button 
+                  type="button" 
+                  className="px-2 py-0.5 text-primary hover:underline"
+                  onClick={() => setManualPointsAmount(200)}
+                >
+                  +200
+                </button>
+                <button 
+                  type="button" 
+                  className="px-2 py-0.5 text-primary hover:underline"
+                  onClick={() => setManualPointsAmount(500)}
+                >
+                  +500
+                </button>
+                <button 
+                  type="button" 
+                  className="px-2 py-0.5 text-destructive hover:underline"
+                  onClick={() => setManualPointsAmount(-100)}
+                >
+                  -100
+                </button>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Note (Optional)</label>
+              <Textarea
+                value={manualPointsNote}
+                onChange={(e) => setManualPointsNote(e.target.value)}
+                placeholder="Reason for adjustment"
+                rows={2}
+              />
+            </div>
+            
+            <div className="py-2">
+              <div className="rounded-md bg-muted p-3">
+                <div className="flex justify-between font-medium">
+                  <span>New Balance After Adjustment:</span>
+                  <span>{customer.loyalty_points + manualPointsAmount} points</span>
                 </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <Clock className="h-10 w-10 mx-auto mb-2 opacity-40" />
-                  <p>No activity recorded for this customer</p>
-                </div>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => setLoyaltyDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="button" 
+              onClick={() => addManualPoints.mutate({ 
+                amount: manualPointsAmount, 
+                notes: manualPointsNote 
+              })}
+              disabled={manualPointsAmount === 0 || addManualPoints.isPending}
+              variant={manualPointsAmount < 0 ? "destructive" : "default"}
+            >
+              {addManualPoints.isPending && (
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
               )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+              {manualPointsAmount > 0 ? 'Add' : 'Remove'} Points
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Loyalty Transaction History Dialog */}
+      <Dialog open={showTransactionHistory} onOpenChange={setShowTransactionHistory}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Loyalty Points History</DialogTitle>
+            <DialogDescription>
+              Transaction history for {customer.name}'s loyalty points
+            </DialogDescription>
+          </DialogHeader>
+          
+          {loadingTransactions ? (
+            <div className="flex justify-center py-8">
+              <svg className="animate-spin h-8 w-8 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </div>
+          ) : loyaltyTransactions.length === 0 ? (
+            <div className="text-center py-8">
+              <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+              <h3 className="text-lg font-medium">No Transactions</h3>
+              <p className="text-muted-foreground mt-1">
+                No point transactions have been recorded yet
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-auto max-h-[60vh]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Points</TableHead>
+                    <TableHead>Source</TableHead>
+                    <TableHead>Notes</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {loyaltyTransactions.map((transaction) => (
+                    <TableRow key={transaction.id}>
+                      <TableCell>
+                        {format(new Date(transaction.created_at), 'MMM d, yyyy • h:mm a')}
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant={
+                            transaction.transaction_type === 'earn' ? 'default' : 
+                            transaction.transaction_type === 'redeem' ? 'destructive' : 
+                            'outline'
+                          }
+                        >
+                          {transaction.transaction_type}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className={
+                        transaction.points > 0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'
+                      }>
+                        {transaction.points > 0 ? '+' : ''}{transaction.points}
+                      </TableCell>
+                      <TableCell>{transaction.source}</TableCell>
+                      <TableCell className="max-w-[200px] truncate">
+                        {transaction.notes || '-'}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button 
+              type="button"
+              onClick={() => setShowTransactionHistory(false)}
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
