@@ -9,6 +9,90 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      customer_activities: {
+        Row: {
+          activity_type: string
+          created_at: string | null
+          customer_id: string | null
+          description: string
+          id: string
+          restaurant_id: string | null
+        }
+        Insert: {
+          activity_type: string
+          created_at?: string | null
+          customer_id?: string | null
+          description: string
+          id?: string
+          restaurant_id?: string | null
+        }
+        Update: {
+          activity_type?: string
+          created_at?: string | null
+          customer_id?: string | null
+          description?: string
+          id?: string
+          restaurant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_activities_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_activities_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_notes: {
+        Row: {
+          content: string
+          created_at: string | null
+          created_by: string
+          customer_id: string | null
+          id: string
+          restaurant_id: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          created_by: string
+          customer_id?: string | null
+          id?: string
+          restaurant_id?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          created_by?: string
+          customer_id?: string | null
+          id?: string
+          restaurant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_notes_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_notes_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           address: string | null
