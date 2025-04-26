@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -916,3 +917,246 @@ const CustomerDetail = ({
                             </div>
                           </div>
                         </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            {/* Notes Tab */}
+            <TabsContent value="notes" className="space-y-6 mt-0">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Customer Notes</CardTitle>
+                  <CardDescription>
+                    Add private notes about this customer
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="mb-4 space-y-2">
+                    <Textarea 
+                      placeholder="Add a note about this customer..."
+                      value={newNote}
+                      onChange={(e) => setNewNote(e.target.value)}
+                      className="min-h-[100px]"
+                    />
+                    <div className="flex justify-end">
+                      <Button 
+                        onClick={handleAddNote} 
+                        disabled={!newNote.trim()}
+                        size="sm"
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        Add Note
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <Separator className="my-4" />
+                  
+                  {isLoadingNotes ? (
+                    <div className="flex justify-center py-6">
+                      <svg className="animate-spin h-6 w-6 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    </div>
+                  ) : customerNotes.length === 0 ? (
+                    <div className="text-center py-6">
+                      <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                      <h3 className="text-lg font-medium">No Notes</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        There are no notes for this customer yet
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {customerNotes.map(note => (
+                        <div key={note.id} className="border rounded-md p-4">
+                          <div className="flex justify-between items-start">
+                            <div className="space-y-1 flex-1">
+                              <p className="whitespace-pre-wrap">{note.content}</p>
+                              <div className="text-xs text-muted-foreground">
+                                By {note.created_by} • {format(new Date(note.created_at), 'MMMM d, yyyy • h:mm a')}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            {/* Activity Tab */}
+            <TabsContent value="activity" className="space-y-6 mt-0">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Activity History</CardTitle>
+                  <CardDescription>
+                    Recent customer activities
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {isLoadingActivities ? (
+                    <div className="flex justify-center py-6">
+                      <svg className="animate-spin h-6 w-6 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    </div>
+                  ) : customerActivities.length === 0 ? (
+                    <div className="text-center py-6">
+                      <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                      <h3 className="text-lg font-medium">No Activity</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        No activity has been recorded for this customer yet
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {customerActivities.map(activity => (
+                        <div key={activity.id} className="flex items-start gap-3 border-b border-border/30 pb-3 last:border-0">
+                          {activity.activity_type === 'note_added' && <MessageSquare className="w-5 h-5 text-blue-500" />}
+                          {activity.activity_type === 'order_placed' && <ShoppingCart className="w-5 h-5 text-green-500" />}
+                          {activity.activity_type === 'tag_added' && <Tag className="w-5 h-5 text-purple-500" />}
+                          {activity.activity_type === 'tag_removed' && <Tag className="w-5 h-5 text-red-500" />}
+                          {activity.activity_type === 'promotion_sent' && <Award className="w-5 h-5 text-amber-500" />}
+                          {activity.activity_type === 'email_sent' && <Mail className="w-5 h-5 text-indigo-500" />}
+                          <div className="flex-1">
+                            <p className="text-sm">{activity.description}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {format(new Date(activity.created_at), 'MMMM d, yyyy • h:mm a')}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </div>
+        </Tabs>
+      </ScrollArea>
+      
+      {/* Loyalty Points Dialog */}
+      <Dialog open={loyaltyDialogOpen} onOpenChange={setLoyaltyDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Adjust Loyalty Points</DialogTitle>
+            <DialogDescription>
+              Add or remove loyalty points for {customer.name}. Use negative values to deduct points.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <div className="font-medium">Current Points: {customer.loyalty_points}</div>
+              <Input
+                type="number"
+                placeholder="Enter points amount"
+                value={manualPointsAmount === 0 ? '' : manualPointsAmount}
+                onChange={(e) => setManualPointsAmount(parseInt(e.target.value) || 0)}
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="font-medium">Note</div>
+              <Textarea
+                placeholder="Reason for adjustment"
+                value={manualPointsNote}
+                onChange={(e) => setManualPointsNote(e.target.value)}
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLoyaltyDialogOpen(false)}>Cancel</Button>
+            <Button 
+              onClick={() => addManualPoints.mutate({ amount: manualPointsAmount, notes: manualPointsNote })} 
+              disabled={manualPointsAmount === 0 || addManualPoints.isPending}
+            >
+              {addManualPoints.isPending ? "Updating..." : "Update Points"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Loyalty Transactions History Dialog */}
+      {showTransactionHistory && (
+        <Dialog open={showTransactionHistory} onOpenChange={setShowTransactionHistory}>
+          <DialogContent className="max-w-3xl max-h-[85vh]">
+            <DialogHeader>
+              <DialogTitle>Loyalty Points History</DialogTitle>
+              <DialogDescription>
+                Transaction history for {customer.name}'s loyalty points
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="overflow-y-auto max-h-[60vh]">
+              {loadingTransactions ? (
+                <div className="flex justify-center py-6">
+                  <svg className="animate-spin h-6 w-6 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </div>
+              ) : loyaltyTransactions.length === 0 ? (
+                <div className="text-center py-6">
+                  <Coins className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                  <h3 className="text-lg font-medium">No Transactions</h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    No loyalty points transactions have been recorded yet
+                  </p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Points</TableHead>
+                      <TableHead>Source</TableHead>
+                      <TableHead>Notes</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loyaltyTransactions.map((transaction) => (
+                      <TableRow key={transaction.id}>
+                        <TableCell>
+                          {format(new Date(transaction.created_at), 'MMM d, yyyy')}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={
+                            transaction.transaction_type === 'earn' ? 'success' : 
+                            transaction.transaction_type === 'redeem' ? 'destructive' : 
+                            'warning'
+                          }>
+                            {transaction.transaction_type}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className={transaction.transaction_type === 'earn' ? 'text-green-600' : 'text-red-600'}>
+                          {transaction.transaction_type === 'earn' ? '+' : '-'}{Math.abs(transaction.points)}
+                        </TableCell>
+                        <TableCell>{transaction.source}</TableCell>
+                        <TableCell>{transaction.notes || '-'}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+            
+            <DialogFooter>
+              <Button onClick={() => setShowTransactionHistory(false)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+    </div>
+  );
+};
+
+export default CustomerDetail;
