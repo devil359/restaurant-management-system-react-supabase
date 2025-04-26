@@ -71,3 +71,151 @@ BEGIN
     WITH CHECK ((SELECT restaurant_id FROM public.profiles WHERE id = auth.uid()) = restaurant_id);
 END;
 $$;
+
+-- Create new database functions to allow type-safe operations
+CREATE OR REPLACE FUNCTION public.get_customer_notes(customer_id_param UUID)
+RETURNS SETOF customer_notes
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT *
+  FROM public.customer_notes
+  WHERE customer_id = customer_id_param
+  ORDER BY created_at DESC;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.get_customer_activities(customer_id_param UUID)
+RETURNS SETOF customer_activities
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT *
+  FROM public.customer_activities
+  WHERE customer_id = customer_id_param
+  ORDER BY created_at DESC;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.add_customer_note(
+  customer_id_param UUID,
+  restaurant_id_param UUID,
+  content_param TEXT,
+  created_by_param TEXT
+)
+RETURNS customer_notes
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  new_note customer_notes;
+BEGIN
+  -- Insert the note
+  INSERT INTO public.customer_notes(
+    customer_id,
+    restaurant_id,
+    content,
+    created_by
+  )
+  VALUES (
+    customer_id_param,
+    restaurant_id_param,
+    content_param,
+    created_by_param
+  )
+  RETURNING * INTO new_note;
+  
+  RETURN new_note;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.add_customer_activity(
+  customer_id_param UUID,
+  restaurant_id_param UUID,
+  activity_type_param TEXT,
+  description_param TEXT
+)
+RETURNS customer_activities
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  new_activity customer_activities;
+BEGIN
+  -- Insert the activity
+  INSERT INTO public.customer_activities(
+    customer_id,
+    restaurant_id,
+    activity_type,
+    description
+  )
+  VALUES (
+    customer_id_param,
+    restaurant_id_param,
+    activity_type_param,
+    description_param
+  )
+  RETURNING * INTO new_activity;
+  
+  RETURN new_activity;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.get_loyalty_transactions(customer_id_param UUID)
+RETURNS SETOF loyalty_transactions
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT *
+  FROM public.loyalty_transactions
+  WHERE customer_id = customer_id_param
+  ORDER BY created_at DESC;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.add_loyalty_transaction(
+  customer_id_param UUID,
+  restaurant_id_param UUID,
+  transaction_type_param TEXT,
+  points_param INTEGER,
+  source_param TEXT,
+  notes_param TEXT,
+  created_by_param UUID
+)
+RETURNS loyalty_transactions
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  new_transaction loyalty_transactions;
+BEGIN
+  -- Insert the transaction
+  INSERT INTO public.loyalty_transactions(
+    customer_id,
+    restaurant_id,
+    transaction_type,
+    points,
+    source,
+    notes,
+    created_by
+  )
+  VALUES (
+    customer_id_param,
+    restaurant_id_param,
+    transaction_type_param,
+    points_param,
+    source_param,
+    notes_param,
+    created_by_param
+  )
+  RETURNING * INTO new_transaction;
+  
+  RETURN new_transaction;
+END;
+$$;

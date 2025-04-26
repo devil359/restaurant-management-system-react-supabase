@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -72,11 +71,10 @@ const CustomerDetail = ({
     
     setIsLoadingNotes(true);
     try {
-      const { data, error } = await supabase
-        .from("customer_notes")
-        .select("*")
-        .eq("customer_id", customer.id)
-        .order("created_at", { ascending: false });
+      // Use raw RPC call instead of direct table access to avoid type issues
+      const { data, error } = await supabase.rpc('get_customer_notes', {
+        customer_id_param: customer.id
+      });
         
       if (error) throw error;
       
@@ -99,11 +97,10 @@ const CustomerDetail = ({
     
     setIsLoadingActivities(true);
     try {
-      const { data, error } = await supabase
-        .from("customer_activities")
-        .select("*")
-        .eq("customer_id", customer.id)
-        .order("created_at", { ascending: false });
+      // Use raw RPC call instead of direct table access to avoid type issues
+      const { data, error } = await supabase.rpc('get_customer_activities', {
+        customer_id_param: customer.id
+      });
         
       if (error) throw error;
       
@@ -135,12 +132,12 @@ const CustomerDetail = ({
         
       if (error) throw error;
       
-      // Create activity entry for enrollment
-      await supabase.from("customer_activities").insert({
-        customer_id: customer.id,
-        restaurant_id: customer.restaurant_id,
-        activity_type: "promotion_sent",
-        description: "Enrolled in loyalty program"
+      // Insert activity using a function call instead of direct insert
+      await supabase.rpc('add_customer_activity', {
+        customer_id_param: customer.id,
+        restaurant_id_param: customer.restaurant_id,
+        activity_type_param: 'promotion_sent',
+        description_param: 'Enrolled in loyalty program'
       });
       
       return { success: true };
@@ -182,12 +179,12 @@ const CustomerDetail = ({
         
       if (error) throw error;
       
-      // Create activity entry for unenrollment
-      await supabase.from("customer_activities").insert({
-        customer_id: customer.id,
-        restaurant_id: customer.restaurant_id,
-        activity_type: "promotion_sent",
-        description: "Removed from loyalty program"
+      // Insert activity using a function call instead of direct insert
+      await supabase.rpc('add_customer_activity', {
+        customer_id_param: customer.id,
+        restaurant_id_param: customer.restaurant_id,
+        activity_type_param: 'promotion_sent',
+        description_param: 'Removed from loyalty program'
       });
       
       return { success: true };
@@ -242,27 +239,23 @@ const CustomerDetail = ({
       
       const { data: userData } = await supabase.auth.getUser();
       
-      // Record transaction
-      const { error: transactionError } = await supabase
-        .from("loyalty_transactions")
-        .insert({
-          customer_id: customer.id,
-          restaurant_id: customer.restaurant_id,
-          transaction_type: amount > 0 ? 'earn' : 'adjust',
-          points: amount,
-          source: 'manual',
-          notes: notes,
-          created_by: userData.user?.id
-        });
-        
-      if (transactionError) throw transactionError;
+      // Record transaction using RPC call instead of direct insertion
+      await supabase.rpc('add_loyalty_transaction', {
+        customer_id_param: customer.id,
+        restaurant_id_param: customer.restaurant_id,
+        transaction_type_param: amount > 0 ? 'earn' : 'adjust',
+        points_param: amount,
+        source_param: 'manual',
+        notes_param: notes,
+        created_by_param: userData.user?.id || null
+      });
       
-      // Add activity entry
-      await supabase.from("customer_activities").insert({
-        customer_id: customer.id,
-        restaurant_id: customer.restaurant_id,
-        activity_type: "promotion_sent",
-        description: `${amount > 0 ? 'Added' : 'Removed'} ${Math.abs(amount)} loyalty points manually`
+      // Add activity using RPC call
+      await supabase.rpc('add_customer_activity', {
+        customer_id_param: customer.id,
+        restaurant_id_param: customer.restaurant_id,
+        activity_type_param: 'promotion_sent',
+        description_param: `${amount > 0 ? 'Added' : 'Removed'} ${Math.abs(amount)} loyalty points manually`
       });
       
       return { success: true };
@@ -293,11 +286,9 @@ const CustomerDetail = ({
     
     setLoadingTransactions(true);
     try {
-      const { data, error } = await supabase
-        .from("loyalty_transactions")
-        .select("*")
-        .eq("customer_id", customer.id)
-        .order("created_at", { ascending: false });
+      const { data, error } = await supabase.rpc('get_loyalty_transactions', {
+        customer_id_param: customer.id
+      });
         
       if (error) throw error;
       
@@ -360,31 +351,29 @@ const CustomerDetail = ({
     
     try {
       const { data: userData } = await supabase.auth.getUser();
-      const createdBy = userData.user?.id || 'Unknown';
       
-      const { data, error } = await supabase
-        .from('customer_notes')
-        .insert({
-          customer_id: customer.id,
-          restaurant_id: customer.restaurant_id,
-          content: newNote,
-          created_by: createdBy
-        })
-        .select()
-        .single();
+      // Add note using RPC call
+      const { data, error } = await supabase.rpc('add_customer_note', {
+        customer_id_param: customer.id,
+        restaurant_id_param: customer.restaurant_id,
+        content_param: newNote,
+        created_by_param: userData.user?.email || 'Staff'
+      });
       
       if (error) throw error;
       
       // Add activity for note
-      await supabase.from('customer_activities').insert({
-        customer_id: customer.id,
-        restaurant_id: customer.restaurant_id,
-        activity_type: 'note_added',
-        description: 'Staff added note about customer'
+      await supabase.rpc('add_customer_activity', {
+        customer_id_param: customer.id,
+        restaurant_id_param: customer.restaurant_id,
+        activity_type_param: 'note_added',
+        description_param: 'Staff added note about customer'
       });
       
       setNewNote('');
-      setCustomerNotes(prev => [data, ...prev]);
+      
+      // Refresh the notes list
+      loadCustomerNotes();
       
       toast({
         title: "Note Added",
@@ -436,11 +425,11 @@ const CustomerDetail = ({
       }
 
       // Add activity
-      await supabase.from('customer_activities').insert({
-        customer_id: customer.id,
-        restaurant_id: customer.restaurant_id,
-        activity_type: 'tag_added',
-        description: `Added tag "${newTag}"`
+      await supabase.rpc('add_customer_activity', {
+        customer_id_param: customer.id,
+        restaurant_id_param: customer.restaurant_id,
+        activity_type_param: 'tag_added',
+        description_param: `Added tag "${newTag}"`
       });
 
       setNewTag('');
@@ -483,11 +472,11 @@ const CustomerDetail = ({
       }
 
       // Add activity
-      await supabase.from('customer_activities').insert({
-        customer_id: customer.id,
-        restaurant_id: customer.restaurant_id,
-        activity_type: 'tag_removed',
-        description: `Removed tag "${tag}"`
+      await supabase.rpc('add_customer_activity', {
+        customer_id_param: customer.id,
+        restaurant_id_param: customer.restaurant_id,
+        activity_type_param: 'tag_removed',
+        description_param: `Removed tag "${tag}"`
       });
 
       queryClient.invalidateQueries({ queryKey: ["customers"] });
@@ -606,6 +595,7 @@ const CustomerDetail = ({
           </div>
           
           <div className="p-6">
+            {/* Profile Tab */}
             <TabsContent value="profile" className="space-y-6 mt-0">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card>
@@ -874,6 +864,7 @@ const CustomerDetail = ({
               </Card>
             </TabsContent>
             
+            {/* Orders Tab */}
             <TabsContent value="orders" className="space-y-6 mt-0">
               <Card>
                 <CardHeader>
@@ -925,321 +916,3 @@ const CustomerDetail = ({
                             </div>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="notes" className="mt-0">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Customer Notes</CardTitle>
-                  <CardDescription>
-                    Record important customer information for your team
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Textarea 
-                      placeholder="Add a note about this customer..." 
-                      value={newNote}
-                      onChange={(e) => setNewNote(e.target.value)}
-                      rows={3}
-                    />
-                    <div className="flex justify-end mt-2">
-                      <Button onClick={handleAddNote} disabled={!newNote} size="sm">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Note
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  {isLoadingNotes ? (
-                    <div className="flex justify-center py-4">
-                      <svg className="animate-spin h-6 w-6 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                    </div>
-                  ) : customerNotes.length === 0 ? (
-                    <div className="text-center py-6">
-                      <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                      <h3 className="text-lg font-medium">No Notes</h3>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        No notes have been added for this customer yet.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {customerNotes.map((note) => (
-                        <div key={note.id} className="border rounded-md p-4">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <p>{note.content}</p>
-                              <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
-                                <Clock className="h-3 w-3" />
-                                <span>{format(new Date(note.created_at), 'MMMM d, yyyy • h:mm a')}</span>
-                                <span>•</span>
-                                <span>{note.created_by}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="activity" className="mt-0">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Activity History</CardTitle>
-                  <CardDescription>
-                    Customer interactions and system events
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {isLoadingActivities ? (
-                    <div className="flex justify-center py-4">
-                      <svg className="animate-spin h-6 w-6 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                    </div>
-                  ) : customerActivities.length === 0 ? (
-                    <div className="text-center py-6">
-                      <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                      <h3 className="text-lg font-medium">No Activity</h3>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        No activity has been recorded for this customer yet.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="relative ps-4">
-                      <div className="absolute left-0 top-2 bottom-2 w-px bg-border"></div>
-                      <div className="space-y-6">
-                        {customerActivities.map((activity) => (
-                          <div key={activity.id} className="relative">
-                            <div className="absolute -left-4 mt-1 w-2 h-2 rounded-full bg-primary"></div>
-                            <div>
-                              <p className="font-medium">{activity.description}</p>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {format(new Date(activity.created_at), 'MMMM d, yyyy • h:mm a')}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </div>
-        </Tabs>
-      </ScrollArea>
-      
-      {/* Loyalty Point Adjustment Dialog */}
-      <Dialog open={loyaltyDialogOpen} onOpenChange={setLoyaltyDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Adjust Loyalty Points</DialogTitle>
-            <DialogDescription>
-              Add or remove points from {customer.name}'s loyalty account
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Current Points</label>
-              <div className="px-3 py-2 rounded-md bg-muted flex items-center">
-                <Coins className="h-4 w-4 mr-2 text-muted-foreground" />
-                <span className="font-medium">{customer.loyalty_points} points</span>
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Points to Add/Remove</label>
-              <Input
-                type="number"
-                value={manualPointsAmount}
-                onChange={(e) => setManualPointsAmount(parseInt(e.target.value) || 0)}
-                placeholder="Enter positive or negative value"
-              />
-              <div className="flex text-sm">
-                <button 
-                  type="button" 
-                  className="px-2 py-0.5 text-primary hover:underline"
-                  onClick={() => setManualPointsAmount(50)}
-                >
-                  +50
-                </button>
-                <button 
-                  type="button" 
-                  className="px-2 py-0.5 text-primary hover:underline"
-                  onClick={() => setManualPointsAmount(100)}
-                >
-                  +100
-                </button>
-                <button 
-                  type="button" 
-                  className="px-2 py-0.5 text-primary hover:underline"
-                  onClick={() => setManualPointsAmount(200)}
-                >
-                  +200
-                </button>
-                <button 
-                  type="button" 
-                  className="px-2 py-0.5 text-primary hover:underline"
-                  onClick={() => setManualPointsAmount(500)}
-                >
-                  +500
-                </button>
-                <button 
-                  type="button" 
-                  className="px-2 py-0.5 text-destructive hover:underline"
-                  onClick={() => setManualPointsAmount(-100)}
-                >
-                  -100
-                </button>
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Note (Optional)</label>
-              <Textarea
-                value={manualPointsNote}
-                onChange={(e) => setManualPointsNote(e.target.value)}
-                placeholder="Reason for adjustment"
-                rows={2}
-              />
-            </div>
-            
-            <div className="py-2">
-              <div className="rounded-md bg-muted p-3">
-                <div className="flex justify-between font-medium">
-                  <span>New Balance After Adjustment:</span>
-                  <span>{customer.loyalty_points + manualPointsAmount} points</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => setLoyaltyDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="button" 
-              onClick={() => addManualPoints.mutate({ 
-                amount: manualPointsAmount, 
-                notes: manualPointsNote 
-              })}
-              disabled={manualPointsAmount === 0 || addManualPoints.isPending}
-              variant={manualPointsAmount < 0 ? "destructive" : "default"}
-            >
-              {addManualPoints.isPending && (
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              )}
-              {manualPointsAmount > 0 ? 'Add' : 'Remove'} Points
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
-      {/* Loyalty Transaction History Dialog */}
-      <Dialog open={showTransactionHistory} onOpenChange={setShowTransactionHistory}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Loyalty Points History</DialogTitle>
-            <DialogDescription>
-              Transaction history for {customer.name}'s loyalty points
-            </DialogDescription>
-          </DialogHeader>
-          
-          {loadingTransactions ? (
-            <div className="flex justify-center py-8">
-              <svg className="animate-spin h-8 w-8 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            </div>
-          ) : loyaltyTransactions.length === 0 ? (
-            <div className="text-center py-8">
-              <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-              <h3 className="text-lg font-medium">No Transactions</h3>
-              <p className="text-muted-foreground mt-1">
-                No point transactions have been recorded yet
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-auto max-h-[60vh]">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Points</TableHead>
-                    <TableHead>Source</TableHead>
-                    <TableHead>Notes</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loyaltyTransactions.map((transaction) => (
-                    <TableRow key={transaction.id}>
-                      <TableCell>
-                        {format(new Date(transaction.created_at), 'MMM d, yyyy • h:mm a')}
-                      </TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={
-                            transaction.transaction_type === 'earn' ? 'default' : 
-                            transaction.transaction_type === 'redeem' ? 'destructive' : 
-                            'outline'
-                          }
-                        >
-                          {transaction.transaction_type}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className={
-                        transaction.points > 0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'
-                      }>
-                        {transaction.points > 0 ? '+' : ''}{transaction.points}
-                      </TableCell>
-                      <TableCell>{transaction.source}</TableCell>
-                      <TableCell className="max-w-[200px] truncate">
-                        {transaction.notes || '-'}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-          
-          <DialogFooter>
-            <Button 
-              type="button"
-              onClick={() => setShowTransactionHistory(false)}
-            >
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-};
-
-export default CustomerDetail;

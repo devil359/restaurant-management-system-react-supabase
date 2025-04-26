@@ -37,6 +37,7 @@ export interface CustomerNote {
   content: string;
   created_at: string;
   created_by: string;
+  restaurant_id?: string;
 }
 
 export interface CustomerActivity {
@@ -45,6 +46,7 @@ export interface CustomerActivity {
   activity_type: 'note_added' | 'email_sent' | 'order_placed' | 'tag_added' | 'tag_removed' | 'promotion_sent';
   description: string;
   created_at: string;
+  restaurant_id?: string;
 }
 
 // Loyalty program types
