@@ -5,7 +5,13 @@ import { User } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Customer, CustomerOrder, CustomerNote, CustomerActivity, LoyaltyTransaction } from "@/types/customer";
+import { 
+  Customer, 
+  CustomerOrder, 
+  CustomerNote, 
+  CustomerActivity, 
+  LoyaltyTransaction 
+} from "@/types/customer";
 
 import CustomerHeader from "./CustomerHeader";
 import ProfileTab from "./CustomerProfile/ProfileTab";
@@ -46,7 +52,6 @@ const CustomerDetail = ({
   const [manualPointsNote, setManualPointsNote] = useState("");
   const [loyaltyTransactions, setLoyaltyTransactions] = useState<LoyaltyTransaction[]>([]);
   const [loadingTransactions, setLoadingTransactions] = useState(false);
-  const [showTransactionHistory, setShowTransactionHistory] = useState(false);
   const [customerNotes, setCustomerNotes] = useState<CustomerNote[]>([]);
   const [customerActivities, setCustomerActivities] = useState<CustomerActivity[]>([]);
   const [isLoadingNotes, setIsLoadingNotes] = useState(false);
@@ -54,13 +59,7 @@ const CustomerDetail = ({
   const [preferences, setPreferences] = useState<string>(customer?.preferences || '');
   const [isEditingPreferences, setIsEditingPreferences] = useState(false);
   
-  useEffect(() => {
-    if (customer) {
-      loadCustomerNotes();
-      loadCustomerActivities();
-    }
-  }, [customer?.id]);
-  
+  // Load customer notes
   const loadCustomerNotes = async () => {
     if (!customer) return;
     
@@ -85,6 +84,7 @@ const CustomerDetail = ({
     }
   };
   
+  // Load customer activities
   const loadCustomerActivities = async () => {
     if (!customer) return;
     
@@ -108,6 +108,169 @@ const CustomerDetail = ({
       setIsLoadingActivities(false);
     }
   };
+  
+  // Load loyalty transactions
+  const loadTransactions = async () => {
+    if (!customer) return;
+    
+    setLoadingTransactions(true);
+    try {
+      const { data, error } = await supabase.rpc('get_loyalty_transactions', {
+        customer_id_param: customer.id
+      });
+      
+      if (error) throw error;
+      
+      setLoyaltyTransactions(data || []);
+    } catch (error) {
+      console.error("Error loading transactions:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load loyalty transaction history."
+      });
+    } finally {
+      setLoadingTransactions(false);
+    }
+  };
+  
+  // Add customer note
+  const handleAddNote = async () => {
+    if (!customer || !newNote) return;
+    
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      
+      const { data, error } = await supabase.rpc('add_customer_note', {
+        customer_id_param: customer.id,
+        restaurant_id_param: customer.restaurant_id,
+        content_param: newNote,
+        created_by_param: userData.user?.email || 'Staff'
+      });
+      
+      if (error) throw error;
+      
+      // Add activity
+      await supabase.rpc('add_customer_activity', {
+        customer_id_param: customer.id,
+        restaurant_id_param: customer.restaurant_id,
+        activity_type_param: 'note_added',
+        description_param: 'Staff added a note about the customer'
+      });
+      
+      setNewNote('');
+      await loadCustomerNotes();
+      await loadCustomerActivities();
+      
+      toast({
+        title: "Note Added",
+        description: "Your note has been added successfully."
+      });
+    } catch (error) {
+      console.error('Error adding note:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to add note."
+      });
+    }
+  };
+  
+  // Mutations for loyalty operations
+  const addManualPoints = useMutation({
+    mutationFn: async ({ amount, notes }: { amount: number; notes: string }) => {
+      if (!customer) throw new Error("No customer selected");
+      if (amount === 0) throw new Error("Points amount cannot be zero");
+      
+      const { data: userData } = await supabase.auth.getUser();
+      
+      // Add loyalty transaction
+      const { data, error } = await supabase.rpc('add_loyalty_transaction', {
+        customer_id_param: customer.id,
+        restaurant_id_param: customer.restaurant_id,
+        transaction_type_param: amount > 0 ? 'earn' : 'adjust',
+        points_param: amount,
+        source_param: 'manual',
+        notes_param: notes,
+        created_by_param: userData.user?.id || null
+      });
+      
+      // Add customer activity
+      await supabase.rpc('add_customer_activity', {
+        customer_id_param: customer.id,
+        restaurant_id_param: customer.restaurant_id,
+        activity_type_param: 'promotion_sent',
+        description_param: `${amount > 0 ? 'Added' : 'Removed'} ${Math.abs(amount)} loyalty points manually`
+      });
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      setManualPointsAmount(0);
+      setManualPointsNote("");
+      setLoyaltyDialogOpen(false);
+      toast({
+        title: "Points Updated",
+        description: "Customer loyalty points have been updated successfully."
+      });
+    },
+    onError: (error: any) => {
+      console.error("Error updating points:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to update loyalty points."
+      });
+    }
+  });
+  
+  // Effect to load customer-specific data when customer changes
+  useEffect(() => {
+    if (customer) {
+      loadCustomerNotes();
+      loadCustomerActivities();
+      setPreferences(customer.preferences || '');
+    }
+  }, [customer?.id]);
+  
+  // Next tier calculation logic
+  const getNextTierInfo = () => {
+    if (!customer) return null;
+    
+    const tiers = [
+      { name: "Bronze", points: 500 },
+      { name: "Silver", points: 1000 },
+      { name: "Gold", points: 2000 },
+      { name: "Platinum", points: 5000 },
+      { name: "Diamond", points: 10000 }
+    ];
+    
+    let currentTierIndex = -1;
+    for (let i = 0; i < tiers.length; i++) {
+      if (tiers[i].name === customer.loyalty_tier) {
+        currentTierIndex = i;
+        break;
+      }
+    }
+    
+    if (currentTierIndex === tiers.length - 1 || currentTierIndex === -1) {
+      return null;
+    }
+    
+    const nextTier = tiers[currentTierIndex + 1];
+    const pointsNeeded = nextTier.points - customer.loyalty_points;
+    const progress = Math.min(100, (customer.loyalty_points / nextTier.points) * 100);
+    
+    return {
+      nextTier: nextTier.name,
+      pointsNeeded,
+      progress
+    };
+  };
+  
+  const nextTierInfo = getNextTierInfo();
   
   const enrollCustomer = useMutation({
     mutationFn: async () => {
@@ -195,174 +358,6 @@ const CustomerDetail = ({
       });
     }
   });
-  
-  const addManualPoints = useMutation({
-    mutationFn: async ({ amount, notes }: { amount: number; notes: string }) => {
-      if (!customer) throw new Error("No customer selected");
-      if (amount === 0) throw new Error("Points amount cannot be zero");
-      
-      const { data: currentCustomer, error: fetchError } = await supabase
-        .from("customers")
-        .select("loyalty_points")
-        .eq("id", customer.id)
-        .single();
-        
-      if (fetchError) throw fetchError;
-      
-      const newPoints = (currentCustomer?.loyalty_points || 0) + amount;
-      
-      if (newPoints < 0) throw new Error("Cannot reduce points below zero");
-      
-      const { error: updateError } = await supabase
-        .from("customers")
-        .update({ loyalty_points: newPoints })
-        .eq("id", customer.id);
-        
-      if (updateError) throw updateError;
-      
-      const { data: userData } = await supabase.auth.getUser();
-      
-      await supabase.rpc('add_loyalty_transaction', {
-        customer_id_param: customer.id,
-        restaurant_id_param: customer.restaurant_id,
-        transaction_type_param: amount > 0 ? 'earn' : 'adjust',
-        points_param: amount,
-        source_param: 'manual',
-        notes_param: notes,
-        created_by_param: userData.user?.id || null
-      });
-      
-      await supabase.rpc('add_customer_activity', {
-        customer_id_param: customer.id,
-        restaurant_id_param: customer.restaurant_id,
-        activity_type_param: 'promotion_sent',
-        description_param: `${amount > 0 ? 'Added' : 'Removed'} ${Math.abs(amount)} loyalty points manually`
-      });
-      
-      return { success: true };
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["customers"] });
-      setManualPointsAmount(0);
-      setManualPointsNote("");
-      setLoyaltyDialogOpen(false);
-      toast({
-        title: "Points Updated",
-        description: "Customer loyalty points have been updated successfully."
-      });
-    },
-    onError: (error: any) => {
-      console.error("Error updating points:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to update loyalty points."
-      });
-    }
-  });
-  
-  const loadTransactions = async () => {
-    if (!customer) return;
-    
-    setLoadingTransactions(true);
-    try {
-      const { data, error } = await supabase.rpc('get_loyalty_transactions', {
-        customer_id_param: customer.id
-      });
-      
-      if (error) throw error;
-      
-      setLoyaltyTransactions(data as LoyaltyTransaction[]);
-      setShowTransactionHistory(true);
-    } catch (error) {
-      console.error("Error loading transactions:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to load loyalty transaction history."
-      });
-    } finally {
-      setLoadingTransactions(false);
-    }
-  };
-  
-  const getNextTierInfo = () => {
-    if (!customer) return null;
-    
-    const tiers = [
-      { name: "Bronze", points: 500 },
-      { name: "Silver", points: 1000 },
-      { name: "Gold", points: 2000 },
-      { name: "Platinum", points: 5000 },
-      { name: "Diamond", points: 10000 }
-    ];
-    
-    let currentTierIndex = -1;
-    for (let i = 0; i < tiers.length; i++) {
-      if (tiers[i].name === customer.loyalty_tier) {
-        currentTierIndex = i;
-        break;
-      }
-    }
-    
-    if (currentTierIndex === tiers.length - 1 || currentTierIndex === -1) {
-      return null;
-    }
-    
-    const nextTier = tiers[currentTierIndex + 1];
-    const pointsNeeded = nextTier.points - customer.loyalty_points;
-    const progress = Math.min(100, (customer.loyalty_points / nextTier.points) * 100);
-    
-    return {
-      nextTier: nextTier.name,
-      pointsNeeded,
-      progress
-    };
-  };
-  
-  const nextTierInfo = getNextTierInfo();
-  
-  const handleAddNote = async () => {
-    if (!customer || !newNote) return;
-    
-    try {
-      const { data: userData } = await supabase.auth.getUser();
-      
-      const { data, error } = await supabase.rpc('add_customer_note', {
-        customer_id_param: customer.id,
-        restaurant_id_param: customer.restaurant_id,
-        content_param: newNote,
-        created_by_param: userData.user?.email || 'Staff'
-      });
-      
-      if (error) throw error;
-      
-      await supabase.rpc('add_customer_activity', {
-        customer_id_param: customer.id,
-        restaurant_id_param: customer.restaurant_id,
-        activity_type_param: 'note_added',
-        description_param: 'Staff added note about customer'
-      });
-      
-      setNewNote('');
-      
-      loadCustomerNotes();
-      
-      toast({
-        title: "Note Added",
-        description: "Your note has been added successfully."
-      });
-      
-      loadCustomerActivities();
-    } catch (error) {
-      console.error('Error adding note:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to add note."
-      });
-    }
-  };
 
   const handleAddTag = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -511,6 +506,10 @@ const CustomerDetail = ({
       </div>
     );
   }
+  
+  const setShowTransactionHistory = () => {
+    loadTransactions();
+  };
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -539,7 +538,7 @@ const CustomerDetail = ({
                 onSavePreferences={handleUpdatePreferences}
                 onCancelPreferences={handleCancelPreferences}
                 onAdjustPoints={() => setLoyaltyDialogOpen(true)}
-                onViewPointsHistory={loadTransactions}
+                onViewPointsHistory={setShowTransactionHistory}
                 onUnenroll={() => {
                   if (window.confirm("Are you sure you want to remove this customer from the loyalty program? They will lose all accumulated points.")) {
                     unenrollCustomer.mutate();

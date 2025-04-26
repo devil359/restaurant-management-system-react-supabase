@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,8 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import CustomerList from "@/components/CRM/CustomerList";
 import CustomerDetail from "@/components/CRM/CustomerDetail";
 import CustomerDialog from "@/components/CRM/CustomerDialog";
-import { Customer, CustomerOrder, CustomerNote, CustomerActivity } from "@/types/customer";
-import { User } from "lucide-react";
+import { Customer } from "@/types/customer";
 
 const Customers = () => {
   const { toast } = useToast();
@@ -152,7 +150,7 @@ const Customers = () => {
           .limit(1);
           
         if (notesExistError && notesExistError.message.includes('does not exist')) {
-          // Create customer_notes table
+          // Create customer_notes table using the existing function
           await supabase.rpc('create_customer_notes_table');
         }
         
@@ -163,7 +161,7 @@ const Customers = () => {
           .limit(1);
           
         if (activitiesExistError && activitiesExistError.message.includes('does not exist')) {
-          // Create customer_activities table
+          // Create customer_activities table using the existing function
           await supabase.rpc('create_customer_activities_table');
         }
       } catch (error) {

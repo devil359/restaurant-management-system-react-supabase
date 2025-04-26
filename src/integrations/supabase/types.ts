@@ -1488,9 +1488,101 @@ export type Database = {
       }
     }
     Functions: {
+      add_customer_activity: {
+        Args: {
+          customer_id_param: string
+          restaurant_id_param: string
+          activity_type_param: string
+          description_param: string
+        }
+        Returns: {
+          activity_type: string
+          created_at: string | null
+          customer_id: string | null
+          description: string
+          id: string
+          restaurant_id: string | null
+        }[]
+      }
+      add_customer_note: {
+        Args: {
+          customer_id_param: string
+          restaurant_id_param: string
+          content_param: string
+          created_by_param: string
+        }
+        Returns: {
+          content: string
+          created_at: string | null
+          created_by: string
+          customer_id: string | null
+          id: string
+          restaurant_id: string | null
+        }[]
+      }
+      add_loyalty_transaction: {
+        Args: {
+          customer_id_param: string
+          restaurant_id_param: string
+          transaction_type_param: string
+          points_param: number
+          source_param: string
+          notes_param: string
+          created_by_param: string
+        }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          id: string
+          notes: string | null
+          points: number
+          restaurant_id: string
+          source: string
+          source_id: string | null
+          transaction_type: string
+        }[]
+      }
       calculate_customer_tier: {
         Args: { customer_points: number; restaurant_id_param: string }
         Returns: string
+      }
+      get_customer_activities: {
+        Args: { customer_id_param: string }
+        Returns: {
+          activity_type: string
+          created_at: string | null
+          customer_id: string | null
+          description: string
+          id: string
+          restaurant_id: string | null
+        }[]
+      }
+      get_customer_notes: {
+        Args: { customer_id_param: string }
+        Returns: {
+          content: string
+          created_at: string | null
+          created_by: string
+          customer_id: string | null
+          id: string
+          restaurant_id: string | null
+        }[]
+      }
+      get_loyalty_transactions: {
+        Args: { customer_id_param: string }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          id: string
+          notes: string | null
+          points: number
+          restaurant_id: string
+          source: string
+          source_id: string | null
+          transaction_type: string
+        }[]
       }
       has_active_subscription: {
         Args: { restaurant_id: string }
