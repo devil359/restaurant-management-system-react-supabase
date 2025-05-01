@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -121,7 +120,9 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
     try {
       const { error } = await supabase
         .from("kitchen_orders")
-        .update({ status: newStatus as "pending" | "preparing" | "ready" | "completed" | "cancelled" })
+        .update({ 
+          status: newStatus as "new" | "preparing" | "ready" | "completed" | "cancelled" 
+        })
         .eq("id", order.id);
         
       if (error) throw error;

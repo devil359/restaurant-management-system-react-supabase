@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -9,36 +9,55 @@ import { useToast } from "@/hooks/use-toast";
 import { OrderItem } from "@/types/orders";
 import { Customer } from "@/types/customer";
 import { supabase } from "@/integrations/supabase/client";
+import { Input } from "@/components/ui/input";
 
 export interface PaymentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   orderItems: OrderItem[];
   onSuccess: () => void;
+  customerPhone?: string;
+  customerName?: string;
 }
 
 const PaymentDialog: React.FC<PaymentDialogProps> = ({ 
   open, 
   onOpenChange, 
   orderItems, 
-  onSuccess 
+  onSuccess,
+  customerPhone = "",
+  customerName = ""
 }) => {
   const { toast } = useToast();
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "upi">("card");
   const [processing, setProcessing] = useState(false);
-  const [customerPhone, setCustomerPhone] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState(customerPhone);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+
+  // Update phone number when customerPhone prop changes
+  useEffect(() => {
+    setPhoneNumber(customerPhone);
+  }, [customerPhone]);
 
   // Calculate order total
   const orderTotal = orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
   // Search customer by phone number
   const handleCustomerSearch = async () => {
+    if (!phoneNumber) {
+      toast({
+        variant: "destructive",
+        title: "Phone Required",
+        description: "Please enter a phone number to search for a customer"
+      });
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from("customers")
         .select("*")
-        .eq("phone", customerPhone)
+        .eq("phone", phoneNumber)
         .single();
         
       if (error) throw error;
@@ -97,6 +116,39 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
       if (!userProfile?.restaurant_id) {
         throw new Error("No restaurant found for user");
       }
+
+      // Try to create a new customer if they don't exist and phone is provided
+      let customerId = selectedCustomer?.id;
+      
+      if (phoneNumber && !selectedCustomer) {
+        try {
+          // Check if we need to create a new customer
+          const { data: newCustomer, error: customerError } = await supabase
+            .from("customers")
+            .insert({
+              restaurant_id: userProfile.restaurant_id,
+              name: customerName || "Guest",
+              phone: phoneNumber,
+              total_spent: orderTotal,
+              visit_count: 1,
+              average_order_value: orderTotal,
+              loyalty_enrolled: false,
+              loyalty_points: 0
+            })
+            .select();
+            
+          if (!customerError && newCustomer?.[0]) {
+            customerId = newCustomer[0].id;
+            toast({
+              title: "New Customer Created",
+              description: `Created new customer with phone: ${phoneNumber}`
+            });
+          }
+        } catch (customerCreationError) {
+          console.error("Error creating customer:", customerCreationError);
+          // Continue with payment even if customer creation fails
+        }
+      }
       
       // Prepare order data
       const orderData = {
@@ -104,7 +156,7 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
         total: orderTotal,
         status: "completed",
         items: orderItems.map(item => item.name),
-        customer_name: selectedCustomer ? selectedCustomer.name : "Guest"
+        customer_name: customerName || selectedCustomer?.name || "Guest"
       };
       
       // Save order to database
@@ -116,9 +168,10 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
       if (error) throw error;
       
       // Update customer data if selected
-      if (selectedCustomer) {
-        const newTotalSpent = selectedCustomer.total_spent + orderTotal;
-        const newVisitCount = selectedCustomer.visit_count + 1;
+      if (selectedCustomer || customerId) {
+        const customerToUpdate = selectedCustomer || { id: customerId, total_spent: 0, visit_count: 0 };
+        const newTotalSpent = customerToUpdate.total_spent + orderTotal;
+        const newVisitCount = customerToUpdate.visit_count + 1;
         const newAvgOrder = newTotalSpent / newVisitCount;
         
         // Update customer stats
@@ -130,10 +183,10 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
             average_order_value: newAvgOrder,
             last_visit_date: new Date().toISOString()
           })
-          .eq("id", selectedCustomer.id);
+          .eq("id", customerToUpdate.id);
           
         // Add loyalty points if enrolled
-        if (selectedCustomer.loyalty_enrolled) {
+        if (selectedCustomer?.loyalty_enrolled) {
           const pointsToAdd = Math.floor(orderTotal / 100); // 1 point per ₹100
           
           if (pointsToAdd > 0) {
@@ -174,7 +227,7 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
       
       // Reset and close
       setPaymentMethod("card");
-      setCustomerPhone("");
+      setPhoneNumber("");
       setSelectedCustomer(null);
       onSuccess();
       onOpenChange(false);
@@ -208,20 +261,30 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
           
           <div className="space-y-4">
             <div>
-              <Label htmlFor="customerPhone">Link to Customer (Optional)</Label>
+              <Label htmlFor="customerPhone">Link to Customer</Label>
               <div className="flex mt-1.5 gap-2">
-                <input
+                <Input
                   id="customerPhone"
                   type="tel"
                   placeholder="Customer phone number"
-                  className="flex-1 border rounded px-3 py-2"
-                  value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  className="flex-1"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
                 />
-                <Button variant="outline" onClick={handleCustomerSearch} disabled={!customerPhone}>
+                <Button variant="outline" onClick={handleCustomerSearch} disabled={!phoneNumber}>
                   Find
                 </Button>
               </div>
+
+              {!selectedCustomer && phoneNumber && (
+                <div className="mt-2 text-sm">
+                  {customerName ? (
+                    <p className="text-muted-foreground">Will create new customer: {customerName}</p>
+                  ) : (
+                    <p className="text-muted-foreground">New customer will be created with this phone number</p>
+                  )}
+                </div>
+              )}
               
               {selectedCustomer && (
                 <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md">

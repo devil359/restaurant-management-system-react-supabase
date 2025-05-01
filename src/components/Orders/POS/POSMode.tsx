@@ -4,12 +4,13 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChevronRight, Trash2, Plus, Minus, Search, Coffee, ShoppingCart } from "lucide-react";
+import { ChevronRight, Trash2, Plus, Minus, Search, Coffee, ShoppingCart, Clock, History } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import PaymentDialog from "./PaymentDialog";
 import { OrderItem } from "@/types/orders";
+import { Separator } from "@/components/ui/separator";
 
 const POSMode = () => {
   const { toast } = useToast();
@@ -17,6 +18,8 @@ const POSMode = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [currentOrderItems, setCurrentOrderItems] = useState<OrderItem[]>([]);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [tableNumber, setTableNumber] = useState<string>("");
+  const [customerInfo, setCustomerInfo] = useState({ name: "", phone: "" });
   
   // Fetch menu items
   const { data: menuItems = [], isLoading: isLoadingMenu } = useQuery({
@@ -39,6 +42,35 @@ const POSMode = () => {
         .from("menu_items")
         .select("*")
         .eq("restaurant_id", userProfile.restaurant_id);
+        
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  // Fetch recent orders
+  const { data: recentOrders = [], isLoading: isLoadingOrders } = useQuery({
+    queryKey: ["recent-orders"],
+    queryFn: async () => {
+      const { data: profile } = await supabase.auth.getUser();
+      if (!profile.user) throw new Error("No user found");
+      
+      const { data: userProfile } = await supabase
+        .from("profiles")
+        .select("restaurant_id")
+        .eq("id", profile.user.id)
+        .single();
+      
+      if (!userProfile?.restaurant_id) {
+        throw new Error("No restaurant found for user");
+      }
+      
+      const { data, error } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("restaurant_id", userProfile.restaurant_id)
+        .order("created_at", { ascending: false })
+        .limit(5);
         
       if (error) throw error;
       return data;
@@ -129,6 +161,8 @@ const POSMode = () => {
   // Clear entire order
   const clearOrder = () => {
     setCurrentOrderItems([]);
+    setTableNumber("");
+    setCustomerInfo({ name: "", phone: "" });
   };
   
   // Calculate order total
@@ -136,6 +170,92 @@ const POSMode = () => {
     (sum, item) => sum + (item.price * item.quantity),
     0
   );
+  
+  // Send order to kitchen
+  const sendToKitchen = async () => {
+    try {
+      const { data: profile } = await supabase.auth.getUser();
+      if (!profile.user) throw new Error("No user found");
+      
+      const { data: userProfile } = await supabase
+        .from("profiles")
+        .select("restaurant_id")
+        .eq("id", profile.user.id)
+        .single();
+      
+      if (!userProfile?.restaurant_id) {
+        throw new Error("No restaurant found for user");
+      }
+      
+      // Create kitchen order
+      const kitchenItems = currentOrderItems.map(item => ({
+        name: item.name,
+        quantity: item.quantity,
+        notes: item.modifiers || []
+      }));
+      
+      const source = tableNumber ? 
+        `Table ${tableNumber}` : 
+        (customerInfo.name ? customerInfo.name : "Counter Order");
+      
+      const { data, error } = await supabase
+        .from("kitchen_orders")
+        .insert({
+          restaurant_id: userProfile.restaurant_id,
+          source: source,
+          status: "new",
+          items: kitchenItems
+        })
+        .select();
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Order Sent",
+        description: "Order successfully sent to kitchen",
+      });
+      
+      clearOrder();
+    } catch (error) {
+      console.error("Error sending to kitchen:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to send order to kitchen",
+      });
+    }
+  };
+  
+  // Hold order for later
+  const holdOrder = () => {
+    if (currentOrderItems.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "Empty Order",
+        description: "Cannot hold an empty order",
+      });
+      return;
+    }
+    
+    // For now we'll just save to localStorage
+    const savedOrders = JSON.parse(localStorage.getItem("heldOrders") || "[]");
+    const newOrder = {
+      id: Date.now().toString(),
+      items: currentOrderItems,
+      tableNumber,
+      customerInfo,
+      timestamp: new Date().toISOString()
+    };
+    
+    localStorage.setItem("heldOrders", JSON.stringify([...savedOrders, newOrder]));
+    
+    toast({
+      title: "Order Held",
+      description: "Order has been saved for later",
+    });
+    
+    clearOrder();
+  };
   
   // Handle payment success
   const handlePaymentSuccess = () => {
@@ -233,16 +353,77 @@ const POSMode = () => {
             </div>
           )}
         </div>
+        
+        {/* Recent Orders Section */}
+        <div className="mt-4 pt-4 border-t">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold flex items-center">
+              <History className="mr-2 h-4 w-4" /> Recent Orders
+            </h2>
+          </div>
+          
+          <div className="overflow-x-auto">
+            <div className="flex space-x-4 pb-2">
+              {isLoadingOrders ? (
+                [...Array(3)].map((_, index) => (
+                  <Card key={index} className="w-64 h-24 flex-shrink-0 animate-pulse bg-gray-200 dark:bg-gray-800" />
+                ))
+              ) : recentOrders.length === 0 ? (
+                <p className="text-muted-foreground py-2">No recent orders found</p>
+              ) : (
+                recentOrders.map(order => (
+                  <Card key={order.id} className="w-64 flex-shrink-0 p-3">
+                    <div className="font-medium">{order.customer_name}</div>
+                    <div className="flex justify-between text-sm mt-1">
+                      <span className="text-muted-foreground">
+                        {new Date(order.created_at).toLocaleTimeString()}
+                      </span>
+                      <span className="font-semibold">₹{order.total}</span>
+                    </div>
+                    <div className="mt-2 flex justify-between items-center">
+                      <span className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+                        {order.items.length} items
+                      </span>
+                      <span className={`text-xs px-2 py-1 rounded ${
+                        order.status === 'completed' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400' : 
+                        order.status === 'pending' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400' : 
+                        'bg-gray-100 dark:bg-gray-800'
+                      }`}>
+                        {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                      </span>
+                    </div>
+                  </Card>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
       </div>
       
       {/* Current Order Section */}
       <div className="border-t lg:border-l lg:border-t-0 lg:w-[400px] flex flex-col h-full">
         <div className="p-4 border-b bg-card">
           <h2 className="text-xl font-bold">Current Order</h2>
-          <p className="text-muted-foreground text-sm">
-            {currentOrderItems.length} 
-            {currentOrderItems.length === 1 ? ' item' : ' items'}
-          </p>
+          <div className="flex gap-2 mt-2">
+            <Input 
+              placeholder="Table Number" 
+              value={tableNumber} 
+              onChange={e => setTableNumber(e.target.value)}
+              className="w-24"
+            />
+            <Input 
+              placeholder="Customer Name" 
+              value={customerInfo.name} 
+              onChange={e => setCustomerInfo(prev => ({ ...prev, name: e.target.value }))}
+              className="flex-1"
+            />
+          </div>
+          <Input 
+            placeholder="Customer Phone" 
+            value={customerInfo.phone} 
+            onChange={e => setCustomerInfo(prev => ({ ...prev, phone: e.target.value }))}
+            className="mt-2"
+          />
         </div>
         
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -312,6 +493,25 @@ const POSMode = () => {
             <span>₹{orderTotal.toFixed(2)}</span>
           </div>
           
+          <div className="grid grid-cols-2 gap-2 mb-2">
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={sendToKitchen}
+              disabled={currentOrderItems.length === 0}
+            >
+              Send to Kitchen
+            </Button>
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={holdOrder}
+              disabled={currentOrderItems.length === 0}
+            >
+              Hold Order
+            </Button>
+          </div>
+          
           <div className="flex gap-2">
             <Button 
               variant="outline" 
@@ -337,6 +537,8 @@ const POSMode = () => {
         onOpenChange={setPaymentDialogOpen}
         orderItems={currentOrderItems}
         onSuccess={handlePaymentSuccess}
+        customerPhone={customerInfo.phone}
+        customerName={customerInfo.name}
       />
     </div>
   );
