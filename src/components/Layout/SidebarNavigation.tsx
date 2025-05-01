@@ -14,7 +14,6 @@ import {
   LayoutDashboard,
   Bot,
   ChefHat,
-  Award,
 } from "lucide-react";
 import {
   SidebarContent,
@@ -30,7 +29,6 @@ const navigationItems = [
   { name: "Tables", href: "/tables", icon: Coffee, component: "tables" },
   { name: "Staff", href: "/staff", icon: Users, component: "staff" },
   { name: "Customers", href: "/customers", icon: Users, component: "customers" },
-  { name: "Loyalty", href: "/settings?tab=loyalty", icon: Award, component: "customers" },
   { name: "Inventory", href: "/inventory", icon: PackageOpen, component: "inventory" },
   { name: "Rooms", href: "/rooms", icon: Bed, component: "rooms" },
   { name: "Suppliers", href: "/suppliers", icon: Truck, component: "suppliers" },
@@ -63,12 +61,10 @@ export const SidebarNavigation = ({ allowedComponents }: Props) => {
           <SidebarMenuItem key={item.name}>
             <SidebarMenuButton
               asChild
-              isActive={location.pathname === item.href || 
-                (item.href.startsWith('/settings?tab=') && location.pathname === '/settings')}
+              isActive={location.pathname === item.href}
               tooltip={item.name}
               className={
-                location.pathname === item.href || 
-                (item.href.startsWith('/settings?tab=') && location.pathname === '/settings')
+                location.pathname === item.href
                   ? "bg-white text-sidebar-purple hover:bg-white hover:text-sidebar-purple"
                   : "text-white hover:bg-sidebar-purple-dark"
               }

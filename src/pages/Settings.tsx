@@ -1,16 +1,16 @@
+
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { LogOut, User, Building, Clock, Shield, CreditCard, Loader2, Mail, Phone, MapPin, CalendarClock, CheckCircle2, Medal } from "lucide-react";
+import { LogOut, User, Building, Clock, Shield, CreditCard, Loader2, Mail, Phone, MapPin, CalendarClock, CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
-import LoyaltySettings from "@/components/Loyalty/LoyaltySettings";
 
 const Settings = () => {
   const { toast } = useToast();
@@ -18,6 +18,7 @@ const Settings = () => {
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
 
+  // Fetch user and profile data
   const { data: session } = useQuery({
     queryKey: ['session'],
     queryFn: async () => {
@@ -42,6 +43,7 @@ const Settings = () => {
     },
   });
 
+  // Fetch restaurant data
   const { data: restaurant, isLoading: restaurantLoading } = useQuery({
     queryKey: ['restaurant', profile?.restaurant_id],
     enabled: !!profile?.restaurant_id,
@@ -57,6 +59,7 @@ const Settings = () => {
     },
   });
 
+  // Fetch subscription data
   const { data: subscription, isLoading: subscriptionLoading } = useQuery({
     queryKey: ['subscription', profile?.restaurant_id],
     enabled: !!profile?.restaurant_id,
@@ -73,12 +76,14 @@ const Settings = () => {
     },
   });
 
+  // Handle logout
   const handleLogout = async () => {
     try {
       setLoading(true);
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       
+      // Clear all queries from the cache on logout
       queryClient.clear();
       
       toast({
@@ -145,10 +150,6 @@ const Settings = () => {
           <TabsTrigger value="subscription" className="flex items-center gap-2">
             <CreditCard className="h-4 w-4" />
             <span>Subscription</span>
-          </TabsTrigger>
-          <TabsTrigger value="loyalty" className="flex items-center gap-2">
-            <Medal className="h-4 w-4" />
-            <span>Loyalty Program</span>
           </TabsTrigger>
         </TabsList>
         
@@ -397,10 +398,6 @@ const Settings = () => {
               </Button>
             </CardFooter>
           </Card>
-        </TabsContent>
-        
-        <TabsContent value="loyalty">
-          <LoyaltySettings />
         </TabsContent>
       </Tabs>
     </div>

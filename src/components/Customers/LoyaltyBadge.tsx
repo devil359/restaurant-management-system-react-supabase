@@ -1,78 +1,73 @@
 
-import React from "react";
-import { Badge } from "@/components/ui/badge";
-import { LoyaltyTierType } from "@/types/customer";
-import { Award } from "lucide-react";
+import React from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Trophy, Star, Award, Gift } from 'lucide-react';
+
+type LoyaltyTier = 'Bronze' | 'Silver' | 'Gold' | 'Platinum' | 'Diamond' | 'None';
 
 interface LoyaltyBadgeProps {
-  tier: LoyaltyTierType;
+  tier: LoyaltyTier;
+  size?: 'sm' | 'md' | 'lg';
   showIcon?: boolean;
-  size?: 'sm' | 'md';
 }
 
-export const LoyaltyBadge = ({ tier, showIcon = true, size = 'md' }: LoyaltyBadgeProps) => {
-  // Define styling based on loyalty tier
-  const getTierStyles = () => {
+const LoyaltyBadge: React.FC<LoyaltyBadgeProps> = ({ 
+  tier, 
+  size = 'md',
+  showIcon = true 
+}) => {
+  if (tier === 'None') return null;
+  
+  const getTierIcon = () => {
     switch (tier) {
       case 'Bronze':
-        return {
-          backgroundColor: 'bg-amber-100',
-          textColor: 'text-amber-800',
-          borderColor: 'border-amber-200'
-        };
+        return <Trophy className="h-3.5 w-3.5 mr-1" />;
       case 'Silver':
-        return {
-          backgroundColor: 'bg-slate-100',
-          textColor: 'text-slate-800',
-          borderColor: 'border-slate-200'
-        };
+        return <Star className="h-3.5 w-3.5 mr-1" />;
       case 'Gold':
-        return {
-          backgroundColor: 'bg-yellow-100',
-          textColor: 'text-yellow-800',
-          borderColor: 'border-yellow-200'
-        };
+        return <Award className="h-3.5 w-3.5 mr-1" />;
       case 'Platinum':
-        return {
-          backgroundColor: 'bg-cyan-100', 
-          textColor: 'text-cyan-800',
-          borderColor: 'border-cyan-200'
-        };
       case 'Diamond':
-        return {
-          backgroundColor: 'bg-purple-100',
-          textColor: 'text-purple-800',
-          borderColor: 'border-purple-200'
-        };
-      case 'None':
+        return <Gift className="h-3.5 w-3.5 mr-1" />;
       default:
-        return {
-          backgroundColor: 'bg-gray-100',
-          textColor: 'text-gray-800',
-          borderColor: 'border-gray-200'
-        };
+        return null;
     }
   };
   
-  // Skip rendering for 'None' tier
-  if (tier === 'None') {
-    return null;
-  }
-
-  const styles = getTierStyles();
+  const getTierColor = () => {
+    switch (tier) {
+      case 'Bronze':
+        return "bg-amber-700 hover:bg-amber-800 text-amber-50";
+      case 'Silver':
+        return "bg-slate-400 hover:bg-slate-500 text-slate-50";
+      case 'Gold':
+        return "bg-amber-500 hover:bg-amber-600 text-amber-50";
+      case 'Platinum':
+        return "bg-sky-500 hover:bg-sky-600 text-sky-50";
+      case 'Diamond':
+        return "bg-violet-500 hover:bg-violet-600 text-violet-50";
+      default:
+        return "bg-gray-500 hover:bg-gray-600 text-gray-50";
+    }
+  };
+  
+  const getSizeClasses = () => {
+    switch (size) {
+      case 'sm':
+        return "text-xs px-1.5 py-0.5";
+      case 'lg':
+        return "text-sm px-3 py-1";
+      case 'md':
+      default:
+        return "text-xs px-2 py-0.5";
+    }
+  };
   
   return (
     <Badge 
-      variant="outline" 
-      className={`
-        flex items-center gap-1
-        ${styles.backgroundColor} 
-        ${styles.textColor} 
-        ${styles.borderColor}
-        ${size === 'sm' ? 'text-xs py-0 px-1.5' : 'px-2 py-0.5'}
-      `}
+      className={`${getTierColor()} ${getSizeClasses()} font-medium flex items-center`}
     >
-      {showIcon && <Award className={size === 'sm' ? "h-2.5 w-2.5" : "h-3.5 w-3.5"} />}
+      {showIcon && getTierIcon()}
       {tier}
     </Badge>
   );
