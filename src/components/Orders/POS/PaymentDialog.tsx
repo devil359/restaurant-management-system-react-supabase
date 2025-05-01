@@ -1,642 +1,287 @@
 
-import React, { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
+import React, { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Award, BadgeIndianRupee, CreditCard, Loader2, Wallet, Receipt, Coins } from "lucide-react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Check, CreditCard, Landmark, Banknote } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { OrderItem } from "@/types/orders";
 import { Customer } from "@/types/customer";
-import { formatCurrency } from "@/utils/formatters";
+import { supabase } from "@/integrations/supabase/client";
 
-interface PaymentDialogProps {
+export interface PaymentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  orderTotal: number;
-  orderItems: any[];
-  customerName: string;
-  onPaymentComplete: () => void;
+  orderItems: OrderItem[];
+  onSuccess: () => void;
 }
 
-const PaymentDialog = ({
-  open,
-  onOpenChange,
-  orderTotal,
-  orderItems,
-  customerName,
-  onPaymentComplete,
-}: PaymentDialogProps) => {
+const PaymentDialog: React.FC<PaymentDialogProps> = ({ 
+  open, 
+  onOpenChange, 
+  orderItems, 
+  onSuccess 
+}) => {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [paymentMethod, setPaymentMethod] = useState("cash");
-  const [amountPaid, setAmountPaid] = useState(orderTotal.toString());
-  const [change, setChange] = useState(0);
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "upi">("card");
   const [processing, setProcessing] = useState(false);
-  const [selectedReward, setSelectedReward] = useState<any | null>(null);
-  const [actualTotal, setActualTotal] = useState(orderTotal);
-  const [discount, setDiscount] = useState(0);
-  const [showRewards, setShowRewards] = useState(false);
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
-  // Fetch customer details if name is provided
-  const { data: customer, isLoading: isLoadingCustomer } = useQuery({
-    queryKey: ["customer-by-name", customerName],
-    queryFn: async () => {
-      if (!customerName) return null;
-      
-      const { data: profile } = await supabase.auth.getUser();
-      if (!profile.user) throw new Error("No user found");
+  // Calculate order total
+  const orderTotal = orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
-      const { data: userProfile } = await supabase
-        .from("profiles")
-        .select("restaurant_id")
-        .eq("id", profile.user.id)
-        .single();
-        
+  // Search customer by phone number
+  const handleCustomerSearch = async () => {
+    try {
       const { data, error } = await supabase
         .from("customers")
         .select("*")
-        .eq("restaurant_id", userProfile?.restaurant_id)
-        .eq("name", customerName)
-        .maybeSingle();
+        .eq("phone", customerPhone)
+        .single();
         
       if (error) throw error;
-      return data as Customer | null;
-    },
-    enabled: !!customerName,
-  });
-  
-  // Fetch available rewards for customer
-  const { data: availableRewards = [], isLoading: isLoadingRewards } = useQuery({
-    queryKey: ["available-rewards", customer?.id],
-    queryFn: async () => {
-      if (!customer || !customer.loyalty_enrolled) return [];
       
-      const { data, error } = await supabase
-        .from("loyalty_rewards")
-        .select("*")
-        .eq("restaurant_id", customer.restaurant_id)
-        .lte("points_required", customer.loyalty_points)
-        .eq("is_active", true)
-        .order("points_required", { ascending: false });
+      if (data) {
+        // Convert the data to a Customer type
+        const customer = {
+          ...data,
+          loyalty_tier: calculateLoyaltyTier(data.total_spent, data.visit_count, 0)
+        } as Customer;
         
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!customer && customer.loyalty_enrolled,
-  });
-
-  useEffect(() => {
-    if (open) {
-      setPaymentMethod("cash");
-      setAmountPaid(orderTotal.toString());
-      setChange(0);
-      setProcessing(false);
-      setSelectedReward(null);
-      setActualTotal(orderTotal);
-      setDiscount(0);
-      setShowRewards(false);
+        setSelectedCustomer(customer);
+        toast({
+          title: "Customer Found",
+          description: `Found customer: ${data.name}`
+        });
+      }
+    } catch (error) {
+      console.error("Error searching for customer:", error);
+      setSelectedCustomer(null);
+      toast({
+        variant: "destructive",
+        title: "Customer Not Found",
+        description: "No customer found with that phone number."
+      });
     }
-  }, [open, orderTotal]);
-
-  useEffect(() => {
-    // Calculate change when amount paid changes
-    const paid = parseFloat(amountPaid) || 0;
-    setChange(Math.max(0, paid - actualTotal));
-  }, [amountPaid, actualTotal]);
+  };
   
-  // Update actual total when a reward is selected
-  useEffect(() => {
-    if (selectedReward) {
-      let discountAmount = 0;
+  // Calculate loyalty tier based on customer data
+  function calculateLoyaltyTier(
+    totalSpent: number,
+    visitCount: number,
+    daysSinceFirstVisit: number
+  ): Customer['loyalty_tier'] {
+    // Simplified loyalty tier calculation
+    if (totalSpent > 20000 && visitCount > 15) return "Diamond";
+    if (totalSpent > 10000 && visitCount > 10) return "Platinum";
+    if (totalSpent > 5000 && visitCount > 8) return "Gold";
+    if (totalSpent > 2500 && visitCount > 5) return "Silver";
+    if (totalSpent > 1000 || visitCount > 3) return "Bronze";
+    return "None";
+  }
+
+  const handleProcessPayment = async () => {
+    try {
+      setProcessing(true);
       
-      switch (selectedReward.reward_type) {
-        case 'discount_amount':
-          discountAmount = Math.min(selectedReward.reward_value, orderTotal);
-          break;
-        case 'discount_percentage':
-          discountAmount = (orderTotal * selectedReward.reward_value) / 100;
-          break;
-        case 'free_item':
-          // For free item, we'd typically match it to a menu item
-          // For simplicity, we're using reward_value as a fixed amount
-          discountAmount = Math.min(selectedReward.reward_value, orderTotal);
-          break;
+      // Get current user and restaurant
+      const { data: profileData } = await supabase.auth.getUser();
+      const { data: userProfile } = await supabase
+        .from("profiles")
+        .select("restaurant_id")
+        .eq("id", profileData.user!.id)
+        .single();
+        
+      if (!userProfile?.restaurant_id) {
+        throw new Error("No restaurant found for user");
       }
       
-      setDiscount(discountAmount);
-      setActualTotal(Math.max(0, orderTotal - discountAmount));
-      setAmountPaid(Math.max(0, orderTotal - discountAmount).toString());
-    } else {
-      setDiscount(0);
-      setActualTotal(orderTotal);
-      setAmountPaid(orderTotal.toString());
-    }
-  }, [selectedReward, orderTotal]);
-
-  const handleApplyReward = (reward: any) => {
-    setSelectedReward(reward);
-    setShowRewards(false);
-  };
-
-  const completeOrder = useMutation({
-    mutationFn: async () => {
-      try {
-        setProcessing(true);
+      // Prepare order data
+      const orderData = {
+        restaurant_id: userProfile.restaurant_id,
+        total: orderTotal,
+        status: "completed",
+        items: orderItems.map(item => item.name),
+        customer_name: selectedCustomer ? selectedCustomer.name : "Guest"
+      };
+      
+      // Save order to database
+      const { data, error } = await supabase
+        .from("orders")
+        .insert([orderData])
+        .select();
         
-        const { data: profile } = await supabase.auth.getUser();
-        if (!profile.user) throw new Error("No user found");
-
-        const { data: userProfile } = await supabase
-          .from("profiles")
-          .select("restaurant_id")
-          .eq("id", profile.user.id)
-          .single();
-
-        if (!userProfile?.restaurant_id) {
-          throw new Error("No restaurant found for user");
-        }
+      if (error) throw error;
+      
+      // Update customer data if selected
+      if (selectedCustomer) {
+        const newTotalSpent = selectedCustomer.total_spent + orderTotal;
+        const newVisitCount = selectedCustomer.visit_count + 1;
+        const newAvgOrder = newTotalSpent / newVisitCount;
         
-        // Create order
-        const { data: order, error: orderError } = await supabase
-          .from("orders")
-          .insert({
-            restaurant_id: userProfile.restaurant_id,
-            customer_name: customerName,
-            total: actualTotal,
-            status: "completed",
-            items: orderItems.map(item => item.name),
+        // Update customer stats
+        await supabase
+          .from("customers")
+          .update({
+            total_spent: newTotalSpent,
+            visit_count: newVisitCount,
+            average_order_value: newAvgOrder,
+            last_visit_date: new Date().toISOString()
           })
-          .select()
-          .single();
+          .eq("id", selectedCustomer.id);
           
-        if (orderError) throw orderError;
-        
-        let loyalty_points_earned = 0;
-        
-        // Handle loyalty points if customer is enrolled
-        if (customer && customer.loyalty_enrolled) {
-          // Get loyalty program settings
-          const { data: program } = await supabase
-            .from("loyalty_programs")
-            .select("*")
-            .eq("restaurant_id", userProfile.restaurant_id)
-            .maybeSingle();
-            
-          // Calculate points earned (rounded down)
-          if (program && program.is_enabled) {
-            loyalty_points_earned = Math.floor((actualTotal / program.amount_per_point) * program.points_per_amount);
-          } else {
-            // Default: 1 point per 100 units of currency
-            loyalty_points_earned = Math.floor(actualTotal / 100);
-          }
+        // Add loyalty points if enrolled
+        if (selectedCustomer.loyalty_enrolled) {
+          const pointsToAdd = Math.floor(orderTotal / 100); // 1 point per ₹100
           
-          if (loyalty_points_earned > 0) {
-            // Update customer points
-            const newPoints = (customer.loyalty_points || 0) + loyalty_points_earned;
-            
-            const { error: updateError } = await supabase
-              .from("customers")
-              .update({ 
-                loyalty_points: newPoints,
-                total_spent: customer.total_spent + actualTotal,
-                visit_count: customer.visit_count + 1,
-                average_order_value: (customer.total_spent + actualTotal) / (customer.visit_count + 1),
-                last_visit_date: new Date().toISOString()
-              })
-              .eq("id", customer.id);
-              
-            if (updateError) throw updateError;
-            
-            // Record transaction
-            await supabase.from("loyalty_transactions").insert({
-              customer_id: customer.id,
-              restaurant_id: userProfile.restaurant_id,
-              transaction_type: 'earn',
-              points: loyalty_points_earned,
-              source: 'order',
-              source_id: order.id
-            });
-            
-            // Record activity
-            await supabase.from("customer_activities").insert({
-              customer_id: customer.id,
-              restaurant_id: userProfile.restaurant_id,
-              activity_type: 'order_placed',
-              description: `Earned ${loyalty_points_earned} points from order of ₹${actualTotal}`
-            });
-          }
-          
-          // Handle reward redemption if a reward was used
-          if (selectedReward) {
-            // Deduct points for reward
-            const newPoints = customer.loyalty_points - selectedReward.points_required;
-            
-            const { error: pointsError } = await supabase
-              .from("customers")
-              .update({ loyalty_points: newPoints })
-              .eq("id", customer.id);
-              
-            if (pointsError) throw pointsError;
-            
-            // Record redemption
-            await supabase.from("loyalty_redemptions").insert({
-              customer_id: customer.id,
-              restaurant_id: userProfile.restaurant_id,
-              reward_id: selectedReward.id,
-              order_id: order.id,
-              points_used: selectedReward.points_required,
-              discount_applied: discount
-            });
-            
-            // Record transaction
-            await supabase.from("loyalty_transactions").insert({
-              customer_id: customer.id,
-              restaurant_id: userProfile.restaurant_id,
-              transaction_type: 'redeem',
-              points: -selectedReward.points_required,
-              source: 'order',
-              source_id: order.id,
-              notes: `Redeemed ${selectedReward.name}`
-            });
-            
-            // Record activity
-            await supabase.from("customer_activities").insert({
-              customer_id: customer.id,
-              restaurant_id: userProfile.restaurant_id,
-              activity_type: 'order_placed',
-              description: `Redeemed ${selectedReward.name} for a discount of ₹${discount}`
-            });
-          }
-        } else if (customerName) {
-          // If customer exists but is not in loyalty program, still update their stats
-          const { data: existingCustomer } = await supabase
-            .from("customers")
-            .select("*")
-            .eq("restaurant_id", userProfile.restaurant_id)
-            .eq("name", customerName)
-            .maybeSingle();
-            
-          if (existingCustomer) {
+          if (pointsToAdd > 0) {
+            // Add points to customer
             await supabase
               .from("customers")
-              .update({ 
-                total_spent: existingCustomer.total_spent + actualTotal,
-                visit_count: existingCustomer.visit_count + 1,
-                average_order_value: (existingCustomer.total_spent + actualTotal) / (existingCustomer.visit_count + 1),
-                last_visit_date: new Date().toISOString()
+              .update({
+                loyalty_points: selectedCustomer.loyalty_points + pointsToAdd
               })
-              .eq("id", existingCustomer.id);
+              .eq("id", selectedCustomer.id);
               
-            // Record activity
-            await supabase.from("customer_activities").insert({
-              customer_id: existingCustomer.id,
-              restaurant_id: userProfile.restaurant_id,
-              activity_type: 'order_placed',
-              description: `Placed order of ₹${actualTotal}`
-            });
+            // Record transaction if table exists
+            try {
+              await supabase
+                .from("loyalty_transactions")
+                .insert({
+                  customer_id: selectedCustomer.id,
+                  restaurant_id: userProfile.restaurant_id,
+                  transaction_type: "earn",
+                  points: pointsToAdd,
+                  source: "order",
+                  source_id: data[0].id,
+                  notes: `Earned from order #${data[0].id.substring(0, 8)}`
+                });
+            } catch (txnError) {
+              console.error("Could not record loyalty transaction:", txnError);
+              // Non-blocking error, continue with order
+            }
           }
         }
-        
-        // Send order to kitchen
-        await supabase.from("kitchen_orders").insert({
-          order_id: order.id,
-          restaurant_id: userProfile.restaurant_id,
-          items: orderItems,
-          source: "pos",
-          status: "new"
-        });
-        
-        return { 
-          success: true, 
-          orderId: order.id,
-          loyaltyPointsEarned: loyalty_points_earned,
-          rewardUsed: selectedReward ? selectedReward.name : null
-        };
-      } catch (error) {
-        console.error("Error completing order:", error);
-        throw error;
-      }
-    },
-    onSuccess: (data) => {
-      setProcessing(false);
-      onOpenChange(false);
-      queryClient.invalidateQueries({ queryKey: ["customers"] });
-      
-      let message = `Payment successful! Order completed.`;
-      if (data.loyaltyPointsEarned > 0) {
-        message += ` Customer earned ${data.loyaltyPointsEarned} loyalty points.`;
-      }
-      if (data.rewardUsed) {
-        message += ` Applied reward: ${data.rewardUsed}.`;
       }
       
+      // Success notification
       toast({
-        title: "Order Completed",
-        description: message,
+        title: "Payment Complete",
+        description: "The order has been processed successfully."
       });
       
-      onPaymentComplete();
-    },
-    onError: (error) => {
-      setProcessing(false);
+      // Reset and close
+      setPaymentMethod("card");
+      setCustomerPhone("");
+      setSelectedCustomer(null);
+      onSuccess();
+      onOpenChange(false);
+      
+    } catch (error) {
+      console.error("Error processing payment:", error);
       toast({
         variant: "destructive",
         title: "Payment Failed",
-        description: "There was an error processing the payment. Please try again.",
+        description: "There was a problem processing the payment."
       });
-      console.error("Payment error:", error);
-    },
-  });
-
-  const handleCompleteOrder = () => {
-    if (!customerName) {
-      toast({
-        variant: "destructive",
-        title: "Customer Required",
-        description: "Please select a customer before completing the order.",
-      });
-      return;
-    }
-
-    completeOrder.mutate();
-  };
-
-  const formatRewardDescription = (reward: any) => {
-    switch (reward.reward_type) {
-      case 'discount_amount':
-        return `₹${reward.reward_value} off`;
-      case 'discount_percentage':
-        return `${reward.reward_value}% off`;
-      case 'free_item':
-        return `Free item (worth ₹${reward.reward_value})`;
-      default:
-        return '';
+    } finally {
+      setProcessing(false);
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-auto">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Complete Payment</DialogTitle>
+          <DialogTitle>Process Payment</DialogTitle>
         </DialogHeader>
-
-        <div className="grid gap-6 md:grid-cols-2">
-          <div>
-            <div className="space-y-4">
-              <div>
-                <Label>Payment Method</Label>
-                <Tabs 
-                  defaultValue="cash" 
-                  className="mt-2" 
-                  value={paymentMethod} 
-                  onValueChange={setPaymentMethod}
-                >
-                  <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="cash">Cash</TabsTrigger>
-                    <TabsTrigger value="card">Card</TabsTrigger>
-                    <TabsTrigger value="upi">UPI</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="cash" className="pt-4">
-                    <div className="space-y-3">
-                      <div>
-                        <Label htmlFor="amount-paid">Amount Paid (₹)</Label>
-                        <Input
-                          id="amount-paid"
-                          type="number"
-                          min={0}
-                          value={amountPaid}
-                          onChange={(e) => setAmountPaid(e.target.value)}
-                          className="mt-1"
-                        />
-                      </div>
-
-                      <div>
-                        <Label>Change</Label>
-                        <div className="p-2 bg-muted rounded-md mt-1">
-                          <span className="text-lg font-semibold">
-                            ₹{change.toFixed(2)}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex gap-2 pt-2">
-                        {[100, 200, 500, 2000].map((amount) => (
-                          <Button
-                            key={amount}
-                            variant="outline"
-                            size="sm"
-                            className="flex-1"
-                            onClick={() => setAmountPaid(amount.toString())}
-                          >
-                            ₹{amount}
-                          </Button>
-                        ))}
-                      </div>
-
-                      <div>
-                        <Button
-                          variant="outline"
-                          className="w-full"
-                          onClick={() => setAmountPaid(actualTotal.toString())}
-                        >
-                          Exact Amount (₹{actualTotal.toFixed(2)})
-                        </Button>
-                      </div>
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="card" className="space-y-4 pt-4">
-                    <div className="flex items-center justify-center h-32 border rounded-md">
-                      <div className="text-center">
-                        <CreditCard className="mx-auto h-12 w-12 text-muted-foreground mb-2" />
-                        <p className="text-muted-foreground">Process card payment on your terminal</p>
-                      </div>
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="upi" className="space-y-4 pt-4">
-                    <div className="flex items-center justify-center h-32 border rounded-md">
-                      <div className="text-center">
-                        <Wallet className="mx-auto h-12 w-12 text-muted-foreground mb-2" />
-                        <p className="text-muted-foreground">Show QR code to customer or enter UPI ID</p>
-                      </div>
-                    </div>
-                  </TabsContent>
-                </Tabs>
-              </div>
-
-              {customer && customer.loyalty_enrolled && (
-                <Card>
-                  <CardContent className="p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Award className="h-5 w-5 text-amber-500" />
-                        <h4 className="font-semibold">Loyalty Program</h4>
-                      </div>
-                      <Badge className="flex items-center gap-1">
-                        <Coins className="h-3 w-3" />
-                        {customer.loyalty_points} points
-                      </Badge>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      {!showRewards && availableRewards.length > 0 && (
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="w-full"
-                          onClick={() => setShowRewards(true)}
-                        >
-                          View Available Rewards
-                        </Button>
-                      )}
-                      
-                      {showRewards && (
-                        <div className="border rounded-md p-3 space-y-2">
-                          <h5 className="text-sm font-medium">Available Rewards</h5>
-                          {isLoadingRewards ? (
-                            <div className="flex justify-center py-3">
-                              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                            </div>
-                          ) : availableRewards.length === 0 ? (
-                            <p className="text-sm text-muted-foreground">
-                              No rewards available with current points
-                            </p>
-                          ) : (
-                            <div className="space-y-2">
-                              {availableRewards.map((reward) => (
-                                <div 
-                                  key={reward.id} 
-                                  className="flex items-center justify-between border-b pb-2"
-                                >
-                                  <div>
-                                    <div className="font-medium text-sm">{reward.name}</div>
-                                    <div className="text-xs text-muted-foreground flex items-center gap-1">
-                                      <Coins className="h-3 w-3" />
-                                      {reward.points_required} points • {formatRewardDescription(reward)}
-                                    </div>
-                                  </div>
-                                  <Button 
-                                    size="sm" 
-                                    onClick={() => handleApplyReward(reward)}
-                                  >
-                                    Apply
-                                  </Button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="w-full mt-2"
-                            onClick={() => setShowRewards(false)}
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                      )}
-                      
-                      {selectedReward && (
-                        <div className="border rounded-md p-3">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <h5 className="text-sm font-medium">
-                                Applied Reward: {selectedReward.name}
-                              </h5>
-                              <p className="text-xs text-muted-foreground">
-                                {formatRewardDescription(selectedReward)} • {selectedReward.points_required} points
-                              </p>
-                            </div>
-                            <Button 
-                              size="sm" 
-                              variant="ghost"
-                              onClick={() => setSelectedReward(null)}
-                            >
-                              Remove
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
+        
+        <div className="py-4">
+          <div className="mb-6">
+            <p className="text-lg font-semibold">Total Amount: ₹{orderTotal.toFixed(2)}</p>
+            <p className="text-sm text-muted-foreground">
+              {orderItems.length} item{orderItems.length !== 1 ? 's' : ''}
+            </p>
           </div>
-
-          <div className="space-y-6">
-            <Card>
-              <CardContent className="p-4">
-                <h3 className="font-semibold text-lg mb-3">Order Summary</h3>
-                <div className="space-y-2">
-                  {orderItems.map((item, idx) => (
-                    <div key={idx} className="flex justify-between text-sm">
-                      <span>
-                        {item.quantity}x {item.name}
-                      </span>
-                      <span>{formatCurrency(item.price * item.quantity)}</span>
-                    </div>
-                  ))}
-
-                  <Separator className="my-2" />
-
-                  <div className="flex justify-between">
-                    <span>Subtotal</span>
-                    <span>{formatCurrency(orderTotal)}</span>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="customerPhone">Link to Customer (Optional)</Label>
+              <div className="flex mt-1.5 gap-2">
+                <input
+                  id="customerPhone"
+                  type="tel"
+                  placeholder="Customer phone number"
+                  className="flex-1 border rounded px-3 py-2"
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                />
+                <Button variant="outline" onClick={handleCustomerSearch} disabled={!customerPhone}>
+                  Find
+                </Button>
+              </div>
+              
+              {selectedCustomer && (
+                <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md">
+                  <div className="flex items-center">
+                    <Check className="h-4 w-4 text-green-600 mr-2" />
+                    <span>{selectedCustomer.name}</span>
                   </div>
-
-                  {discount > 0 && (
-                    <div className="flex justify-between text-green-600 font-medium">
-                      <span>Discount</span>
-                      <span>- {formatCurrency(discount)}</span>
+                  {selectedCustomer.loyalty_enrolled && (
+                    <div className="text-xs mt-1 text-green-600">
+                      +{Math.floor(orderTotal / 100)} loyalty points will be added
                     </div>
                   )}
-
-                  <Separator className="my-2" />
-
-                  <div className="flex justify-between font-semibold text-lg">
-                    <span>Total</span>
-                    <span>{formatCurrency(actualTotal)}</span>
-                  </div>
                 </div>
-              </CardContent>
-            </Card>
-
-            <div className="space-y-3">
-              <Button
-                onClick={handleCompleteOrder}
-                disabled={processing}
-                className="w-full"
-              >
-                {processing && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
-                Complete Payment
-              </Button>
-
-              <Button
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={processing}
-                className="w-full"
-              >
-                Cancel
-              </Button>
+              )}
             </div>
-
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground">
-                Customer: <span className="font-medium">{customerName || "Guest"}</span>
-              </p>
+            
+            <div>
+              <Label>Payment Method</Label>
+              <RadioGroup 
+                className="mt-2 grid grid-cols-3 gap-2" 
+                value={paymentMethod} 
+                onValueChange={(value) => setPaymentMethod(value as any)}
+              >
+                <Label 
+                  htmlFor="card" 
+                  className={`flex flex-col items-center justify-center border rounded-md p-3 cursor-pointer ${paymentMethod === "card" ? 'bg-primary/10 border-primary' : ''}`}
+                >
+                  <RadioGroupItem id="card" value="card" className="sr-only" />
+                  <CreditCard className="h-6 w-6 mb-1" />
+                  <span className="text-xs">Card</span>
+                </Label>
+                
+                <Label 
+                  htmlFor="cash" 
+                  className={`flex flex-col items-center justify-center border rounded-md p-3 cursor-pointer ${paymentMethod === "cash" ? 'bg-primary/10 border-primary' : ''}`}
+                >
+                  <RadioGroupItem id="cash" value="cash" className="sr-only" />
+                  <Banknote className="h-6 w-6 mb-1" />
+                  <span className="text-xs">Cash</span>
+                </Label>
+                
+                <Label 
+                  htmlFor="upi" 
+                  className={`flex flex-col items-center justify-center border rounded-md p-3 cursor-pointer ${paymentMethod === "upi" ? 'bg-primary/10 border-primary' : ''}`}
+                >
+                  <RadioGroupItem id="upi" value="upi" className="sr-only" />
+                  <Landmark className="h-6 w-6 mb-1" />
+                  <span className="text-xs">UPI</span>
+                </Label>
+              </RadioGroup>
             </div>
+          </div>
+          
+          <div className="mt-6 flex justify-end gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={processing}>
+              Cancel
+            </Button>
+            <Button onClick={handleProcessPayment} disabled={processing}>
+              {processing ? "Processing..." : "Complete Payment"}
+            </Button>
           </div>
         </div>
       </DialogContent>

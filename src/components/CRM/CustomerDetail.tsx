@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,7 +14,7 @@ import {
   LoyaltyTransaction 
 } from "@/types/customer";
 
-import CustomerHeader from "./CustomerHeader";
+import CustomerDetailHeader from "./CustomerDetail/CustomerDetailHeader";
 import ProfileTab from "./CustomerProfile/ProfileTab";
 import LoyaltyPointsDialog from "./CustomerLoyalty/LoyaltyPointsDialog";
 import OrdersTab from "./TabContent/OrdersTab";
@@ -96,7 +97,13 @@ const CustomerDetail = ({
       
       if (error) throw error;
       
-      setCustomerActivities(data || []);
+      // Ensure the activity_type is one of the valid types
+      const typedActivities = (data || []).map(activity => ({
+        ...activity,
+        activity_type: validateActivityType(activity.activity_type)
+      })) as CustomerActivity[];
+      
+      setCustomerActivities(typedActivities);
     } catch (error) {
       console.error("Error loading customer activities:", error);
       toast({
@@ -107,6 +114,12 @@ const CustomerDetail = ({
     } finally {
       setIsLoadingActivities(false);
     }
+  };
+
+  // Helper function to validate activity types
+  const validateActivityType = (type: string): CustomerActivity['activity_type'] => {
+    const validTypes = ['note_added', 'email_sent', 'order_placed', 'tag_added', 'tag_removed', 'promotion_sent'] as const;
+    return validTypes.includes(type as any) ? type as CustomerActivity['activity_type'] : 'note_added';
   };
   
   // Load loyalty transactions
@@ -121,7 +134,13 @@ const CustomerDetail = ({
       
       if (error) throw error;
       
-      setLoyaltyTransactions(data || []);
+      // Ensure the transaction_type is one of the valid types
+      const typedTransactions = (data || []).map(transaction => ({
+        ...transaction,
+        transaction_type: validateTransactionType(transaction.transaction_type)
+      })) as LoyaltyTransaction[];
+      
+      setLoyaltyTransactions(typedTransactions);
     } catch (error) {
       console.error("Error loading transactions:", error);
       toast({
@@ -132,6 +151,12 @@ const CustomerDetail = ({
     } finally {
       setLoadingTransactions(false);
     }
+  };
+  
+  // Helper function to validate transaction types
+  const validateTransactionType = (type: string): LoyaltyTransaction['transaction_type'] => {
+    const validTypes = ['earn', 'redeem', 'adjust', 'expire'] as const;
+    return validTypes.includes(type as any) ? type as LoyaltyTransaction['transaction_type'] : 'adjust';
   };
   
   // Add customer note
@@ -513,7 +538,7 @@ const CustomerDetail = ({
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      <CustomerHeader customer={customer} onEditCustomer={onEditCustomer} />
+      <CustomerDetailHeader customer={customer} onEditCustomer={onEditCustomer} />
 
       <ScrollArea className="flex-1 overflow-auto">
         <Tabs defaultValue="profile">

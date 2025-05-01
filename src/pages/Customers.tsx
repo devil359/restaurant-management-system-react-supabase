@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -5,7 +6,8 @@ import { useToast } from "@/hooks/use-toast";
 import CustomerList from "@/components/CRM/CustomerList";
 import CustomerDetail from "@/components/CRM/CustomerDetail";
 import CustomerDialog from "@/components/CRM/CustomerDialog";
-import { Customer } from "@/types/customer";
+import { Customer, CustomerOrder, CustomerNote, CustomerActivity } from "@/types/customer";
+import { User } from "lucide-react";
 
 const Customers = () => {
   const { toast } = useToast();
@@ -134,14 +136,26 @@ const Customers = () => {
         
       if (error) throw error;
       
-      return data as CustomerActivity[];
+      // Ensure the activity_type is one of the valid types
+      const activities = data || [];
+      return activities.map(activity => {
+        const validTypes = ['note_added', 'email_sent', 'order_placed', 'tag_added', 'tag_removed', 'promotion_sent'];
+        const validType = validTypes.includes(activity.activity_type) 
+          ? activity.activity_type 
+          : 'note_added';
+          
+        return {
+          ...activity,
+          activity_type: validType
+        } as CustomerActivity;
+      });
     },
     enabled: !!selectedCustomer,
   });
 
-  // Create customer_notes and customer_activities tables if they don't exist
+  // Check if tables exist and use direct queries instead of RPC calls
   useEffect(() => {
-    const createTablesIfNeeded = async () => {
+    const verifyTables = async () => {
       try {
         // Check if customer_notes table exists
         const { error: notesExistError } = await supabase
@@ -150,8 +164,12 @@ const Customers = () => {
           .limit(1);
           
         if (notesExistError && notesExistError.message.includes('does not exist')) {
-          // Create customer_notes table using the existing function
-          await supabase.rpc('create_customer_notes_table');
+          console.error("The customer_notes table does not exist", notesExistError);
+          toast({
+            variant: "destructive",
+            title: "Database Error",
+            description: "Customer notes functionality is not available. Please contact support."
+          });
         }
         
         // Check if customer_activities table exists
@@ -161,16 +179,20 @@ const Customers = () => {
           .limit(1);
           
         if (activitiesExistError && activitiesExistError.message.includes('does not exist')) {
-          // Create customer_activities table using the existing function
-          await supabase.rpc('create_customer_activities_table');
+          console.error("The customer_activities table does not exist", activitiesExistError);
+          toast({
+            variant: "destructive",
+            title: "Database Error",
+            description: "Customer activities functionality is not available. Please contact support."
+          });
         }
       } catch (error) {
-        console.error("Error creating tables:", error);
+        console.error("Error checking tables:", error);
       }
     };
     
-    createTablesIfNeeded();
-  }, []);
+    verifyTables();
+  }, [toast]);
 
   // Mutation for adding/updating customer
   const saveCustomer = useMutation({
