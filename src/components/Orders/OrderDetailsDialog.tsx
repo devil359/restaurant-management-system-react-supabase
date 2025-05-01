@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -116,13 +117,11 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
     }
   };
 
-  const handleUpdateStatus = async (newStatus: string) => {
+  const handleUpdateStatus = async (newStatus: "new" | "preparing" | "ready" | "completed" | "cancelled") => {
     try {
       const { error } = await supabase
         .from("kitchen_orders")
-        .update({ 
-          status: newStatus as "new" | "preparing" | "ready" | "completed" | "cancelled" 
-        })
+        .update({ status: newStatus })
         .eq("id", order.id);
         
       if (error) throw error;
@@ -169,7 +168,7 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
         customer_name: order.source,
         items: order.items.map(item => `${item.quantity}x ${item.name}`),
         total: subtotal,
-        status: order.status,
+        status: order.status as "pending" | "preparing" | "ready" | "completed" | "cancelled",
         created_at: order.created_at,
         restaurant_id: "", // Will be filled by the form
         updated_at: new Date().toISOString()
@@ -311,7 +310,7 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
                 <Printer className="w-4 h-4 mr-2" />
                 Print Bill
               </Button>
-              <Button onClick={() => handleUpdateStatus('completed')}>
+              <Button onClick={() => handleUpdateStatus("completed")}>
                 Complete Payment
               </Button>
             </div>
