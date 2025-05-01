@@ -4,7 +4,7 @@ export interface Order {
   customer_name: string;
   items: string[];
   total: number;
-  status: string;
+  status: 'completed' | 'pending' | 'preparing' | 'ready' | 'cancelled';
   created_at: string;
   restaurant_id: string;
   updated_at: string;

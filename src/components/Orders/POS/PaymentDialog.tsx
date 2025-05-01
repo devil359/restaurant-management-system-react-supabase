@@ -1,3 +1,4 @@
+
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -84,17 +85,28 @@ const PaymentDialog = ({ isOpen, onClose, orderItems, onSuccess }: PaymentDialog
         const orderTotal = total;
         
         if (existingCustomers) {
+          // Update existing customer
           await supabase
             .from("customers")
             .update({
+              name: customerName, // Update name in case it changed
               total_spent: existingCustomers.total_spent + orderTotal,
               visit_count: existingCustomers.visit_count + 1,
               last_visit_date: new Date().toISOString(),
               average_order_value: (existingCustomers.total_spent + orderTotal) / (existingCustomers.visit_count + 1)
             })
             .eq("id", existingCustomers.id);
-        } else {
-          await supabase
+            
+          // Add activity for the customer
+          await supabase.rpc("add_customer_activity", {
+            customer_id_param: existingCustomers.id,
+            restaurant_id_param: profile.restaurant_id,
+            activity_type_param: "order_placed",
+            description_param: `Placed order for ₹${orderTotal.toFixed(2)}`
+          });
+        } else if (customerPhone) {
+          // Only create a new customer if phone is provided
+          const { data: newCustomer } = await supabase
             .from("customers")
             .insert({
               restaurant_id: profile.restaurant_id,
@@ -103,8 +115,23 @@ const PaymentDialog = ({ isOpen, onClose, orderItems, onSuccess }: PaymentDialog
               total_spent: orderTotal,
               visit_count: 1,
               average_order_value: orderTotal,
-              last_visit_date: new Date().toISOString()
+              last_visit_date: new Date().toISOString(),
+              loyalty_points: 0,
+              loyalty_tier: 'None',
+              tags: []
+            })
+            .select()
+            .single();
+            
+          if (newCustomer) {
+            // Add activity for the new customer
+            await supabase.rpc("add_customer_activity", {
+              customer_id_param: newCustomer.id,
+              restaurant_id_param: profile.restaurant_id,
+              activity_type_param: "order_placed",
+              description_param: `Placed first order for ₹${orderTotal.toFixed(2)}`
             });
+          }
         }
       }
     } catch (error) {

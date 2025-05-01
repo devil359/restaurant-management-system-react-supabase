@@ -15,6 +15,8 @@ import { Order } from "@/types/orders";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Form, FormField, FormItem, FormLabel, FormControl } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
 
 interface OrderItem {
   name: string;
@@ -45,6 +47,8 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
   const [discountPercent, setDiscountPercent] = useState<number>(0);
   const [promotions, setPromotions] = useState<any[]>([]);
   const [selectedPromotion, setSelectedPromotion] = useState<string>("");
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
   
   // Fetch promotions
   useQuery({
@@ -117,7 +121,7 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
     }
   };
 
-  const handleUpdateStatus = async (newStatus: string) => {
+  const handleUpdateStatus = async (newStatus: 'completed' | 'pending' | 'preparing' | 'ready' | 'cancelled') => {
     try {
       const { error } = await supabase
         .from("kitchen_orders")
@@ -168,7 +172,7 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
         customer_name: order.source,
         items: order.items.map(item => `${item.quantity}x ${item.name}`),
         total: subtotal,
-        status: order.status,
+        status: order.status as 'completed' | 'pending' | 'preparing' | 'ready' | 'cancelled',
         created_at: order.created_at,
         restaurant_id: "", // Will be filled by the form
         updated_at: new Date().toISOString()
@@ -176,6 +180,103 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
     } catch (error) {
       console.error('Error preparing order for edit:', error);
       return null;
+    }
+  };
+
+  const handleCompletePayment = async () => {
+    if (!customerName.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Customer name required",
+        description: "Please enter customer name to complete the payment",
+      });
+      return;
+    }
+    
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("restaurant_id")
+        .eq("id", (await supabase.auth.getUser()).data.user?.id)
+        .single();
+
+      if (profile?.restaurant_id) {
+        const { data: existingCustomers } = await supabase
+          .from("customers")
+          .select("id, total_spent, visit_count")
+          .eq("restaurant_id", profile.restaurant_id)
+          .eq("phone", customerPhone)
+          .maybeSingle();
+
+        const orderTotal = grandTotal;
+        
+        if (existingCustomers) {
+          await supabase
+            .from("customers")
+            .update({
+              name: customerName, // Update name in case it changed
+              total_spent: existingCustomers.total_spent + orderTotal,
+              visit_count: existingCustomers.visit_count + 1,
+              last_visit_date: new Date().toISOString(),
+              average_order_value: (existingCustomers.total_spent + orderTotal) / (existingCustomers.visit_count + 1)
+            })
+            .eq("id", existingCustomers.id);
+          
+          // Add activity for the customer
+          await supabase.rpc("add_customer_activity", {
+            customer_id_param: existingCustomers.id,
+            restaurant_id_param: profile.restaurant_id,
+            activity_type_param: "order_placed",
+            description_param: `Placed order #${order.id} for ₹${orderTotal.toFixed(2)}`
+          });
+        } else if (customerPhone) {
+          // Only create a new customer record if phone is provided
+          const { data: newCustomer } = await supabase
+            .from("customers")
+            .insert({
+              restaurant_id: profile.restaurant_id,
+              name: customerName,
+              phone: customerPhone,
+              total_spent: orderTotal,
+              visit_count: 1,
+              average_order_value: orderTotal,
+              last_visit_date: new Date().toISOString(),
+              loyalty_points: 0,
+              loyalty_tier: 'None',
+              tags: []
+            })
+            .select()
+            .single();
+          
+          if (newCustomer) {
+            // Add activity for the new customer
+            await supabase.rpc("add_customer_activity", {
+              customer_id_param: newCustomer.id,
+              restaurant_id_param: profile.restaurant_id,
+              activity_type_param: "order_placed",
+              description_param: `Placed first order #${order.id} for ₹${orderTotal.toFixed(2)}`
+            });
+          }
+        }
+
+        // Update order status to completed
+        await handleUpdateStatus('completed');
+      }
+
+      toast({
+        title: "Payment Successful",
+        description: `Order for ${customerName} has been completed`,
+      });
+      
+      setShowPaymentDialog(false);
+      onClose();
+    } catch (error) {
+      console.error("Error processing payment:", error);
+      toast({
+        variant: "destructive",
+        title: "Payment Failed",
+        description: "There was an error processing the payment",
+      });
     }
   };
 
@@ -211,6 +312,30 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
           </DialogHeader>
           
           <div className="space-y-4">
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="customerName">Customer Name*</Label>
+                  <Input 
+                    id="customerName"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    placeholder="Enter customer name"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="customerPhone">Customer Phone</Label>
+                  <Input 
+                    id="customerPhone"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    placeholder="Enter phone number"
+                  />
+                </div>
+              </div>
+            </div>
+            
             <div className="border rounded-lg p-4">
               <h3 className="font-semibold mb-2">Order Summary</h3>
               <div className="space-y-2">
@@ -310,7 +435,7 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
                 <Printer className="w-4 h-4 mr-2" />
                 Print Bill
               </Button>
-              <Button onClick={() => handleUpdateStatus('completed')}>
+              <Button onClick={handleCompletePayment}>
                 Complete Payment
               </Button>
             </div>
