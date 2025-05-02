@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import type { StaffMember, StaffLeaveRequest } from "@/types/staff";
+import type { StaffMember, StaffLeaveRequest, StaffLeaveType } from "@/types/staff";
 
 interface LeaveRequestDialogProps {
   isOpen: boolean;
@@ -54,6 +54,29 @@ const LeaveRequestDialog: React.FC<LeaveRequestDialogProps> = ({
 
       if (error) throw error;
       return data as StaffMember[];
+    },
+  });
+
+  // Fetch leave types
+  const { data: leaveTypes = [] } = useQuery<StaffLeaveType[]>({
+    queryKey: ["leave-types", restaurantId],
+    enabled: !!restaurantId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("staff_leave_types")
+        .select("*")
+        .eq("restaurant_id", restaurantId);
+
+      if (error) {
+        // If no leave types found, return default types
+        return [
+          { id: "annual", name: "Annual Leave", restaurant_id: restaurantId || "", accrual_type: "fixed", accrual_amount: 0, accrual_period: "annual", requires_approval: true, created_at: "", updated_at: "" },
+          { id: "sick", name: "Sick Leave", restaurant_id: restaurantId || "", accrual_type: "fixed", accrual_amount: 0, accrual_period: "annual", requires_approval: true, created_at: "", updated_at: "" },
+          { id: "personal", name: "Personal Leave", restaurant_id: restaurantId || "", accrual_type: "fixed", accrual_amount: 0, accrual_period: "annual", requires_approval: true, created_at: "", updated_at: "" },
+          { id: "unpaid", name: "Unpaid Leave", restaurant_id: restaurantId || "", accrual_type: "none", accrual_amount: 0, accrual_period: "annual", requires_approval: true, created_at: "", updated_at: "" },
+        ];
+      }
+      return data as StaffLeaveType[];
     },
   });
 
@@ -230,11 +253,21 @@ const LeaveRequestDialog: React.FC<LeaveRequestDialogProps> = ({
                 <SelectValue placeholder="Select leave type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="annual">Annual Leave</SelectItem>
-                <SelectItem value="sick">Sick Leave</SelectItem>
-                <SelectItem value="personal">Personal Leave</SelectItem>
-                <SelectItem value="unpaid">Unpaid Leave</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
+                {leaveTypes.length > 0 ? (
+                  leaveTypes.map((type) => (
+                    <SelectItem key={type.id} value={type.id}>
+                      {type.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <>
+                    <SelectItem value="annual">Annual Leave</SelectItem>
+                    <SelectItem value="sick">Sick Leave</SelectItem>
+                    <SelectItem value="personal">Personal Leave</SelectItem>
+                    <SelectItem value="unpaid">Unpaid Leave</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </>
+                )}
               </SelectContent>
             </Select>
           </div>

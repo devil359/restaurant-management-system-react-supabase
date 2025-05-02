@@ -25,9 +25,12 @@ import type {
   StaffLeaveBalance,
   StaffTimeClockEntry,
   StaffRole,
+  StaffLeaveRequest,
 } from "@/types/staff";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import TimeClockDialog from "./TimeClockDialog";
+import LeaveRequestDialog from "./LeaveRequestDialog";
 
 interface StaffDetailProps {
   staffId: string;
@@ -45,6 +48,8 @@ const StaffDetail: React.FC<StaffDetailProps> = ({
   const [activeTab, setActiveTab] = useState("profile");
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [isTimeClockDialogOpen, setIsTimeClockDialogOpen] = useState(false);
+  const [isLeaveRequestDialogOpen, setIsLeaveRequestDialogOpen] = useState(false);
   
   // Fetch staff details
   const {
@@ -159,7 +164,7 @@ const StaffDetail: React.FC<StaffDetailProps> = ({
       if (requestsError) throw requestsError;
       
       // If no data in new table, check the legacy table
-      if (requestsData.length === 0) {
+      if (requestsData && requestsData.length === 0) {
         const { data: legacyData, error: legacyError } = await supabase
           .from("staff_leaves")
           .select("*")
@@ -169,7 +174,7 @@ const StaffDetail: React.FC<StaffDetailProps> = ({
           .order("start_date", { ascending: true });
           
         if (legacyError) throw legacyError;
-        return legacyData as any[];
+        return legacyData as unknown as StaffLeaveRequest[];
       }
       
       return requestsData as StaffLeaveRequest[];
@@ -219,6 +224,14 @@ const StaffDetail: React.FC<StaffDetailProps> = ({
       });
     },
   });
+
+  const handleClockInOutSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ["staff-time-clock"] });
+  };
+
+  const handleLeaveRequestSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ["staff-upcoming-leave"] });
+  };
 
   if (isLoadingStaff) {
     return (
@@ -519,22 +532,9 @@ const StaffDetail: React.FC<StaffDetailProps> = ({
                 <CardTitle>Leave Management</CardTitle>
                 <CardDescription>Leave balances and requests.</CardDescription>
               </div>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button>Request Leave</Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Request Leave</DialogTitle>
-                  </DialogHeader>
-                  <div className="py-4">
-                    <p>Leave request form will be implemented here.</p>
-                  </div>
-                  <DialogFooter>
-                    <Button type="submit">Submit Request</Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+              <Button onClick={() => setIsLeaveRequestDialogOpen(true)}>
+                Request Leave
+              </Button>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-4">
@@ -629,22 +629,7 @@ const StaffDetail: React.FC<StaffDetailProps> = ({
                 <CardTitle>Time Clock</CardTitle>
                 <CardDescription>Recent clock in/out records.</CardDescription>
               </div>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button>Clock In/Out</Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Record Time Clock Entry</DialogTitle>
-                  </DialogHeader>
-                  <div className="py-4">
-                    <p>Time clock form will be implemented here.</p>
-                  </div>
-                  <DialogFooter>
-                    <Button type="submit">Submit</Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+              <Button onClick={() => setIsTimeClockDialogOpen(true)}>Clock In/Out</Button>
             </CardHeader>
             <CardContent>
               {timeClockEntries.length === 0 ? (
@@ -750,6 +735,24 @@ const StaffDetail: React.FC<StaffDetailProps> = ({
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Time Clock Dialog */}
+      <TimeClockDialog
+        isOpen={isTimeClockDialogOpen}
+        onClose={() => setIsTimeClockDialogOpen(false)}
+        staffId={staffId}
+        restaurantId={restaurantId}
+        onSuccess={handleClockInOutSuccess}
+      />
+      
+      {/* Leave Request Dialog */}
+      <LeaveRequestDialog
+        isOpen={isLeaveRequestDialogOpen}
+        onClose={() => setIsLeaveRequestDialogOpen(false)}
+        staffId={staffId}
+        restaurantId={restaurantId}
+        onSuccess={handleLeaveRequestSuccess}
+      />
     </div>
   );
 };

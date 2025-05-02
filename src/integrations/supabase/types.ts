@@ -1193,39 +1193,60 @@ export type Database = {
       }
       staff: {
         Row: {
+          availability_notes: string | null
           created_at: string
           email: string | null
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
           first_name: string
           id: string
           last_name: string
           phone: string | null
+          photo_url: string | null
           position: string | null
           restaurant_id: string
+          role_ids: string[] | null
           Shift: string | null
+          start_date: string | null
+          status: string | null
           updated_at: string
         }
         Insert: {
+          availability_notes?: string | null
           created_at?: string
           email?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
           first_name: string
           id?: string
           last_name: string
           phone?: string | null
+          photo_url?: string | null
           position?: string | null
           restaurant_id: string
+          role_ids?: string[] | null
           Shift?: string | null
+          start_date?: string | null
+          status?: string | null
           updated_at?: string
         }
         Update: {
+          availability_notes?: string | null
           created_at?: string
           email?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
           first_name?: string
           id?: string
           last_name?: string
           phone?: string | null
+          photo_url?: string | null
           position?: string | null
           restaurant_id?: string
+          role_ids?: string[] | null
           Shift?: string | null
+          start_date?: string | null
+          status?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1237,6 +1258,120 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      staff_leave_balances: {
+        Row: {
+          created_at: string
+          id: string
+          leave_type: string
+          restaurant_id: string
+          staff_id: string
+          total_days: number
+          updated_at: string
+          used_days: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          leave_type: string
+          restaurant_id: string
+          staff_id: string
+          total_days?: number
+          updated_at?: string
+          used_days?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          leave_type?: string
+          restaurant_id?: string
+          staff_id?: string
+          total_days?: number
+          updated_at?: string
+          used_days?: number
+        }
+        Relationships: []
+      }
+      staff_leave_requests: {
+        Row: {
+          approved_by: string | null
+          created_at: string
+          end_date: string
+          id: string
+          leave_type: string
+          manager_comments: string | null
+          reason: string | null
+          restaurant_id: string
+          staff_id: string
+          start_date: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          approved_by?: string | null
+          created_at?: string
+          end_date: string
+          id?: string
+          leave_type: string
+          manager_comments?: string | null
+          reason?: string | null
+          restaurant_id: string
+          staff_id: string
+          start_date: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_by?: string | null
+          created_at?: string
+          end_date?: string
+          id?: string
+          leave_type?: string
+          manager_comments?: string | null
+          reason?: string | null
+          restaurant_id?: string
+          staff_id?: string
+          start_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      staff_leave_types: {
+        Row: {
+          accrual_amount: number | null
+          accrual_period: string | null
+          accrual_type: string | null
+          created_at: string
+          id: string
+          name: string
+          requires_approval: boolean | null
+          restaurant_id: string
+          updated_at: string
+        }
+        Insert: {
+          accrual_amount?: number | null
+          accrual_period?: string | null
+          accrual_type?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          requires_approval?: boolean | null
+          restaurant_id: string
+          updated_at?: string
+        }
+        Update: {
+          accrual_amount?: number | null
+          accrual_period?: string | null
+          accrual_type?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          requires_approval?: boolean | null
+          restaurant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       staff_leaves: {
         Row: {
@@ -1281,6 +1416,99 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      staff_roles: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          permissions: Json | null
+          restaurant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          permissions?: Json | null
+          restaurant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          permissions?: Json | null
+          restaurant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      staff_shifts: {
+        Row: {
+          created_at: string
+          end_time: string
+          id: string
+          location: string | null
+          restaurant_id: string
+          staff_id: string
+          start_time: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          end_time: string
+          id?: string
+          location?: string | null
+          restaurant_id: string
+          staff_id: string
+          start_time: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          end_time?: string
+          id?: string
+          location?: string | null
+          restaurant_id?: string
+          staff_id?: string
+          start_time?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      staff_time_clock: {
+        Row: {
+          clock_in: string
+          clock_out: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          restaurant_id: string
+          staff_id: string
+          updated_at: string
+        }
+        Insert: {
+          clock_in: string
+          clock_out?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          restaurant_id: string
+          staff_id: string
+          updated_at?: string
+        }
+        Update: {
+          clock_in?: string
+          clock_out?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          restaurant_id?: string
+          staff_id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       subscription_plans: {
         Row: {

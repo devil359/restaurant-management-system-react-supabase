@@ -10,11 +10,15 @@ import StaffList from "@/components/Staff/StaffList";
 import StaffDetail from "@/components/Staff/StaffDetail";
 import StaffDialog from "@/components/Staff/StaffDialog";
 import StaffLeaveManager from "@/components/Staff/StaffLeaveManager";
+import TimeClockDialog from "@/components/Staff/TimeClockDialog";
 import type { StaffMember, StaffRole } from "@/types/staff";
+import { Button } from "@/components/ui/button";
+import { UserPlus, ClockIcon } from "lucide-react";
 
 const Staff = () => {
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
   const [isStaffDialogOpen, setIsStaffDialogOpen] = useState(false);
+  const [isTimeClockDialogOpen, setIsTimeClockDialogOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
   const { toast } = useToast();
   const location = useLocation();
@@ -93,6 +97,23 @@ const Staff = () => {
             Manage your restaurant's staff and leave requests
           </p>
         </div>
+        <div className="flex gap-3">
+          <Button 
+            onClick={() => setIsTimeClockDialogOpen(true)}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <ClockIcon className="h-4 w-4" />
+            Clock In/Out
+          </Button>
+          <Button 
+            onClick={handleAddStaff}
+            className="flex items-center gap-2"
+          >
+            <UserPlus className="h-4 w-4" />
+            Add Staff
+          </Button>
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -120,7 +141,7 @@ const Staff = () => {
         </TabsContent>
         
         <TabsContent value="leaves">
-          <StaffLeaveManager />
+          <StaffLeaveManager restaurantId={restaurantId} />
         </TabsContent>
       </Tabs>
 
@@ -131,6 +152,18 @@ const Staff = () => {
         restaurantId={restaurantId}
         onSuccess={handleStaffDialogSuccess}
         roles={roles}
+      />
+
+      <TimeClockDialog
+        isOpen={isTimeClockDialogOpen}
+        onClose={() => setIsTimeClockDialogOpen(false)}
+        restaurantId={restaurantId}
+        onSuccess={() => {
+          toast({
+            title: "Time clock entry saved",
+            description: "Your time clock entry has been recorded successfully.",
+          });
+        }}
       />
     </div>
   );

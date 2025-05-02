@@ -23,6 +23,39 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
+    // Verify the request has a valid JWT
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Missing authorization header" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
+
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: "Invalid token", details: authError?.message }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
+      );
+    }
+    
+    // Verify the authenticated user has access to this restaurant
+    const { data: profile, error: profileError } = await supabaseClient
+      .from("profiles")
+      .select("restaurant_id")
+      .eq("id", user.id)
+      .single();
+
+    if (profileError || profile.restaurant_id !== restaurant_id) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized access to this restaurant" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 }
+      );
+    }
+
     if (action === "in") {
       // Check if there's already an active session
       const { data: activeSessions, error: checkError } = await supabaseClient
@@ -61,6 +94,12 @@ serve(async (req) => {
       if (error) {
         throw new Error(`Error clocking in: ${error.message}`);
       }
+
+      // Update staff status to indicate they're working
+      await supabaseClient
+        .from("staff")
+        .update({ status: "working" })
+        .eq("id", staff_id);
 
       return new Response(
         JSON.stringify({ success: true, data, action: "in" }),
@@ -105,6 +144,12 @@ serve(async (req) => {
       if (error) {
         throw new Error(`Error clocking out: ${error.message}`);
       }
+
+      // Reset staff status back to active
+      await supabaseClient
+        .from("staff")
+        .update({ status: "active" })
+        .eq("id", staff_id);
 
       return new Response(
         JSON.stringify({ success: true, data, action: "out" }),

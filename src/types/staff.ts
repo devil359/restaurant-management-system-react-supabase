@@ -50,6 +50,18 @@ export interface StaffLeaveBalance {
   updated_at: string;
 }
 
+export interface StaffLeaveType {
+  id: string;
+  restaurant_id: string;
+  name: string;
+  accrual_type: string;
+  accrual_amount: number;
+  accrual_period: string;
+  requires_approval: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface StaffLeaveRequest {
   id: string;
   staff_id: string;
@@ -60,6 +72,7 @@ export interface StaffLeaveRequest {
   reason?: string;
   status: "pending" | "approved" | "denied";
   approved_by?: string;
+  manager_comments?: string;
   created_at: string;
   updated_at: string;
 }

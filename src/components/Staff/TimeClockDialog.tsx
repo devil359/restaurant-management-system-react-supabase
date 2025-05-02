@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Clock } from "lucide-react";
-import type { StaffMember } from "@/types/staff";
+import type { StaffMember, StaffTimeClockEntry } from "@/types/staff";
 
 interface TimeClockDialogProps {
   isOpen: boolean;
@@ -32,11 +32,23 @@ const TimeClockDialog: React.FC<TimeClockDialogProps> = ({
   const [action, setAction] = useState<"in" | "out">("in");
   const [notes, setNotes] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Update the clock time every second
+  useEffect(() => {
+    if (isOpen) {
+      const timer = setInterval(() => {
+        setCurrentTime(new Date());
+      }, 1000);
+      
+      return () => clearInterval(timer);
+    }
+  }, [isOpen]);
 
   // Fetch staff list if no specific staff is provided
   const { data: staffMembers = [] } = useQuery<StaffMember[]>({
     queryKey: ["staff-for-timeclock", restaurantId],
-    enabled: !!restaurantId && !staffId,
+    enabled: !!restaurantId && !staffId && isOpen,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("staff")
@@ -50,9 +62,9 @@ const TimeClockDialog: React.FC<TimeClockDialogProps> = ({
   });
 
   // Get current time clock status for the staff member
-  const { data: activeSession, refetch: refetchActiveSession } = useQuery({
+  const { data: activeSession, refetch: refetchActiveSession } = useQuery<StaffTimeClockEntry | null>({
     queryKey: ["staff-active-session", selectedStaffId || staffId],
-    enabled: !!(selectedStaffId || staffId),
+    enabled: !!(selectedStaffId || staffId) && isOpen,
     queryFn: async () => {
       const staffToCheck = selectedStaffId || staffId;
       
@@ -65,7 +77,7 @@ const TimeClockDialog: React.FC<TimeClockDialogProps> = ({
         .limit(1);
 
       if (error) throw error;
-      return data && data.length > 0 ? data[0] : null;
+      return data && data.length > 0 ? data[0] as StaffTimeClockEntry : null;
     },
   });
 
@@ -85,7 +97,14 @@ const TimeClockDialog: React.FC<TimeClockDialogProps> = ({
     } else {
       setSelectedStaffId("");
     }
-  }, [staffId]);
+  }, [staffId, isOpen]);
+
+  // Reset form when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      setNotes("");
+    }
+  }, [isOpen]);
 
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
@@ -114,10 +133,12 @@ const TimeClockDialog: React.FC<TimeClockDialogProps> = ({
     setIsSubmitting(true);
 
     try {
+      // Call the Supabase Edge Function to record the clock entry
       const response = await fetch(`${window.location.origin}/api/record-clock-entry`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
         },
         body: JSON.stringify({
           staff_id: staffToUse,
@@ -225,10 +246,10 @@ const TimeClockDialog: React.FC<TimeClockDialogProps> = ({
           <div className="py-2 flex items-center justify-center gap-2 bg-muted/50 rounded-md">
             <Clock className="h-5 w-5 text-muted-foreground" />
             <span className="text-lg font-medium">
-              {format(new Date(), "h:mm:ss a")}
+              {format(currentTime, "h:mm:ss a")}
             </span>
             <span className="text-sm text-muted-foreground">
-              {format(new Date(), "MMMM do, yyyy")}
+              {format(currentTime, "MMMM do, yyyy")}
             </span>
           </div>
 
