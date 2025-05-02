@@ -51,7 +51,7 @@ const Staff = () => {
   });
 
   // Fetch staff roles
-  const { data: roles = [] } = useQuery({
+  const { data: roles = [] } = useQuery<StaffRole[]>({
     queryKey: ["staff-roles", restaurantId],
     enabled: !!restaurantId,
     queryFn: async () => {

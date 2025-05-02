@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, parseISO, differenceInDays } from "date-fns";
@@ -92,7 +91,7 @@ const StaffDetail: React.FC<StaffDetailProps> = ({
   }, [staffId, refetchStaff]);
 
   // Fetch staff roles
-  const { data: roles = [] } = useQuery({
+  const { data: roles = [] } = useQuery<StaffRole[]>({
     queryKey: ["staff-roles-all", restaurantId],
     enabled: !!restaurantId,
     queryFn: async () => {
@@ -107,7 +106,7 @@ const StaffDetail: React.FC<StaffDetailProps> = ({
   });
 
   // Fetch upcoming shifts
-  const { data: upcomingShifts = [] } = useQuery({
+  const { data: upcomingShifts = [] } = useQuery<StaffShift[]>({
     queryKey: ["staff-shifts", staffId],
     enabled: !!staffId && !!restaurantId,
     queryFn: async () => {
@@ -126,7 +125,7 @@ const StaffDetail: React.FC<StaffDetailProps> = ({
   });
 
   // Fetch leave balances
-  const { data: leaveBalances = [] } = useQuery({
+  const { data: leaveBalances = [] } = useQuery<StaffLeaveBalance[]>({
     queryKey: ["staff-leave-balances", staffId],
     enabled: !!staffId && !!restaurantId,
     queryFn: async () => {
@@ -177,7 +176,7 @@ const StaffDetail: React.FC<StaffDetailProps> = ({
   });
 
   // Fetch recent time clock entries
-  const { data: timeClockEntries = [] } = useQuery({
+  const { data: timeClockEntries = [] } = useQuery<StaffTimeClockEntry[]>({
     queryKey: ["staff-time-clock", staffId],
     enabled: !!staffId && !!restaurantId,
     queryFn: async () => {

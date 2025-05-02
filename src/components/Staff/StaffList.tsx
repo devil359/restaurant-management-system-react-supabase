@@ -166,7 +166,7 @@ const StaffList: React.FC<StaffListProps> = ({
                         <SelectValue placeholder="All roles" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All roles</SelectItem>
+                        <SelectItem value="all-roles">All roles</SelectItem>
                         {roles.map((role) => (
                           <SelectItem key={role.id} value={role.name}>
                             {role.name}
@@ -186,7 +186,7 @@ const StaffList: React.FC<StaffListProps> = ({
                         <SelectValue placeholder="All statuses" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All statuses</SelectItem>
+                        <SelectItem value="all-statuses">All statuses</SelectItem>
                         <SelectItem value="active">Active</SelectItem>
                         <SelectItem value="on_leave">On Leave</SelectItem>
                         <SelectItem value="inactive">Inactive</SelectItem>

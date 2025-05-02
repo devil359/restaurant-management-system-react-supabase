@@ -42,7 +42,7 @@ const LeaveRequestDialog: React.FC<LeaveRequestDialogProps> = ({
   const [durationDays, setDurationDays] = useState<number>(0);
 
   // Fetch staff list
-  const { data: staffMembers = [] } = useQuery({
+  const { data: staffMembers = [] } = useQuery<StaffMember[]>({
     queryKey: ["staff-for-leave", restaurantId],
     enabled: !!restaurantId && !staffId, // Only fetch if no staffId is provided
     queryFn: async () => {

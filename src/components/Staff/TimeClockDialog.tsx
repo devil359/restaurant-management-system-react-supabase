@@ -34,7 +34,7 @@ const TimeClockDialog: React.FC<TimeClockDialogProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Fetch staff list if no specific staff is provided
-  const { data: staffMembers = [] } = useQuery({
+  const { data: staffMembers = [] } = useQuery<StaffMember[]>({
     queryKey: ["staff-for-timeclock", restaurantId],
     enabled: !!restaurantId && !staffId,
     queryFn: async () => {
