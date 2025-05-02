@@ -22,6 +22,7 @@ import AI from "@/pages/AI";
 import BusinessDashboard from "@/components/Analytics/BusinessDashboard";
 import Inventory from "@/pages/Inventory";
 import Suppliers from "@/pages/Suppliers";
+import CRM from "@/pages/CRM";
 
 const Routes = () => {
   const [user, setUser] = useState<any>(null);
@@ -141,6 +142,14 @@ const Routes = () => {
         element={
           <ComponentAccessGuard>
             <Customers />
+          </ComponentAccessGuard>
+        }
+      />
+      <Route
+        path="/crm"
+        element={
+          <ComponentAccessGuard>
+            <CRM />
           </ComponentAccessGuard>
         }
       />

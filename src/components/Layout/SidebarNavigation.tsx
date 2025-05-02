@@ -14,6 +14,7 @@ import {
   LayoutDashboard,
   Bot,
   ChefHat,
+  Contact,
 } from "lucide-react";
 import {
   SidebarContent,
@@ -29,6 +30,7 @@ const navigationItems = [
   { name: "Tables", href: "/tables", icon: Coffee, component: "tables" },
   { name: "Staff", href: "/staff", icon: Users, component: "staff" },
   { name: "Customers", href: "/customers", icon: Users, component: "customers" },
+  { name: "CRM", href: "/crm", icon: Contact, component: "crm" },
   { name: "Inventory", href: "/inventory", icon: PackageOpen, component: "inventory" },
   { name: "Rooms", href: "/rooms", icon: Bed, component: "rooms" },
   { name: "Suppliers", href: "/suppliers", icon: Truck, component: "suppliers" },
