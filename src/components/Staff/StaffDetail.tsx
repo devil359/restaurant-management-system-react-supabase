@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, parseISO, differenceInDays } from "date-fns";
@@ -140,7 +141,7 @@ const StaffDetail: React.FC<StaffDetailProps> = ({
   });
 
   // Fetch upcoming leave
-  const { data: upcomingLeave = [] } = useQuery({
+  const { data: upcomingLeave = [] } = useQuery<StaffLeaveRequest[]>({
     queryKey: ["staff-upcoming-leave", staffId],
     enabled: !!staffId && !!restaurantId,
     queryFn: async () => {
@@ -168,10 +169,10 @@ const StaffDetail: React.FC<StaffDetailProps> = ({
           .order("start_date", { ascending: true });
           
         if (legacyError) throw legacyError;
-        return legacyData;
+        return legacyData as any[];
       }
       
-      return requestsData;
+      return requestsData as StaffLeaveRequest[];
     },
   });
 
