@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Clock } from "lucide-react";
 import type { StaffTimeClockEntry } from "@/types/staff";
+import { calculateHourMinuteDuration } from "../utilities/staffUtils";
 
 interface TimeClockTabProps {
   timeClockEntries: StaffTimeClockEntry[];
@@ -69,12 +70,7 @@ export const TimeClockTab: React.FC<TimeClockTabProps> = ({
                   </TableCell>
                   <TableCell>
                     {entry.clock_out 
-                      ? (() => {
-                          const durationMs = parseISO(entry.clock_out).getTime() - parseISO(entry.clock_in).getTime();
-                          const hours = Math.floor(durationMs / (1000 * 60 * 60));
-                          const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
-                          return `${hours}h ${minutes}m`;
-                        })()
+                      ? calculateHourMinuteDuration(entry.clock_in, entry.clock_out)
                       : "—"
                     }
                   </TableCell>

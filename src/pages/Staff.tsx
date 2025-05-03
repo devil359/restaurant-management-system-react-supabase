@@ -37,6 +37,7 @@ const Staff = () => {
     }
   }, [activeTab, navigate]);
 
+  // Refactor this to reuse the fetch restaurant ID logic
   const { data: restaurantId } = useQuery({
     queryKey: ["restaurant-id"],
     queryFn: async () => {

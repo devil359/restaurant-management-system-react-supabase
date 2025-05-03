@@ -133,25 +133,74 @@ const TimeClockDialog: React.FC<TimeClockDialogProps> = ({
     setIsSubmitting(true);
 
     try {
-      // Call the Supabase Edge Function to record the clock entry
-      const response = await fetch(`${window.location.origin}/api/record-clock-entry`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-        },
-        body: JSON.stringify({
-          staff_id: staffToUse,
-          restaurant_id: restaurantId,
-          action,
-          notes,
-        }),
-      });
+      // Direct interaction with Supabase instead of the Edge function that's causing issues
+      if (action === "in") {
+        // Check if there's already an active session
+        const { data: activeSessions } = await supabase
+          .from("staff_time_clock")
+          .select("*")
+          .eq("staff_id", staffToUse)
+          .is("clock_out", null)
+          .limit(1);
 
-      const result = await response.json();
+        if (activeSessions && activeSessions.length > 0) {
+          throw new Error("You already have an active clock-in session");
+        }
 
-      if (!response.ok) {
-        throw new Error(result.message || result.error || 'An error occurred');
+        // Create clock-in record
+        const { error } = await supabase
+          .from("staff_time_clock")
+          .insert([{
+            staff_id: staffToUse,
+            restaurant_id: restaurantId,
+            clock_in: new Date().toISOString(),
+            notes
+          }]);
+
+        if (error) {
+          throw new Error(`Error clocking in: ${error.message}`);
+        }
+
+        // Update staff status to indicate they're working
+        await supabase
+          .from("staff")
+          .update({ status: "working" })
+          .eq("id", staffToUse);
+
+      } else if (action === "out") {
+        // Find the active session to clock out
+        const { data: activeSessions } = await supabase
+          .from("staff_time_clock")
+          .select("*")
+          .eq("staff_id", staffToUse)
+          .is("clock_out", null)
+          .order("clock_in", { ascending: false })
+          .limit(1);
+
+        if (!activeSessions || activeSessions.length === 0) {
+          throw new Error("No active clock-in session found to clock out from");
+        }
+
+        const activeSession = activeSessions[0];
+        
+        // Update the session with clock-out time
+        const { error } = await supabase
+          .from("staff_time_clock")
+          .update({
+            clock_out: new Date().toISOString(),
+            notes: notes ? `${activeSession.notes || ''} ${notes}`.trim() : activeSession.notes
+          })
+          .eq("id", activeSession.id);
+
+        if (error) {
+          throw new Error(`Error clocking out: ${error.message}`);
+        }
+
+        // Reset staff status back to active
+        await supabase
+          .from("staff")
+          .update({ status: "active" })
+          .eq("id", staffToUse);
       }
 
       toast({

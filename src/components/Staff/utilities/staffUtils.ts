@@ -33,3 +33,20 @@ export const calculateDuration = (startDateStr: string, endDateStr: string) => {
     return 0;
   }
 };
+
+export const calculateHourMinuteDuration = (startTimeStr: string, endTimeStr: string): string => {
+  try {
+    if (!startTimeStr || !endTimeStr) return "—";
+
+    const startTime = parseISO(startTimeStr);
+    const endTime = parseISO(endTimeStr);
+    
+    const durationMs = endTime.getTime() - startTime.getTime();
+    const hours = Math.floor(durationMs / (1000 * 60 * 60));
+    const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
+    
+    return `${hours}h ${minutes}m`;
+  } catch (error) {
+    return "—";
+  }
+};
