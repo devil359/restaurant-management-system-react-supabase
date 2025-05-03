@@ -1,35 +1,25 @@
+
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { format, parseISO, differenceInDays } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Calendar, UserCheck, FileText, Clock, Settings, Edit, Trash2 } from "lucide-react";
-import { Label } from "@/components/ui/label";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import type {
-  StaffMember,
-  StaffShift,
-  StaffLeaveBalance,
-  StaffTimeClockEntry,
-  StaffRole,
-  StaffLeaveRequest,
-} from "@/types/staff";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { UserCheck, Calendar, FileText, Clock, Settings } from "lucide-react";
+import type { StaffMember, StaffShift, StaffLeaveBalance, StaffTimeClockEntry, StaffRole, StaffLeaveRequest } from "@/types/staff";
+
+// Import the individual tab components
+import { ProfileTab } from "./ProfileComponents/ProfileTab";
+import { ScheduleTab } from "./ProfileComponents/ScheduleTab";
+import { LeaveTab } from "./ProfileComponents/LeaveTab";
+import { TimeClockTab } from "./ProfileComponents/TimeClockTab";
+import { PermissionsTab } from "./ProfileComponents/PermissionsTab";
+import { StaffHeader } from "./ProfileComponents/StaffHeader";
+import { StaffStatusDialog } from "./ProfileComponents/StaffStatusDialog";
 import TimeClockDialog from "./TimeClockDialog";
 import LeaveRequestDialog from "./LeaveRequestDialog";
+import { formatDate, calculateDuration } from "./utilities/staffUtils";
 
 interface StaffDetailProps {
   staffId: string;
@@ -45,10 +35,11 @@ const StaffDetail: React.FC<StaffDetailProps> = ({
   onBack,
 }) => {
   const [activeTab, setActiveTab] = useState("profile");
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
+  const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
   const [isTimeClockDialogOpen, setIsTimeClockDialogOpen] = useState(false);
   const [isLeaveRequestDialogOpen, setIsLeaveRequestDialogOpen] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   
   // Fetch staff details
   const {
@@ -151,7 +142,6 @@ const StaffDetail: React.FC<StaffDetailProps> = ({
     queryFn: async () => {
       const now = new Date().toISOString().split('T')[0]; // Current date in YYYY-MM-DD format
       
-      // First check the modern table
       const { data: requestsData, error: requestsError } = await supabase
         .from("staff_leave_requests")
         .select("*")
@@ -162,7 +152,6 @@ const StaffDetail: React.FC<StaffDetailProps> = ({
 
       if (requestsError) throw requestsError;
       
-      // If no data in new table, check the legacy table
       if (requestsData && requestsData.length === 0) {
         const { data: legacyData, error: legacyError } = await supabase
           .from("staff_leaves")
@@ -214,6 +203,7 @@ const StaffDetail: React.FC<StaffDetailProps> = ({
         title: "Staff status updated",
         description: "The staff member's status has been updated successfully.",
       });
+      setIsStatusDialogOpen(false);
     },
     onError: (error) => {
       toast({
@@ -224,12 +214,27 @@ const StaffDetail: React.FC<StaffDetailProps> = ({
     },
   });
 
+  const handleStatusDialogConfirm = () => {
+    if (staff) {
+      changeStatusMutation.mutate({ 
+        id: staffId, 
+        status: staff.status === "inactive" ? "active" : "inactive" 
+      });
+    }
+  };
+
+  const handleActivateDeactivate = () => {
+    setIsStatusDialogOpen(true);
+  };
+
   const handleClockInOutSuccess = () => {
     queryClient.invalidateQueries({ queryKey: ["staff-time-clock"] });
+    setIsTimeClockDialogOpen(false);
   };
 
   const handleLeaveRequestSuccess = () => {
     queryClient.invalidateQueries({ queryKey: ["staff-upcoming-leave"] });
+    setIsLeaveRequestDialogOpen(false);
   };
 
   if (isLoadingStaff) {
@@ -254,131 +259,15 @@ const StaffDetail: React.FC<StaffDetailProps> = ({
     );
   }
 
-  const getStatusBadge = (status: string | null | undefined) => {
-    switch (status) {
-      case 'active':
-        return <Badge className="bg-green-100 text-green-800">Active</Badge>;
-      case 'on_leave':
-        return <Badge className="bg-amber-100 text-amber-800">On Leave</Badge>;
-      case 'inactive':
-        return <Badge className="bg-red-100 text-red-800">Inactive</Badge>;
-      default:
-        return <Badge className="bg-blue-100 text-blue-800">Active</Badge>;
-    }
-  };
-
-  const getInitials = (firstName: string, lastName: string) => {
-    return `${firstName[0] || ''}${lastName[0] || ''}`.toUpperCase();
-  };
-
-  const formatDateTime = (dateTimeString: string) => {
-    if (!dateTimeString) return "";
-    try {
-      return format(parseISO(dateTimeString), "MMM dd, yyyy h:mm a");
-    } catch (error) {
-      return dateTimeString;
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    if (!dateString) return "";
-    try {
-      if (dateString.includes('T')) {
-        return format(parseISO(dateString), "MMM dd, yyyy");
-      }
-      return format(new Date(dateString), "MMM dd, yyyy");
-    } catch (error) {
-      return dateString;
-    }
-  };
-
-  const calculateDuration = (startDateStr: string, endDateStr: string) => {
-    try {
-      // Handle both date-only and datetime strings
-      const startDate = startDateStr.includes('T') ? parseISO(startDateStr) : new Date(startDateStr);
-      const endDate = endDateStr.includes('T') ? parseISO(endDateStr) : new Date(endDateStr);
-      
-      return differenceInDays(endDate, startDate) + 1; // +1 to include both start and end days
-    } catch (error) {
-      return 0;
-    }
-  };
-
-  const handleChangeStatus = (status: string) => {
-    changeStatusMutation.mutate({ id: staffId, status });
-  };
-
   return (
     <div className="space-y-6">
       <Card className="p-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" size="sm" onClick={onBack}>
-              Back
-            </Button>
-            <Avatar className="h-16 w-16">
-              <AvatarImage src={staff.photo_url || ''} alt={`${staff.first_name} ${staff.last_name}`} />
-              <AvatarFallback className="text-lg">
-                {getInitials(staff.first_name, staff.last_name)}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <h2 className="text-2xl font-bold">
-                {staff.first_name} {staff.last_name}
-              </h2>
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">{staff.position || "No position"}</span>
-                {getStatusBadge(staff.status)}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => onEdit(staff)}
-              className="flex items-center gap-1"
-            >
-              <Edit className="h-4 w-4" /> Edit Profile
-            </Button>
-            
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button 
-                  variant={staff.status === "inactive" ? "outline" : "destructive"} 
-                  className={
-                    staff.status === "inactive" 
-                      ? "bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-800 border-green-200" 
-                      : ""
-                  }
-                >
-                  {staff.status === "inactive" ? "Activate" : "Deactivate"}
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    {staff.status === "inactive" ? "Activate Staff Member" : "Deactivate Staff Member"}
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    {staff.status === "inactive" 
-                      ? "This will make the staff member active again. They will appear in all active staff lists."
-                      : "This will deactivate the staff member. They will no longer appear in active staff lists."}
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => handleChangeStatus(staff.status === "inactive" ? "active" : "inactive")}
-                    className={staff.status === "inactive" ? "bg-green-600 hover:bg-green-700" : ""}
-                  >
-                    {staff.status === "inactive" ? "Activate" : "Deactivate"}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        </div>
+        <StaffHeader 
+          staff={staff} 
+          onBack={onBack} 
+          onEdit={onEdit}
+          onActivateDeactivate={handleActivateDeactivate}
+        />
       </Card>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -401,339 +290,43 @@ const StaffDetail: React.FC<StaffDetailProps> = ({
         </TabsList>
 
         <TabsContent value="profile" className="mt-0">
-          <Card>
-            <CardHeader>
-              <CardTitle>Staff Profile</CardTitle>
-              <CardDescription>
-                View and manage information about this staff member.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <h3 className="font-medium text-lg">Contact Information</h3>
-                  <div className="space-y-2">
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Email</Label>
-                      <div className="text-sm font-medium">{staff.email || "Not provided"}</div>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Phone</Label>
-                      <div className="text-sm font-medium">{staff.phone || "Not provided"}</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="font-medium text-lg">Emergency Contact</h3>
-                  <div className="space-y-2">
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Name</Label>
-                      <div className="text-sm font-medium">{staff.emergency_contact_name || "Not provided"}</div>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Phone</Label>
-                      <div className="text-sm font-medium">{staff.emergency_contact_phone || "Not provided"}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="font-medium text-lg">Employment Details</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Position</Label>
-                      <div className="text-sm font-medium">{staff.position || "Not specified"}</div>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Status</Label>
-                      <div className="text-sm font-medium flex items-center gap-2">
-                        {getStatusBadge(staff.status)}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Start Date</Label>
-                      <div className="text-sm font-medium">{staff.start_date ? formatDate(staff.start_date) : "Not specified"}</div>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Shift</Label>
-                      <div className="text-sm font-medium">{staff.Shift || "Not assigned"}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="font-medium text-lg">Availability & Notes</h3>
-                <div className="p-3 bg-muted/50 rounded-md">
-                  {staff.availability_notes || "No availability notes provided"}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <ProfileTab staff={staff} formatDate={formatDate} />
         </TabsContent>
 
         <TabsContent value="schedule" className="mt-0">
-          <Card>
-            <CardHeader>
-              <CardTitle>Staff Schedule</CardTitle>
-              <CardDescription>Upcoming shifts and schedule information.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {upcomingShifts.length === 0 ? (
-                <div className="text-center py-8">
-                  <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
-                  <h3 className="text-lg font-medium">No upcoming shifts</h3>
-                  <p className="text-muted-foreground">
-                    This staff member doesn't have any upcoming shifts scheduled.
-                  </p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Start Time</TableHead>
-                      <TableHead>End Time</TableHead>
-                      <TableHead>Location</TableHead>
-                      <TableHead>Duration</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {upcomingShifts.map((shift) => (
-                      <TableRow key={shift.id}>
-                        <TableCell className="font-medium">
-                          {formatDate(shift.start_time)}
-                        </TableCell>
-                        <TableCell>{format(parseISO(shift.start_time), "h:mm a")}</TableCell>
-                        <TableCell>{format(parseISO(shift.end_time), "h:mm a")}</TableCell>
-                        <TableCell>{shift.location || "Main"}</TableCell>
-                        <TableCell>
-                          {format(parseISO(shift.end_time).getTime() - parseISO(shift.start_time).getTime(), "H")} hrs
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
+          <ScheduleTab upcomingShifts={upcomingShifts} formatDate={formatDate} />
         </TabsContent>
 
         <TabsContent value="leave" className="mt-0">
-          <Card>
-            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between space-y-2 sm:space-y-0">
-              <div>
-                <CardTitle>Leave Management</CardTitle>
-                <CardDescription>Leave balances and requests.</CardDescription>
-              </div>
-              <Button onClick={() => setIsLeaveRequestDialogOpen(true)}>
-                Request Leave
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <h3 className="font-medium text-lg">Leave Balances</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                  {leaveBalances.length === 0 ? (
-                    <Card className="col-span-full">
-                      <CardContent className="pt-6 text-center">
-                        <p className="text-muted-foreground">No leave balances available</p>
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    leaveBalances.map((balance) => (
-                      <Card key={balance.id}>
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-base capitalize">{balance.leave_type} Leave</CardTitle>
-                          <CardDescription className="text-xs">
-                            Updated {format(parseISO(balance.updated_at), "MMM dd, yyyy")}
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-2xl font-bold">
-                            {balance.total_days - balance.used_days} <span className="text-sm font-normal text-muted-foreground">/ {balance.total_days} days</span>
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {balance.used_days} days used
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))
-                  )}
-                </div>
-              </div>
-              
-              <div className="space-y-4">
-                <h3 className="font-medium text-lg">Upcoming Leave</h3>
-                {upcomingLeave.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
-                    <h3 className="text-lg font-medium">No upcoming leave</h3>
-                    <p className="text-muted-foreground">
-                      This staff member doesn't have any upcoming approved leave.
-                    </p>
-                  </div>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Type</TableHead>
-                        <TableHead>From</TableHead>
-                        <TableHead>To</TableHead>
-                        <TableHead>Duration</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {upcomingLeave.map((leave) => (
-                        <TableRow key={leave.id}>
-                          <TableCell className="font-medium capitalize">
-                            {leave.leave_type || "Regular"}
-                          </TableCell>
-                          <TableCell>{formatDate(leave.start_date)}</TableCell>
-                          <TableCell>{formatDate(leave.end_date)}</TableCell>
-                          <TableCell>
-                            {calculateDuration(leave.start_date, leave.end_date)} days
-                          </TableCell>
-                          <TableCell>
-                            <Badge 
-                              className={leave.status === 'approved' 
-                                ? 'bg-green-100 text-green-800' 
-                                : leave.status === 'denied'
-                                  ? 'bg-red-100 text-red-800'
-                                  : 'bg-yellow-100 text-yellow-800'}
-                            >
-                              {leave.status || "Pending"}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          <LeaveTab 
+            leaveBalances={leaveBalances}
+            upcomingLeave={upcomingLeave}
+            formatDate={formatDate}
+            calculateDuration={calculateDuration}
+            onRequestLeave={() => setIsLeaveRequestDialogOpen(true)}
+          />
         </TabsContent>
 
         <TabsContent value="timeclock" className="mt-0">
-          <Card>
-            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between space-y-2 sm:space-y-0">
-              <div>
-                <CardTitle>Time Clock</CardTitle>
-                <CardDescription>Recent clock in/out records.</CardDescription>
-              </div>
-              <Button onClick={() => setIsTimeClockDialogOpen(true)}>Clock In/Out</Button>
-            </CardHeader>
-            <CardContent>
-              {timeClockEntries.length === 0 ? (
-                <div className="text-center py-8">
-                  <Clock className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
-                  <h3 className="text-lg font-medium">No time clock entries</h3>
-                  <p className="text-muted-foreground">
-                    This staff member doesn't have any recorded time clock entries.
-                  </p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Clock In</TableHead>
-                      <TableHead>Clock Out</TableHead>
-                      <TableHead>Duration</TableHead>
-                      <TableHead>Notes</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {timeClockEntries.map((entry) => (
-                      <TableRow key={entry.id}>
-                        <TableCell className="font-medium">
-                          {formatDate(entry.clock_in)}
-                        </TableCell>
-                        <TableCell>{format(parseISO(entry.clock_in), "h:mm a")}</TableCell>
-                        <TableCell>
-                          {entry.clock_out 
-                            ? format(parseISO(entry.clock_out), "h:mm a") 
-                            : <Badge variant="outline" className="text-amber-600">Active</Badge>}
-                        </TableCell>
-                        <TableCell>
-                          {entry.clock_out 
-                            ? (() => {
-                                const durationMs = parseISO(entry.clock_out).getTime() - parseISO(entry.clock_in).getTime();
-                                const hours = Math.floor(durationMs / (1000 * 60 * 60));
-                                const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
-                                return `${hours}h ${minutes}m`;
-                              })()
-                            : "—"
-                          }
-                        </TableCell>
-                        <TableCell className="max-w-xs truncate">
-                          {entry.notes || "—"}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
+          <TimeClockTab 
+            timeClockEntries={timeClockEntries} 
+            formatDate={formatDate} 
+            onClockInOut={() => setIsTimeClockDialogOpen(true)}
+          />
         </TabsContent>
 
         <TabsContent value="permissions" className="mt-0">
-          <Card>
-            <CardHeader>
-              <CardTitle>Permissions & Roles</CardTitle>
-              <CardDescription>
-                Manage staff roles and system permissions.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                <div>
-                  <h3 className="font-medium text-lg mb-4">Assigned Roles</h3>
-                  {roles.length === 0 ? (
-                    <div className="text-center py-8">
-                      <Settings className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
-                      <h3 className="text-lg font-medium">No roles defined</h3>
-                      <p className="text-muted-foreground">
-                        No roles have been created for your restaurant yet.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="grid gap-4">
-                      {roles.map((role) => (
-                        <Card key={role.id}>
-                          <CardHeader className="py-3">
-                            <div className="flex items-center justify-between">
-                              <CardTitle className="text-base">{role.name}</CardTitle>
-                              <Button variant="ghost" size="sm">
-                                Assign
-                              </Button>
-                            </div>
-                          </CardHeader>
-                          <CardContent className="py-3">
-                            <div className="text-sm text-muted-foreground">
-                              {role.permissions?.length > 0 
-                                ? `${role.permissions.length} permissions assigned` 
-                                : "No permissions assigned"}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <PermissionsTab roles={roles} />
         </TabsContent>
       </Tabs>
+
+      {/* Status change confirmation dialog */}
+      <StaffStatusDialog
+        isInactive={staff.status === "inactive"}
+        isOpen={isStatusDialogOpen}
+        onClose={() => setIsStatusDialogOpen(false)}
+        onConfirm={handleStatusDialogConfirm}
+      />
 
       {/* Time Clock Dialog */}
       <TimeClockDialog
