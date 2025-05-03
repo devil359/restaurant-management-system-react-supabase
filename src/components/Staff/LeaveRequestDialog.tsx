@@ -1,65 +1,47 @@
 
 import React, { useState, useEffect } from "react";
-import { format, differenceInDays } from "date-fns";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { format, addDays, differenceInDays } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import type { StaffMember, StaffLeaveRequest, StaffLeaveType } from "@/types/staff";
+import type { StaffLeaveRequest, StaffMember, StaffLeaveType, StaffLeaveBalance } from "@/types/staff";
 
 interface LeaveRequestDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  staffId?: string;
-  restaurantId: string | null;
-  leaveRequest?: StaffLeaveRequest;
+  leave?: StaffLeaveRequest | null;
+  restaurantId: string;
+  staffOptions?: StaffMember[];
   onSuccess: () => void;
 }
 
 const LeaveRequestDialog: React.FC<LeaveRequestDialogProps> = ({
   isOpen,
   onClose,
-  staffId,
+  leave,
   restaurantId,
-  leaveRequest,
+  staffOptions = [],
   onSuccess,
 }) => {
-  const isEditMode = !!leaveRequest;
+  const isEditMode = !!leave;
   const { toast } = useToast();
   
   // Form state
-  const [selectedStaffId, setSelectedStaffId] = useState<string>("");
-  const [leaveType, setLeaveType] = useState<string>("annual");
-  const [startDate, setStartDate] = useState<string>("");
-  const [endDate, setEndDate] = useState<string>("");
+  const [staffId, setStaffId] = useState<string>("");
+  const [leaveType, setLeaveType] = useState<string>("");
+  const [startDate, setStartDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
+  const [endDate, setEndDate] = useState<string>(format(addDays(new Date(), 1), "yyyy-MM-dd"));
   const [reason, setReason] = useState<string>("");
-  const [durationDays, setDurationDays] = useState<number>(0);
 
-  // Fetch staff list
-  const { data: staffMembers = [] } = useQuery<StaffMember[]>({
-    queryKey: ["staff-for-leave", restaurantId],
-    enabled: !!restaurantId && !staffId, // Only fetch if no staffId is provided
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("staff")
-        .select("id, first_name, last_name, position")
-        .eq("restaurant_id", restaurantId)
-        .eq("status", "active");
-
-      if (error) throw error;
-      return data as StaffMember[];
-    },
-  });
-
-  // Fetch leave types
+  // Get all leave types
   const { data: leaveTypes = [] } = useQuery<StaffLeaveType[]>({
-    queryKey: ["leave-types", restaurantId],
+    queryKey: ["staff-leave-types", restaurantId],
     enabled: !!restaurantId,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -67,98 +49,86 @@ const LeaveRequestDialog: React.FC<LeaveRequestDialogProps> = ({
         .select("*")
         .eq("restaurant_id", restaurantId);
 
-      if (error) {
-        // If no leave types found, return default types
-        return [
-          { id: "annual", name: "Annual Leave", restaurant_id: restaurantId || "", accrual_type: "fixed", accrual_amount: 0, accrual_period: "annual", requires_approval: true, created_at: "", updated_at: "" },
-          { id: "sick", name: "Sick Leave", restaurant_id: restaurantId || "", accrual_type: "fixed", accrual_amount: 0, accrual_period: "annual", requires_approval: true, created_at: "", updated_at: "" },
-          { id: "personal", name: "Personal Leave", restaurant_id: restaurantId || "", accrual_type: "fixed", accrual_amount: 0, accrual_period: "annual", requires_approval: true, created_at: "", updated_at: "" },
-          { id: "unpaid", name: "Unpaid Leave", restaurant_id: restaurantId || "", accrual_type: "none", accrual_amount: 0, accrual_period: "annual", requires_approval: true, created_at: "", updated_at: "" },
-        ];
-      }
+      if (error) throw error;
       return data as StaffLeaveType[];
     },
   });
 
-  // Calculate duration when dates change
+  // Fetch staff member leave balances when staff and leave type are selected
+  const { data: leaveBalance } = useQuery<StaffLeaveBalance | null>({
+    queryKey: ["staff-leave-balance", staffId, leaveType],
+    enabled: !!(staffId && leaveType),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("staff_leave_balances")
+        .select("*")
+        .eq("staff_id", staffId)
+        .eq("leave_type", leaveType)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data as StaffLeaveBalance;
+    },
+  });
+
+  // Set form values when editing an existing leave request
   useEffect(() => {
-    if (startDate && endDate) {
+    if (leave) {
+      setStaffId(leave.staff_id);
+      setLeaveType(leave.leave_type);
+      setStartDate(leave.start_date);
+      setEndDate(leave.end_date);
+      setReason(leave.reason || "");
+    } else {
+      // Reset form for new leave request
+      setStaffId(staffOptions.length > 0 ? staffOptions[0].id : "");
+      setLeaveType(leaveTypes.length > 0 ? leaveTypes[0].name : "");
+      setStartDate(format(new Date(), "yyyy-MM-dd"));
+      setEndDate(format(addDays(new Date(), 1), "yyyy-MM-dd"));
+      setReason("");
+    }
+  }, [leave, isOpen, staffOptions, leaveTypes]);
+
+  // Save leave request mutation
+  const saveLeaveRequestMutation = useMutation({
+    mutationFn: async (leaveData: Partial<StaffLeaveRequest>) => {
       try {
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        const days = differenceInDays(end, start) + 1; // +1 to include both start and end date
-        setDurationDays(days > 0 ? days : 0);
-      } catch (e) {
-        setDurationDays(0);
-      }
-    } else {
-      setDurationDays(0);
-    }
-  }, [startDate, endDate]);
-
-  // Set form values when editing
-  useEffect(() => {
-    if (leaveRequest) {
-      setSelectedStaffId(leaveRequest.staff_id);
-      setLeaveType(leaveRequest.leave_type || "annual");
-      setStartDate(leaveRequest.start_date ? leaveRequest.start_date.split('T')[0] : "");
-      setEndDate(leaveRequest.end_date ? leaveRequest.end_date.split('T')[0] : "");
-      setReason(leaveRequest.reason || "");
-    } else {
-      resetForm();
-      
-      // If staffId is provided (from staff detail page), use it
-      if (staffId) {
-        setSelectedStaffId(staffId);
-      }
-    }
-  }, [leaveRequest, staffId]);
-
-  const resetForm = () => {
-    if (!staffId) {
-      setSelectedStaffId("");
-    }
-    setLeaveType("annual");
-    setStartDate("");
-    setEndDate("");
-    setReason("");
-  };
-
-  // Submit leave request mutation
-  const submitLeaveMutation = useMutation({
-    mutationFn: async (data: any) => {
-      if (isEditMode && leaveRequest) {
-        // Update existing request
-        const { error } = await supabase
-          .from("staff_leave_requests")
-          .update(data)
-          .eq("id", leaveRequest.id);
+        if (isEditMode && leave) {
+          // Update existing leave request
+          const { error } = await supabase
+            .from("staff_leave_requests")
+            .update(leaveData)
+            .eq("id", leave.id);
+          
+          if (error) throw error;
+        } else {
+          // Add new leave request
+          const { error } = await supabase
+            .from("staff_leave_requests")
+            .insert([{ ...leaveData, restaurant_id: restaurantId }]);
+          
+          if (error) throw error;
+        }
         
-        if (error) throw error;
-      } else {
-        // Create new request
-        const { error } = await supabase
-          .from("staff_leave_requests")
-          .insert([{ ...data, restaurant_id: restaurantId }]);
-        
-        if (error) throw error;
+        return { success: true };
+      } catch (error: any) {
+        console.error("Error saving leave request:", error);
+        throw new Error(error.message);
       }
     },
     onSuccess: () => {
       toast({
         title: isEditMode ? "Leave request updated" : "Leave request submitted",
-        description: isEditMode 
-          ? "The leave request has been updated successfully."
-          : "A new leave request has been submitted successfully.",
+        description: isEditMode
+          ? "Leave request has been updated successfully."
+          : "New leave request has been submitted successfully.",
       });
-      resetForm();
       onSuccess();
-      onClose();
     },
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: `Failed to ${isEditMode ? "update" : "submit"} leave request: ${error.message}`,
+        description: `Failed to save leave request: ${error.message}`,
         variant: "destructive",
       });
     },
@@ -167,25 +137,17 @@ const LeaveRequestDialog: React.FC<LeaveRequestDialogProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate form
-    if (!selectedStaffId) {
+    // Validate required fields
+    if (!staffId || !leaveType || !startDate || !endDate) {
       toast({
-        title: "Staff required",
-        description: "Please select a staff member.",
+        title: "Missing information",
+        description: "Please fill in all required fields.",
         variant: "destructive",
       });
       return;
     }
     
-    if (!startDate || !endDate) {
-      toast({
-        title: "Dates required",
-        description: "Please select both start and end dates.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
+    // Validate date range
     if (new Date(startDate) > new Date(endDate)) {
       toast({
         title: "Invalid date range",
@@ -194,85 +156,100 @@ const LeaveRequestDialog: React.FC<LeaveRequestDialogProps> = ({
       });
       return;
     }
+
+    // Calculate duration
+    const daysDiff = differenceInDays(new Date(endDate), new Date(startDate)) + 1;
     
-    const leaveData = {
-      staff_id: selectedStaffId,
+    // Check if leave balance is sufficient
+    if (leaveBalance && (leaveBalance.total_days - leaveBalance.used_days < daysDiff)) {
+      toast({
+        title: "Insufficient leave balance",
+        description: `You only have ${leaveBalance.total_days - leaveBalance.used_days} days available for this leave type.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const leaveData: Partial<StaffLeaveRequest> = {
+      staff_id: staffId,
       leave_type: leaveType,
       start_date: startDate,
       end_date: endDate,
-      reason,
-      status: isEditMode ? leaveRequest?.status : "pending",
+      reason: reason || null,
+      status: "pending"
     };
     
-    submitLeaveMutation.mutate(leaveData);
+    saveLeaveRequestMutation.mutate(leaveData);
+  };
+
+  const getRemainingBalance = () => {
+    if (!leaveBalance) return null;
+    const remaining = leaveBalance.total_days - leaveBalance.used_days;
+    return (
+      <div className="text-sm text-muted-foreground">
+        Available balance: <span className={remaining <= 0 ? "text-red-500" : "text-green-500"}>
+          {remaining} days
+        </span>
+      </div>
+    );
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {isEditMode ? "Edit Leave Request" : "Request Staff Leave"}
+            {isEditMode ? "Edit Leave Request" : "Request Leave"}
           </DialogTitle>
           <DialogDescription>
             {isEditMode
-              ? "Update the leave request details below."
-              : "Fill in the details below to request time off."}
+              ? "Update your leave request."
+              : "Submit a new leave request."}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Staff Selection (only if staffId not provided) */}
-          {!staffId && (
-            <div>
-              <Label htmlFor="staff">Staff Member</Label>
-              <Select 
-                value={selectedStaffId} 
-                onValueChange={setSelectedStaffId}
-                required
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select staff member" />
-                </SelectTrigger>
-                <SelectContent>
-                  {staffMembers.map((member) => (
-                    <SelectItem key={member.id} value={member.id}>
-                      {member.first_name} {member.last_name} - {member.position}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-          
-          {/* Leave Type */}
+          <div>
+            <Label htmlFor="staffId">Staff Member</Label>
+            <Select 
+              value={staffId} 
+              onValueChange={setStaffId} 
+              disabled={isEditMode || staffOptions.length === 0}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select staff member" />
+              </SelectTrigger>
+              <SelectContent>
+                {staffOptions.map((staff) => (
+                  <SelectItem key={staff.id} value={staff.id}>
+                    {staff.first_name} {staff.last_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div>
             <Label htmlFor="leaveType">Leave Type</Label>
-            <Select value={leaveType} onValueChange={setLeaveType}>
+            <Select 
+              value={leaveType} 
+              onValueChange={setLeaveType}
+              disabled={leaveTypes.length === 0}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select leave type" />
               </SelectTrigger>
               <SelectContent>
-                {leaveTypes.length > 0 ? (
-                  leaveTypes.map((type) => (
-                    <SelectItem key={type.id} value={type.id}>
-                      {type.name}
-                    </SelectItem>
-                  ))
-                ) : (
-                  <>
-                    <SelectItem value="annual">Annual Leave</SelectItem>
-                    <SelectItem value="sick">Sick Leave</SelectItem>
-                    <SelectItem value="personal">Personal Leave</SelectItem>
-                    <SelectItem value="unpaid">Unpaid Leave</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </>
-                )}
+                {leaveTypes.map((type) => (
+                  <SelectItem key={type.id} value={type.name}>
+                    {type.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
+            {getRemainingBalance()}
           </div>
-          
-          {/* Date Range */}
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="startDate">Start Date</Label>
@@ -281,8 +258,8 @@ const LeaveRequestDialog: React.FC<LeaveRequestDialogProps> = ({
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                required
                 min={format(new Date(), "yyyy-MM-dd")}
+                disabled={isEditMode && leave?.status !== "pending"}
               />
             </div>
             <div>
@@ -292,49 +269,60 @@ const LeaveRequestDialog: React.FC<LeaveRequestDialogProps> = ({
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                required
-                min={startDate || format(new Date(), "yyyy-MM-dd")}
+                min={startDate}
+                disabled={isEditMode && leave?.status !== "pending"}
               />
             </div>
           </div>
-          
-          {/* Duration */}
-          {durationDays > 0 && (
-            <div>
-              <Label>Duration</Label>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="px-2 py-1">
-                  {durationDays} {durationDays === 1 ? "day" : "days"}
-                </Badge>
-              </div>
-            </div>
-          )}
-          
-          {/* Reason */}
+
           <div>
-            <Label htmlFor="reason">Reason</Label>
+            <Label htmlFor="reason">Reason (Optional)</Label>
             <Textarea
               id="reason"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="Enter reason for leave"
+              placeholder="Provide a reason for your leave request..."
               rows={3}
+              disabled={isEditMode && leave?.status !== "pending"}
             />
           </div>
 
+          {/* Show current status if editing */}
+          {isEditMode && leave && (
+            <div className="text-sm">
+              <div>Status: <span className="font-medium">{leave.status}</span></div>
+              {leave.status !== "pending" && leave.approved_by && (
+                <div>Reviewed by: {leave.approved_by}</div>
+              )}
+              {leave.manager_comments && (
+                <div>Manager comments: {leave.manager_comments}</div>
+              )}
+            </div>
+          )}
+
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={onClose}
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={submitLeaveMutation.isPending}>
-              {submitLeaveMutation.isPending ? (
-                <>
-                  <span className="animate-spin mr-1">●</span> Submitting...
-                </>
-              ) : (
-                isEditMode ? "Update Request" : "Submit Request"
-              )}
-            </Button>
+            {(!isEditMode || (isEditMode && leave?.status === "pending")) && (
+              <Button 
+                type="submit" 
+                disabled={saveLeaveRequestMutation.isPending}
+              >
+                {saveLeaveRequestMutation.isPending ? (
+                  <>
+                    <span className="animate-spin mr-1">●</span> 
+                    Submitting...
+                  </>
+                ) : (
+                  isEditMode ? "Update Request" : "Submit Request"
+                )}
+              </Button>
+            )}
           </DialogFooter>
         </form>
       </DialogContent>

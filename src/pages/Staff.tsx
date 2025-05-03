@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -141,7 +140,7 @@ const Staff = () => {
         </TabsContent>
         
         <TabsContent value="leaves">
-          <StaffLeaveManager restaurantId={restaurantId} />
+          <StaffLeaveManager />
         </TabsContent>
       </Tabs>
 

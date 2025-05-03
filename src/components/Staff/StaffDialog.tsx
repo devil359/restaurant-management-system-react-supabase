@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -39,7 +38,7 @@ const StaffDialog: React.FC<StaffDialogProps> = ({
   const [position, setPosition] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [shift, setShift] = useState("");
+  const [shift, setShift] = useState("Morning");
   const [status, setStatus] = useState<string>("active");
   const [photoUrl, setPhotoUrl] = useState("");
   const [emergencyContactName, setEmergencyContactName] = useState("");
@@ -58,7 +57,7 @@ const StaffDialog: React.FC<StaffDialogProps> = ({
       setPosition(staff.position || "");
       setEmail(staff.email || "");
       setPhone(staff.phone || "");
-      setShift(staff.Shift || "");
+      setShift(staff.Shift || "Morning");
       setStatus(staff.status || "active");
       setPhotoUrl(staff.photo_url || "");
       setEmergencyContactName(staff.emergency_contact_name || "");
@@ -79,7 +78,7 @@ const StaffDialog: React.FC<StaffDialogProps> = ({
     setPosition("");
     setEmail("");
     setPhone("");
-    setShift("");
+    setShift("Morning");
     setStatus("active");
     setPhotoUrl("");
     setEmergencyContactName("");
@@ -374,7 +373,6 @@ const StaffDialog: React.FC<StaffDialogProps> = ({
                   <SelectValue placeholder="Select shift" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
                   <SelectItem value="Morning">Morning</SelectItem>
                   <SelectItem value="Afternoon">Afternoon</SelectItem>
                   <SelectItem value="Evening">Evening</SelectItem>
