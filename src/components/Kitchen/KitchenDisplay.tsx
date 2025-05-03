@@ -6,6 +6,8 @@ import { Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import OrderTicket from "./OrderTicket";
 import OrdersColumn from "./OrdersColumn";
+import DateFilter from "./DateFilter";
+import { filterOrdersByDateRange } from "@/components/Staff/utilities/staffUtils";
 import { Json } from "@/integrations/supabase/types";
 
 export interface KitchenOrder {
@@ -22,8 +24,11 @@ export interface KitchenOrder {
 
 const KitchenDisplay = () => {
   const [orders, setOrders] = useState<KitchenOrder[]>([]);
+  const [filteredOrders, setFilteredOrders] = useState<KitchenOrder[]>([]);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [dateFilter, setDateFilter] = useState("today");
   const { toast } = useToast();
+  
   // Create the audio element with error handling
   const [notification] = useState(() => {
     const audio = new Audio();
@@ -67,6 +72,11 @@ const KitchenDisplay = () => {
     // In a real implementation, you would record the audio to a buffer and convert to MP3/WAV
     return 'data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU9vT18=';
   };
+
+  useEffect(() => {
+    // Apply date filter to orders
+    setFilteredOrders(filterOrdersByDateRange(orders, dateFilter));
+  }, [orders, dateFilter]);
 
   useEffect(() => {
     // Fetch initial orders
@@ -215,26 +225,30 @@ const KitchenDisplay = () => {
   };
 
   const filterOrdersByStatus = (status: KitchenOrder["status"]) => {
-    return orders.filter((order) => order.status === status);
+    return filteredOrders.filter((order) => order.status === status);
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Kitchen Display System</h1>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-indigo-950 p-4">
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+          Kitchen Display System
+        </h1>
         <Button
           variant="outline"
           size="icon"
           onClick={() => setSoundEnabled(!soundEnabled)}
-          className="ml-2"
+          className="ml-2 border-blue-200 dark:border-blue-800"
         >
           {soundEnabled ? (
-            <Volume2 className="h-5 w-5" />
+            <Volume2 className="h-5 w-5 text-blue-600" />
           ) : (
-            <VolumeX className="h-5 w-5" />
+            <VolumeX className="h-5 w-5 text-gray-400" />
           )}
         </Button>
       </div>
+      
+      <DateFilter value={dateFilter} onChange={setDateFilter} />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <OrdersColumn

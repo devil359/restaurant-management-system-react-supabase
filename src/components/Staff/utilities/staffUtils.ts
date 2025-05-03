@@ -1,5 +1,5 @@
 
-import { format, parseISO, differenceInDays } from "date-fns";
+import { format, parseISO, differenceInDays, isWithinInterval, startOfDay, endOfDay, subDays, startOfMonth, endOfMonth } from "date-fns";
 
 export const formatDateTime = (dateTimeString: string) => {
   if (!dateTimeString) return "";
@@ -48,5 +48,52 @@ export const calculateHourMinuteDuration = (startTimeStr: string, endTimeStr: st
     return `${hours}h ${minutes}m`;
   } catch (error) {
     return "—";
+  }
+};
+
+// Function to filter orders by date range
+export const filterOrdersByDateRange = (orders: any[], dateFilter: string): any[] => {
+  const today = new Date();
+  
+  switch (dateFilter) {
+    case "today":
+      return orders.filter(order => {
+        const orderDate = new Date(order.created_at);
+        return isWithinInterval(orderDate, {
+          start: startOfDay(today),
+          end: endOfDay(today)
+        });
+      });
+      
+    case "yesterday":
+      return orders.filter(order => {
+        const orderDate = new Date(order.created_at);
+        const yesterday = subDays(today, 1);
+        return isWithinInterval(orderDate, {
+          start: startOfDay(yesterday),
+          end: endOfDay(yesterday)
+        });
+      });
+      
+    case "last7days":
+      return orders.filter(order => {
+        const orderDate = new Date(order.created_at);
+        return isWithinInterval(orderDate, {
+          start: startOfDay(subDays(today, 6)), // 6 days ago + today = 7 days
+          end: endOfDay(today)
+        });
+      });
+      
+    case "thisMonth":
+      return orders.filter(order => {
+        const orderDate = new Date(order.created_at);
+        return isWithinInterval(orderDate, {
+          start: startOfMonth(today),
+          end: endOfMonth(today)
+        });
+      });
+      
+    default:
+      return orders;
   }
 };
