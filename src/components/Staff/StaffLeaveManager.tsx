@@ -45,18 +45,18 @@ const StaffLeaveManager: React.FC<StaffLeaveManagerProps> = () => {
     },
   });
 
-  // Fetch staff members
+  // Fetch staff members - Fix: correctly type the returned data
   const { data: staff = [] } = useQuery<StaffMember[]>({
     queryKey: ["staff", restaurantId],
     enabled: !!restaurantId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("staff")
-        .select("id, first_name, last_name")
+        .select("id, first_name, last_name, restaurant_id, created_at, updated_at")
         .eq("restaurant_id", restaurantId);
 
       if (error) throw error;
-      return data;
+      return data as StaffMember[];
     },
   });
 

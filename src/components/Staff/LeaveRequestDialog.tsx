@@ -18,6 +18,7 @@ interface LeaveRequestDialogProps {
   leave?: StaffLeaveRequest | null;
   restaurantId: string;
   staffOptions?: StaffMember[];
+  staff_id?: string; // Optional staff ID if pre-selected
   onSuccess: () => void;
 }
 
@@ -27,6 +28,7 @@ const LeaveRequestDialog: React.FC<LeaveRequestDialogProps> = ({
   leave,
   restaurantId,
   staffOptions = [],
+  staff_id,
   onSuccess,
 }) => {
   const isEditMode = !!leave;
@@ -71,7 +73,7 @@ const LeaveRequestDialog: React.FC<LeaveRequestDialogProps> = ({
     },
   });
 
-  // Set form values when editing an existing leave request
+  // Set form values when editing an existing leave request or when staff_id is provided
   useEffect(() => {
     if (leave) {
       setStaffId(leave.staff_id);
@@ -80,14 +82,18 @@ const LeaveRequestDialog: React.FC<LeaveRequestDialogProps> = ({
       setEndDate(leave.end_date);
       setReason(leave.reason || "");
     } else {
-      // Reset form for new leave request
-      setStaffId(staffOptions.length > 0 ? staffOptions[0].id : "");
+      // If staff_id is provided, use it
+      if (staff_id) {
+        setStaffId(staff_id);
+      } else {
+        setStaffId(staffOptions.length > 0 ? staffOptions[0].id : "");
+      }
       setLeaveType(leaveTypes.length > 0 ? leaveTypes[0].name : "");
       setStartDate(format(new Date(), "yyyy-MM-dd"));
       setEndDate(format(addDays(new Date(), 1), "yyyy-MM-dd"));
       setReason("");
     }
-  }, [leave, isOpen, staffOptions, leaveTypes]);
+  }, [leave, isOpen, staffOptions, leaveTypes, staff_id]);
 
   // Save leave request mutation
   const saveLeaveRequestMutation = useMutation({
@@ -102,10 +108,18 @@ const LeaveRequestDialog: React.FC<LeaveRequestDialogProps> = ({
           
           if (error) throw error;
         } else {
-          // Add new leave request
+          // Add new leave request - Fix: passing a single object, not an array
           const { error } = await supabase
             .from("staff_leave_requests")
-            .insert([{ ...leaveData, restaurant_id: restaurantId }]);
+            .insert({
+              staff_id: leaveData.staff_id || "", 
+              leave_type: leaveData.leave_type || "",
+              start_date: leaveData.start_date || "",
+              end_date: leaveData.end_date || "",
+              reason: leaveData.reason,
+              status: "pending",
+              restaurant_id: restaurantId
+            });
           
           if (error) throw error;
         }
@@ -214,7 +228,7 @@ const LeaveRequestDialog: React.FC<LeaveRequestDialogProps> = ({
             <Select 
               value={staffId} 
               onValueChange={setStaffId} 
-              disabled={isEditMode || staffOptions.length === 0}
+              disabled={isEditMode || staffOptions.length === 0 || !!staff_id}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select staff member" />

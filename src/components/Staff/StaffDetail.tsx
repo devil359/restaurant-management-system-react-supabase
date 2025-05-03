@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, parseISO, differenceInDays } from "date-fns";
@@ -749,8 +748,8 @@ const StaffDetail: React.FC<StaffDetailProps> = ({
       <LeaveRequestDialog
         isOpen={isLeaveRequestDialogOpen}
         onClose={() => setIsLeaveRequestDialogOpen(false)}
-        staffId={staffId}
-        restaurantId={restaurantId}
+        restaurantId={restaurantId || ""}
+        staff_id={staffId}
         onSuccess={handleLeaveRequestSuccess}
       />
     </div>
