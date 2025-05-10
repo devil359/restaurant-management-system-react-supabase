@@ -85,7 +85,8 @@ export const fetchAllowedComponents = async (restaurantId: string): Promise<stri
       return [];
     }
 
-    // Extract components array from the plan and convert to string array
+    // Fix: properly access components from subscription_plans object
+    // subscription_plans is an object, not an array
     const componentsJson = subscription.subscription_plans.components || [];
     
     // Safely convert the JSON array to string array with type checking
