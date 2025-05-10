@@ -51,6 +51,9 @@ const Rooms = () => {
     );
   }
 
+  // Ensure restaurantId is available before rendering tabs that require it
+  const hasRestaurantId = !!restaurantId;
+
   return (
     <div className="container mx-auto py-4 md:py-8 px-4 md:px-6">
       <Tabs 
@@ -69,18 +72,21 @@ const Rooms = () => {
             <TabsTrigger 
               value="billing" 
               className="whitespace-nowrap data-[state=active]:bg-primary data-[state=active]:text-white px-4"
+              disabled={!hasRestaurantId}
             >
               Billing History
             </TabsTrigger>
             <TabsTrigger 
               value="occasions" 
               className="whitespace-nowrap data-[state=active]:bg-primary data-[state=active]:text-white px-4"
+              disabled={!hasRestaurantId}
             >
               Special Occasions
             </TabsTrigger>
             <TabsTrigger 
               value="promotions" 
               className="whitespace-nowrap data-[state=active]:bg-primary data-[state=active]:text-white px-4"
+              disabled={!hasRestaurantId}
             >
               Promotions
             </TabsTrigger>
@@ -107,7 +113,13 @@ const Rooms = () => {
         </TabsContent>
 
         <TabsContent value="promotions" className="mt-2 animate-in fade-in">
-          {restaurantId && <PromotionsManager restaurantId={restaurantId} />}
+          {restaurantId ? (
+            <PromotionsManager restaurantId={restaurantId} />
+          ) : (
+            <div className="flex justify-center items-center min-h-[200px]">
+              <p className="text-muted-foreground">Restaurant ID not available. Please refresh the page.</p>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>
