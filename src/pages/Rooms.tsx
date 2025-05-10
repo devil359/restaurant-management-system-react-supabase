@@ -25,7 +25,18 @@ const Rooms = () => {
   } = useRooms();
 
   if (loading) {
-    return <div className="flex justify-center items-center min-h-[50vh]">Loading...</div>;
+    return (
+      <div className="flex justify-center items-center min-h-[50vh]">
+        <div className="animate-pulse flex flex-col items-center">
+          <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded mb-4"></div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-4xl">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-40 bg-gray-200 dark:bg-gray-700 rounded"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (authError) {
@@ -48,15 +59,35 @@ const Rooms = () => {
         className="w-full"
       >
         <div className="overflow-x-auto pb-2">
-          <TabsList className="mb-6 inline-flex w-auto min-w-full md:w-auto space-x-1 p-1">
-            <TabsTrigger value="rooms" className="whitespace-nowrap">Rooms</TabsTrigger>
-            <TabsTrigger value="billing" className="whitespace-nowrap">Billing History</TabsTrigger>
-            <TabsTrigger value="occasions" className="whitespace-nowrap">Special Occasions</TabsTrigger>
-            <TabsTrigger value="promotions" className="whitespace-nowrap">Promotions</TabsTrigger>
+          <TabsList className="mb-6 inline-flex w-auto min-w-full md:w-auto space-x-1 p-1 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <TabsTrigger 
+              value="rooms" 
+              className="whitespace-nowrap data-[state=active]:bg-primary data-[state=active]:text-white px-4"
+            >
+              Rooms
+            </TabsTrigger>
+            <TabsTrigger 
+              value="billing" 
+              className="whitespace-nowrap data-[state=active]:bg-primary data-[state=active]:text-white px-4"
+            >
+              Billing History
+            </TabsTrigger>
+            <TabsTrigger 
+              value="occasions" 
+              className="whitespace-nowrap data-[state=active]:bg-primary data-[state=active]:text-white px-4"
+            >
+              Special Occasions
+            </TabsTrigger>
+            <TabsTrigger 
+              value="promotions" 
+              className="whitespace-nowrap data-[state=active]:bg-primary data-[state=active]:text-white px-4"
+            >
+              Promotions
+            </TabsTrigger>
           </TabsList>
         </div>
 
-        <TabsContent value="rooms" className="mt-2">
+        <TabsContent value="rooms" className="mt-2 animate-in fade-in">
           <RoomsList 
             rooms={rooms}
             getRoomFoodOrdersTotal={getRoomFoodOrdersTotal}
@@ -67,15 +98,15 @@ const Rooms = () => {
           />
         </TabsContent>
 
-        <TabsContent value="billing" className="mt-2">
+        <TabsContent value="billing" className="mt-2 animate-in fade-in">
           {restaurantId && <BillingHistory restaurantId={restaurantId} />}
         </TabsContent>
 
-        <TabsContent value="occasions" className="mt-2">
+        <TabsContent value="occasions" className="mt-2 animate-in fade-in">
           {restaurantId && <SpecialOccasions restaurantId={restaurantId} />}
         </TabsContent>
 
-        <TabsContent value="promotions" className="mt-2">
+        <TabsContent value="promotions" className="mt-2 animate-in fade-in">
           {restaurantId && <PromotionsManager restaurantId={restaurantId} />}
         </TabsContent>
       </Tabs>
