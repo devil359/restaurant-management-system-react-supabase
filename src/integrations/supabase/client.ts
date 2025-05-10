@@ -1,7 +1,8 @@
+
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://clmsoetktmvhazctlans.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNsbXNvZXRrdG12aGF6Y3RsYW5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzg1MTE5NTIsImV4cCI6MjA1NDA4Nzk1Mn0.4j8CLdQn9By5XawbdC4LlWhFumIQT6gqCl2lZnQwQWk';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
@@ -48,4 +49,14 @@ export interface SentPromotion {
   sent_status: string;
   sent_method: string;
   restaurant_id: string;
+}
+
+// Add OrderItem type for use in order-related components
+export interface OrderItem {
+  id: string;
+  menuItemId?: string;
+  name: string;
+  price: number;
+  quantity: number;
+  modifiers?: string[];
 }
