@@ -27,9 +27,9 @@ export const StaffStatusDialog: React.FC<StaffStatusDialogProps> = ({
 }) => {
   return (
     <AlertDialog open={isOpen} onOpenChange={onClose}>
-      <AlertDialogContent>
+      <AlertDialogContent className="max-w-md">
         <AlertDialogHeader>
-          <AlertDialogTitle>
+          <AlertDialogTitle className={isInactive ? "text-green-600" : "text-red-600"}>
             {isInactive ? "Activate Staff Member" : "Deactivate Staff Member"}
           </AlertDialogTitle>
           <AlertDialogDescription>
@@ -39,10 +39,12 @@ export const StaffStatusDialog: React.FC<StaffStatusDialogProps> = ({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onClose}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel className="border-gray-200 bg-white hover:bg-gray-50">Cancel</AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
-            className={isInactive ? "bg-green-600 hover:bg-green-700" : ""}
+            className={isInactive 
+              ? "bg-green-600 hover:bg-green-700 text-white" 
+              : "bg-red-600 hover:bg-red-700 text-white"}
           >
             {isInactive ? "Activate" : "Deactivate"}
           </AlertDialogAction>

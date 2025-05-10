@@ -85,9 +85,9 @@ export const fetchAllowedComponents = async (restaurantId: string): Promise<stri
       return [];
     }
 
-    // Fix: properly access components from subscription_plans object
-    // subscription_plans is an object, not an array
-    const componentsJson = subscription.subscription_plans.components || [];
+    // Fix: Type issue - properly access components property
+    const planComponents = subscription.subscription_plans as { components: any };
+    const componentsJson = planComponents.components || [];
     
     // Safely convert the JSON array to string array with type checking
     const componentsArray: string[] = [];

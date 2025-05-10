@@ -1,8 +1,9 @@
+
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import StaffList from "@/components/Staff/StaffList";
@@ -87,7 +88,7 @@ const Staff = () => {
   };
 
   return (
-    <div className="p-6 space-y-6 bg-gradient-to-br from-purple-50 to-white dark:from-gray-900 dark:to-gray-800">
+    <div className="p-6 space-y-6 bg-gradient-to-br from-purple-50 to-white dark:from-gray-900 dark:to-gray-800 min-h-screen">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
@@ -101,14 +102,14 @@ const Staff = () => {
           <Button 
             onClick={() => setIsTimeClockDialogOpen(true)}
             variant="outline"
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100"
           >
             <ClockIcon className="h-4 w-4" />
             Clock In/Out
           </Button>
           <Button 
             onClick={handleAddStaff}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 bg-primary hover:bg-primary/90"
           >
             <UserPlus className="h-4 w-4" />
             Add Staff
@@ -117,19 +118,31 @@ const Staff = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="mb-6">
-          <TabsTrigger value="staff">Staff List</TabsTrigger>
-          <TabsTrigger value="leaves">Leave Management</TabsTrigger>
+        <TabsList className="mb-6 bg-white dark:bg-gray-800 p-1 border border-gray-200 dark:border-gray-700 rounded-lg">
+          <TabsTrigger 
+            value="staff" 
+            className="data-[state=active]:bg-primary data-[state=active]:text-white transition-colors"
+          >
+            Staff List
+          </TabsTrigger>
+          <TabsTrigger 
+            value="leaves"
+            className="data-[state=active]:bg-primary data-[state=active]:text-white transition-colors"
+          >
+            Leave Management
+          </TabsTrigger>
         </TabsList>
         
-        <TabsContent value="staff">
+        <TabsContent value="staff" className="animate-in fade-in">
           {selectedStaff ? (
-            <StaffDetail 
-              staffId={selectedStaff.id}
-              restaurantId={restaurantId}
-              onEdit={handleEditStaff}
-              onBack={() => setSelectedStaff(null)}
-            />
+            <Card className="p-6 bg-white dark:bg-gray-800 shadow-md border-t-4 border-t-primary">
+              <StaffDetail 
+                staffId={selectedStaff.id}
+                restaurantId={restaurantId}
+                onEdit={handleEditStaff}
+                onBack={() => setSelectedStaff(null)}
+              />
+            </Card>
           ) : (
             <StaffList
               selectedStaffId={selectedStaff?.id || null}
@@ -140,8 +153,10 @@ const Staff = () => {
           )}
         </TabsContent>
         
-        <TabsContent value="leaves">
-          <StaffLeaveManager />
+        <TabsContent value="leaves" className="animate-in fade-in">
+          <Card className="p-6 bg-white dark:bg-gray-800 shadow-md">
+            <StaffLeaveManager />
+          </Card>
         </TabsContent>
       </Tabs>
 

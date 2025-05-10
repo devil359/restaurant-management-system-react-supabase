@@ -3,7 +3,7 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Edit } from "lucide-react";
+import { Edit, ArrowLeft } from "lucide-react";
 import type { StaffMember } from "@/types/staff";
 
 interface StaffHeaderProps {
@@ -39,12 +39,18 @@ export const StaffHeader: React.FC<StaffHeaderProps> = ({
   return (
     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
       <div className="flex items-center gap-4">
-        <Button variant="outline" size="sm" onClick={onBack}>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={onBack}
+          className="bg-white hover:bg-gray-50 border-gray-200 text-gray-700 flex items-center gap-2"
+        >
+          <ArrowLeft className="h-4 w-4" />
           Back
         </Button>
-        <Avatar className="h-16 w-16">
+        <Avatar className="h-16 w-16 border-2 border-primary/10">
           <AvatarImage src={staff.photo_url || ''} alt={`${staff.first_name} ${staff.last_name}`} />
-          <AvatarFallback className="text-lg">
+          <AvatarFallback className="text-lg bg-primary/10 text-primary">
             {getInitials(staff.first_name, staff.last_name)}
           </AvatarFallback>
         </Avatar>
@@ -63,7 +69,7 @@ export const StaffHeader: React.FC<StaffHeaderProps> = ({
         <Button
           variant="outline"
           onClick={() => onEdit(staff)}
-          className="flex items-center gap-1"
+          className="flex items-center gap-1 bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100"
         >
           <Edit className="h-4 w-4" /> Edit Profile
         </Button>
@@ -73,7 +79,7 @@ export const StaffHeader: React.FC<StaffHeaderProps> = ({
           className={
             staff.status === "inactive" 
               ? "bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-800 border-green-200" 
-              : ""
+              : "bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800 border-red-200"
           }
           onClick={onActivateDeactivate}
         >
@@ -83,3 +89,4 @@ export const StaffHeader: React.FC<StaffHeaderProps> = ({
     </div>
   );
 };
+
