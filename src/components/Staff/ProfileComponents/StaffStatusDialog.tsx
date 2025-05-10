@@ -43,8 +43,8 @@ export const StaffStatusDialog: React.FC<StaffStatusDialogProps> = ({
           <AlertDialogAction
             onClick={onConfirm}
             className={isInactive 
-              ? "bg-green-600 hover:bg-green-700 text-white" 
-              : "bg-red-600 hover:bg-red-700 text-white"}
+              ? "bg-green-600 hover:bg-green-700 text-white focus:ring-green-500" 
+              : "bg-red-600 hover:bg-red-700 text-white focus:ring-red-500"}
           >
             {isInactive ? "Activate" : "Deactivate"}
           </AlertDialogAction>

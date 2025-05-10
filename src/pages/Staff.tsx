@@ -109,7 +109,7 @@ const Staff = () => {
           </Button>
           <Button 
             onClick={handleAddStaff}
-            className="flex items-center gap-2 bg-primary hover:bg-primary/90"
+            className="flex items-center gap-2 bg-primary text-white hover:bg-primary/90"
           >
             <UserPlus className="h-4 w-4" />
             Add Staff

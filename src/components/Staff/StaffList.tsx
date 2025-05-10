@@ -105,8 +105,8 @@ const StaffList: React.FC<StaffListProps> = ({
       member.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       member.phone?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesRole = roleFilter === '' || member.position === roleFilter;
-    const matchesStatus = statusFilter === '' || member.status === statusFilter;
+    const matchesRole = roleFilter === '' || roleFilter === 'all-roles' || member.position === roleFilter;
+    const matchesStatus = statusFilter === '' || statusFilter === 'all-statuses' || member.status === statusFilter;
     
     return matchesSearch && matchesRole && matchesStatus;
   });
@@ -157,7 +157,7 @@ const StaffList: React.FC<StaffListProps> = ({
                   <Filter className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuContent align="end" className="w-56 bg-white dark:bg-slate-950">
                 <div className="p-2 space-y-2">
                   <div className="space-y-1">
                     <label className="text-sm font-medium">Role</label>
@@ -196,7 +196,7 @@ const StaffList: React.FC<StaffListProps> = ({
                 </div>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button onClick={onAddStaff}>Add Staff</Button>
+            <Button onClick={onAddStaff} className="bg-primary hover:bg-primary/90">Add Staff</Button>
           </div>
         </div>
 
@@ -265,6 +265,8 @@ const StaffList: React.FC<StaffListProps> = ({
                       <div className="flex space-x-2">
                         <Button 
                           size="sm" 
+                          variant="outline"
+                          className="bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100"
                           onClick={(e) => { 
                             e.stopPropagation();
                             onSelectStaff(staffMember);

@@ -89,4 +89,3 @@ export const StaffHeader: React.FC<StaffHeaderProps> = ({
     </div>
   );
 };
-
