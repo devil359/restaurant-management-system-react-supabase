@@ -11,11 +11,13 @@ import AuthLoader from "./AuthLoader";
 const Routes = () => {
   const { loading } = useAuthState();
   
+  // If authentication is still loading, show the loader
   if (loading) {
     return <AuthLoader />;
   }
 
-  return <Switch>{AppRoutes}</Switch>;
+  // Once authentication check is complete, render routes
+  return <>{AppRoutes}</>;
 };
 
 export default Routes;

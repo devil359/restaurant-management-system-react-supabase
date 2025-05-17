@@ -6,15 +6,25 @@ const BrandingSection: React.FC = () => {
   return (
     <div className="max-w-md mx-auto">
       <div className="mb-8">
-        <img 
-          src="/logo.svg" 
-          alt="Swadeshi Solutions Logo" 
-          className="h-16 mb-6"
-          onError={(e) => {
-            const target = e.target as HTMLImageElement;
-            target.src = "/placeholder.svg";
-          }}
-        />
+        <div className="flex items-center gap-3 mb-6">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="40"
+            height="40"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="text-brand-deep-blue"
+          >
+            <path d="M17 11V3a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v18a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-8"></path>
+            <path d="m12 12 4 4"></path>
+            <path d="M20 12h-8"></path>
+          </svg>
+          <span className="text-2xl font-bold">RMS Pro</span>
+        </div>
         <h1 className="text-3xl font-bold bg-gradient-to-r from-brand-deep-blue to-brand-success-green bg-clip-text text-transparent mb-4">
           Swadeshi Solutions
         </h1>

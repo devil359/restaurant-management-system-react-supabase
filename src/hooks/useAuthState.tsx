@@ -10,6 +10,22 @@ export const useAuthState = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // First set up the auth listener
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setUser(session?.user || null);
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          // Small delay to ensure smoother transition
+          setTimeout(() => {
+            setLoading(false);
+          }, 500);
+        } else if (event === 'SIGNED_OUT') {
+          setLoading(false);
+        }
+      }
+    );
+    
+    // Then check the current session
     const checkUser = async () => {
       try {
         const { data } = await supabase.auth.getUser();
@@ -19,7 +35,7 @@ export const useAuthState = () => {
         // to prevent UI flickering and ensure smooth transitions
         setTimeout(() => {
           setLoading(false);
-        }, 300);
+        }, 800);
       } catch (error) {
         console.error("Error checking auth:", error);
         setLoading(false);
@@ -28,14 +44,8 @@ export const useAuthState = () => {
     
     checkUser();
     
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setUser(session?.user || null);
-      }
-    );
-    
     return () => {
-      authListener?.subscription.unsubscribe();
+      authListener?.subscription?.unsubscribe();
     };
   }, []);
 
