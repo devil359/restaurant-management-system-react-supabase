@@ -2,6 +2,7 @@
 import { Routes as Switch } from "react-router-dom";
 import { useAuthState } from "@/hooks/useAuthState";
 import { AppRoutes } from "./AppRoutes";
+import AuthLoader from "./AuthLoader";
 
 /**
  * Main Routes component that renders all application routes
@@ -11,7 +12,7 @@ const Routes = () => {
   const { loading } = useAuthState();
   
   if (loading) {
-    return <div>Loading...</div>;
+    return <AuthLoader />;
   }
 
   return <Switch>{AppRoutes}</Switch>;

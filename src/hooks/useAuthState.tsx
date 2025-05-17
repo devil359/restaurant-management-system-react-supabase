@@ -14,9 +14,14 @@ export const useAuthState = () => {
       try {
         const { data } = await supabase.auth.getUser();
         setUser(data.user);
+        
+        // Add a small delay before setting loading to false
+        // to prevent UI flickering and ensure smooth transitions
+        setTimeout(() => {
+          setLoading(false);
+        }, 300);
       } catch (error) {
         console.error("Error checking auth:", error);
-      } finally {
         setLoading(false);
       }
     };
