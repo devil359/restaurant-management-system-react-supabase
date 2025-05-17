@@ -1,5 +1,5 @@
 
-import { Routes as Switch } from "react-router-dom";
+import { Routes as Switch, Route, Navigate } from "react-router-dom";
 import { useAuthState } from "@/hooks/useAuthState";
 import { AppRoutes } from "./AppRoutes";
 import AuthLoader from "./AuthLoader";

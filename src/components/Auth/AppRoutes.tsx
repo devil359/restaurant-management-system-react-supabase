@@ -1,5 +1,4 @@
-
-import { Route } from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
 import { ComponentAccessGuard, LoginRegisterAccessGuard } from "./RouteGuards";
 import Auth from "@/pages/Auth";
 import Index from "@/pages/Index";
@@ -18,162 +17,231 @@ import BusinessDashboard from "@/components/Analytics/BusinessDashboard";
 import Inventory from "@/pages/Inventory";
 import Suppliers from "@/pages/Suppliers";
 import CRM from "@/pages/CRM";
+import Sidebar from "../Layout/Sidebar";
+import NotFound from "@/pages/NotFound";
+import { SidebarProvider } from "@/components/ui/sidebar";
 
 /**
- * All application routes defined as an array for better organization
+ * All application routes defined for better organization
  */
-export const AppRoutes = [
-  <Route
-    path="/"
-    key="home"
-    element={
-      <ComponentAccessGuard>
-        <Index />
-      </ComponentAccessGuard>
-    }
-  />,
-  <Route
-    path="/auth"
-    key="auth"
-    element={
+export const AppRoutes = (
+  <Routes>
+    <Route path="/auth" element={
       <LoginRegisterAccessGuard>
         <Auth />
       </LoginRegisterAccessGuard>
-    }
-  />,
-  <Route
-    path="/orders"
-    key="orders"
-    element={
+    } />
+    
+    {/* Authenticated routes with sidebar layout */}
+    <Route path="/" element={
       <ComponentAccessGuard>
-        <Orders />
+        <div className="flex h-screen w-full">
+          <SidebarProvider>
+            <Sidebar />
+            <main className="flex-1 overflow-auto transition-all duration-300">
+              <Index />
+            </main>
+          </SidebarProvider>
+        </div>
       </ComponentAccessGuard>
-    }
-  />,
-  <Route
-    path="/rooms"
-    key="rooms"
-    element={
+    } />
+    
+    <Route path="/orders" element={
       <ComponentAccessGuard>
-        <Rooms />
+        <div className="flex h-screen w-full">
+          <SidebarProvider>
+            <Sidebar />
+            <main className="flex-1 overflow-auto transition-all duration-300">
+              <Orders />
+            </main>
+          </SidebarProvider>
+        </div>
       </ComponentAccessGuard>
-    }
-  />,
-  <Route
-    path="/staff"
-    key="staff"
-    element={
+    } />
+    
+    <Route path="/rooms" element={
       <ComponentAccessGuard>
-        <Staff />
+        <div className="flex h-screen w-full">
+          <SidebarProvider>
+            <Sidebar />
+            <main className="flex-1 overflow-auto transition-all duration-300">
+              <Rooms />
+            </main>
+          </SidebarProvider>
+        </div>
       </ComponentAccessGuard>
-    }
-  />,
-  <Route
-    path="/menu"
-    key="menu"
-    element={
+    } />
+    
+    <Route path="/staff" element={
       <ComponentAccessGuard>
-        <Menu />
+        <div className="flex h-screen w-full">
+          <SidebarProvider>
+            <Sidebar />
+            <main className="flex-1 overflow-auto transition-all duration-300">
+              <Staff />
+            </main>
+          </SidebarProvider>
+        </div>
       </ComponentAccessGuard>
-    }
-  />,
-  <Route
-    path="/tables"
-    key="tables"
-    element={
+    } />
+    
+    <Route path="/menu" element={
       <ComponentAccessGuard>
-        <Tables />
+        <div className="flex h-screen w-full">
+          <SidebarProvider>
+            <Sidebar />
+            <main className="flex-1 overflow-auto transition-all duration-300">
+              <Menu />
+            </main>
+          </SidebarProvider>
+        </div>
       </ComponentAccessGuard>
-    }
-  />,
-  <Route
-    path="/reservations"
-    key="reservations"
-    element={
+    } />
+    
+    <Route path="/tables" element={
       <ComponentAccessGuard>
-        <Reservations />
+        <div className="flex h-screen w-full">
+          <SidebarProvider>
+            <Sidebar />
+            <main className="flex-1 overflow-auto transition-all duration-300">
+              <Tables />
+            </main>
+          </SidebarProvider>
+        </div>
       </ComponentAccessGuard>
-    }
-  />,
-  <Route
-    path="/customers"
-    key="customers"
-    element={
+    } />
+    
+    <Route path="/reservations" element={
       <ComponentAccessGuard>
-        <Customers />
+        <div className="flex h-screen w-full">
+          <SidebarProvider>
+            <Sidebar />
+            <main className="flex-1 overflow-auto transition-all duration-300">
+              <Reservations />
+            </main>
+          </SidebarProvider>
+        </div>
       </ComponentAccessGuard>
-    }
-  />,
-  <Route
-    path="/crm"
-    key="crm"
-    element={
+    } />
+    
+    <Route path="/customers" element={
       <ComponentAccessGuard>
-        <CRM />
+        <div className="flex h-screen w-full">
+          <SidebarProvider>
+            <Sidebar />
+            <main className="flex-1 overflow-auto transition-all duration-300">
+              <Customers />
+            </main>
+          </SidebarProvider>
+        </div>
       </ComponentAccessGuard>
-    }
-  />,
-  <Route
-    path="/analytics"
-    key="analytics"
-    element={
+    } />
+    
+    <Route path="/crm" element={
       <ComponentAccessGuard>
-        <Analytics />
+        <div className="flex h-screen w-full">
+          <SidebarProvider>
+            <Sidebar />
+            <main className="flex-1 overflow-auto transition-all duration-300">
+              <CRM />
+            </main>
+          </SidebarProvider>
+        </div>
       </ComponentAccessGuard>
-    }
-  />,
-  <Route
-    path="/settings"
-    key="settings"
-    element={
+    } />
+    
+    <Route path="/analytics" element={
       <ComponentAccessGuard>
-        <Settings />
+        <div className="flex h-screen w-full">
+          <SidebarProvider>
+            <Sidebar />
+            <main className="flex-1 overflow-auto transition-all duration-300">
+              <Analytics />
+            </main>
+          </SidebarProvider>
+        </div>
       </ComponentAccessGuard>
-    }
-  />,
-  <Route
-    path="/kitchen"
-    key="kitchen"
-    element={
+    } />
+    
+    <Route path="/settings" element={
       <ComponentAccessGuard>
-        <KitchenDisplay />
+        <div className="flex h-screen w-full">
+          <SidebarProvider>
+            <Sidebar />
+            <main className="flex-1 overflow-auto transition-all duration-300">
+              <Settings />
+            </main>
+          </SidebarProvider>
+        </div>
       </ComponentAccessGuard>
-    }
-  />,
-  <Route
-    path="/ai"
-    key="ai"
-    element={
+    } />
+    
+    <Route path="/kitchen" element={
       <ComponentAccessGuard>
-        <AI />
+        <div className="flex h-screen w-full">
+          <SidebarProvider>
+            <Sidebar />
+            <main className="flex-1 overflow-auto transition-all duration-300">
+              <KitchenDisplay />
+            </main>
+          </SidebarProvider>
+        </div>
       </ComponentAccessGuard>
-    }
-  />,
-  <Route
-    path="/business-dashboard"
-    key="business-dashboard"
-    element={
+    } />
+    
+    <Route path="/ai" element={
       <ComponentAccessGuard>
-        <BusinessDashboard />
+        <div className="flex h-screen w-full">
+          <SidebarProvider>
+            <Sidebar />
+            <main className="flex-1 overflow-auto transition-all duration-300">
+              <AI />
+            </main>
+          </SidebarProvider>
+        </div>
       </ComponentAccessGuard>
-    }
-  />,
-  <Route
-    path="/inventory"
-    key="inventory"
-    element={
+    } />
+    
+    <Route path="/business-dashboard" element={
       <ComponentAccessGuard>
-        <Inventory />
+        <div className="flex h-screen w-full">
+          <SidebarProvider>
+            <Sidebar />
+            <main className="flex-1 overflow-auto transition-all duration-300">
+              <BusinessDashboard />
+            </main>
+          </SidebarProvider>
+        </div>
       </ComponentAccessGuard>
-    }
-  />,
-  <Route
-    path="/suppliers"
-    key="suppliers"
-    element={
+    } />
+    
+    <Route path="/inventory" element={
       <ComponentAccessGuard>
-        <Suppliers />
+        <div className="flex h-screen w-full">
+          <SidebarProvider>
+            <Sidebar />
+            <main className="flex-1 overflow-auto transition-all duration-300">
+              <Inventory />
+            </main>
+          </SidebarProvider>
+        </div>
       </ComponentAccessGuard>
-    }
-  />,
-];
+    } />
+    
+    <Route path="/suppliers" element={
+      <ComponentAccessGuard>
+        <div className="flex h-screen w-full">
+          <SidebarProvider>
+            <Sidebar />
+            <main className="flex-1 overflow-auto transition-all duration-300">
+              <Suppliers />
+            </main>
+          </SidebarProvider>
+        </div>
+      </ComponentAccessGuard>
+    } />
+    
+    {/* 404 Not Found route */}
+    <Route path="*" element={<NotFound />} />
+  </Routes>
+);
