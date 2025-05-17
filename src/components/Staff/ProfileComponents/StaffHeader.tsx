@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Edit, ArrowLeft } from "lucide-react";
+import { buttonStyles } from "@/config/buttonStyles";
 import type { StaffMember } from "@/types/staff";
 
 interface StaffHeaderProps {
@@ -43,7 +44,7 @@ export const StaffHeader: React.FC<StaffHeaderProps> = ({
           variant="outline" 
           size="sm" 
           onClick={onBack}
-          className="bg-white hover:bg-gray-50 border-gray-200 text-gray-700 flex items-center gap-2"
+          className={buttonStyles.card}
         >
           <ArrowLeft className="h-4 w-4" />
           Back
@@ -69,18 +70,14 @@ export const StaffHeader: React.FC<StaffHeaderProps> = ({
         <Button
           variant="outline"
           onClick={() => onEdit(staff)}
-          className="flex items-center gap-1 bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100"
+          className={buttonStyles.edit}
         >
-          <Edit className="h-4 w-4" /> Edit Profile
+          <Edit className="h-4 w-4 mr-1" /> Edit Profile
         </Button>
         
         <Button 
           variant={staff.status === "inactive" ? "outline" : "destructive"} 
-          className={
-            staff.status === "inactive" 
-              ? "bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-800 border-green-200" 
-              : "bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800 border-red-200"
-          }
+          className={staff.status === "inactive" ? buttonStyles.activate : buttonStyles.deactivate}
           onClick={onActivateDeactivate}
         >
           {staff.status === "inactive" ? "Activate" : "Deactivate"}

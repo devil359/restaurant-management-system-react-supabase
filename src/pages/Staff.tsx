@@ -14,6 +14,9 @@ import TimeClockDialog from "@/components/Staff/TimeClockDialog";
 import type { StaffMember, StaffRole } from "@/types/staff";
 import { Button } from "@/components/ui/button";
 import { UserPlus, ClockIcon } from "lucide-react";
+import { buttonStyles } from "@/config/buttonStyles";
+import { useRestaurantId } from "@/hooks/useRestaurantId";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 
 const Staff = () => {
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
@@ -23,6 +26,7 @@ const Staff = () => {
   const { toast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
+  const { restaurantId, isLoading: loadingRestaurantId } = useRestaurantId();
 
   // Get active tab from URL query parameter
   const searchParams = new URLSearchParams(location.search);
@@ -37,23 +41,6 @@ const Staff = () => {
       navigate('/staff?tab=leaves', { replace: true });
     }
   }, [activeTab, navigate]);
-
-  // Refactor this to reuse the fetch restaurant ID logic
-  const { data: restaurantId } = useQuery({
-    queryKey: ["restaurant-id"],
-    queryFn: async () => {
-      const { data: profile } = await supabase.auth.getUser();
-      if (!profile.user) throw new Error("No user found");
-
-      const { data: userProfile } = await supabase
-        .from("profiles")
-        .select("restaurant_id")
-        .eq("id", profile.user.id)
-        .single();
-
-      return userProfile?.restaurant_id;
-    },
-  });
 
   // Fetch staff roles
   const { data: roles = [] } = useQuery<StaffRole[]>({
@@ -81,6 +68,12 @@ const Staff = () => {
   };
 
   const handleStaffDialogSuccess = () => {
+    toast({
+      title: editingStaff ? "Staff Updated" : "Staff Added",
+      description: editingStaff 
+        ? `${editingStaff.first_name} ${editingStaff.last_name}'s profile has been updated.` 
+        : "New staff member has been added successfully.",
+    });
     // If we were editing the currently selected staff, update it
     if (editingStaff && selectedStaff && editingStaff.id === selectedStaff.id) {
       // Will be refreshed by the realtime subscription
@@ -102,16 +95,16 @@ const Staff = () => {
           <Button 
             onClick={() => setIsTimeClockDialogOpen(true)}
             variant="outline"
-            className="flex items-center gap-2 bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100"
+            className={buttonStyles.view}
           >
-            <ClockIcon className="h-4 w-4" />
+            <ClockIcon className="h-4 w-4 mr-2" />
             Clock In/Out
           </Button>
           <Button 
             onClick={handleAddStaff}
-            className="flex items-center gap-2 bg-primary text-white hover:bg-primary/90"
+            className={buttonStyles.primary}
           >
-            <UserPlus className="h-4 w-4" />
+            <UserPlus className="h-4 w-4 mr-2" />
             Add Staff
           </Button>
         </div>
@@ -134,29 +127,33 @@ const Staff = () => {
         </TabsList>
         
         <TabsContent value="staff" className="animate-in fade-in">
-          {selectedStaff ? (
-            <Card className="p-6 bg-white dark:bg-gray-800 shadow-md border-t-4 border-t-primary">
-              <StaffDetail 
-                staffId={selectedStaff.id}
+          <ErrorBoundary>
+            {selectedStaff ? (
+              <Card className="p-6 bg-white dark:bg-gray-800 shadow-md border-t-4 border-t-primary">
+                <StaffDetail 
+                  staffId={selectedStaff.id}
+                  restaurantId={restaurantId}
+                  onEdit={handleEditStaff}
+                  onBack={() => setSelectedStaff(null)}
+                />
+              </Card>
+            ) : (
+              <StaffList
+                selectedStaffId={selectedStaff?.id || null}
+                onSelectStaff={setSelectedStaff}
                 restaurantId={restaurantId}
-                onEdit={handleEditStaff}
-                onBack={() => setSelectedStaff(null)}
+                onAddStaff={handleAddStaff}
               />
-            </Card>
-          ) : (
-            <StaffList
-              selectedStaffId={selectedStaff?.id || null}
-              onSelectStaff={setSelectedStaff}
-              restaurantId={restaurantId}
-              onAddStaff={handleAddStaff}
-            />
-          )}
+            )}
+          </ErrorBoundary>
         </TabsContent>
         
         <TabsContent value="leaves" className="animate-in fade-in">
-          <Card className="p-6 bg-white dark:bg-gray-800 shadow-md">
-            <StaffLeaveManager />
-          </Card>
+          <ErrorBoundary>
+            <Card className="p-6 bg-white dark:bg-gray-800 shadow-md">
+              <StaffLeaveManager />
+            </Card>
+          </ErrorBoundary>
         </TabsContent>
       </Tabs>
 

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -98,18 +97,20 @@ const StaffList: React.FC<StaffListProps> = ({
   });
 
   // Filter staff based on search term and filters
-  const filteredStaff = staff.filter((member) => {
-    const matchesSearch =
-      searchTerm === '' ||
-      `${member.first_name} ${member.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.phone?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesRole = roleFilter === '' || roleFilter === 'all-roles' || member.position === roleFilter;
-    const matchesStatus = statusFilter === '' || statusFilter === 'all-statuses' || member.status === statusFilter;
-    
-    return matchesSearch && matchesRole && matchesStatus;
-  });
+  const filterStaff = (staff: StaffMember[]) => {
+    return staff.filter(member => {
+      const matchesSearch = 
+        member.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        member.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        member.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        member.phone?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesRole = roleFilter === '' || roleFilter === 'all-roles' || member.position === roleFilter;
+      const matchesStatus = statusFilter === '' || statusFilter === 'all-statuses' || member.status === statusFilter;
+      
+      return matchesSearch && matchesRole && matchesStatus;
+    });
+  };
 
   const getStatusBadge = (status: string | null) => {
     switch (status) {
@@ -213,14 +214,14 @@ const StaffList: React.FC<StaffListProps> = ({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredStaff.length === 0 ? (
+              {filterStaff(staff).length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8">
                     No staff members found
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredStaff.map((staffMember) => (
+                filterStaff(staff).map((staffMember) => (
                   <TableRow 
                     key={staffMember.id} 
                     onClick={() => onSelectStaff(staffMember)}

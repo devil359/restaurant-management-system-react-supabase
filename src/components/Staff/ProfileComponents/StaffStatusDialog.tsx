@@ -11,6 +11,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { buttonStyles } from "@/config/buttonStyles";
 
 interface StaffStatusDialogProps {
   isInactive: boolean;
@@ -39,12 +40,10 @@ export const StaffStatusDialog: React.FC<StaffStatusDialogProps> = ({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel className="border-gray-200 bg-white hover:bg-gray-50">Cancel</AlertDialogCancel>
+          <AlertDialogCancel className={buttonStyles.cancel}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
-            className={isInactive 
-              ? "bg-green-600 hover:bg-green-700 text-white focus:ring-green-500" 
-              : "bg-red-600 hover:bg-red-700 text-white focus:ring-red-500"}
+            className={isInactive ? buttonStyles.activate : buttonStyles.deactivate}
           >
             {isInactive ? "Activate" : "Deactivate"}
           </AlertDialogAction>
