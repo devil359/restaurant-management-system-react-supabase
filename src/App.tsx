@@ -6,7 +6,6 @@ import { Toaster } from "./components/ui/toaster";
 import "./App.css";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { useIsMobile } from "./hooks/use-mobile";
-import { SidebarProvider } from "./components/ui/sidebar";
 import { ErrorBoundary } from "./components/ui/error-boundary";
 import Routes from "./components/Auth/Routes";
 
@@ -22,19 +21,16 @@ const queryClient = new QueryClient({
 
 function App() {
   const isMobile = useIsMobile();
-  const [isCollapsed, setIsCollapsed] = useState(isMobile);
 
   return (
     <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
       <QueryClientProvider client={queryClient}>
         <ErrorBoundary>
           <Router>
-            <SidebarProvider>
-              <div className="flex h-screen w-full overflow-hidden bg-gray-100 dark:bg-gray-900">
-                <Routes />
-                <Toaster />
-              </div>
-            </SidebarProvider>
+            <div className="h-screen w-full overflow-hidden bg-gray-100 dark:bg-gray-900">
+              <Routes />
+              <Toaster />
+            </div>
           </Router>
         </ErrorBoundary>
       </QueryClientProvider>

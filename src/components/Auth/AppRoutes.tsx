@@ -1,3 +1,4 @@
+
 import { Route, Routes } from "react-router-dom";
 import { ComponentAccessGuard, LoginRegisterAccessGuard } from "./RouteGuards";
 import Auth from "@/pages/Auth";
@@ -38,7 +39,7 @@ export const AppRoutes = (
         <div className="flex h-screen w-full">
           <SidebarProvider>
             <Sidebar />
-            <main className="flex-1 overflow-auto transition-all duration-300">
+            <main className="flex-1 overflow-auto pl-[3rem] md:pl-[18rem] transition-all duration-300">
               <Index />
             </main>
           </SidebarProvider>
@@ -51,7 +52,7 @@ export const AppRoutes = (
         <div className="flex h-screen w-full">
           <SidebarProvider>
             <Sidebar />
-            <main className="flex-1 overflow-auto transition-all duration-300">
+            <main className="flex-1 overflow-auto pl-[3rem] md:pl-[18rem] transition-all duration-300">
               <Orders />
             </main>
           </SidebarProvider>
@@ -64,7 +65,7 @@ export const AppRoutes = (
         <div className="flex h-screen w-full">
           <SidebarProvider>
             <Sidebar />
-            <main className="flex-1 overflow-auto transition-all duration-300">
+            <main className="flex-1 overflow-auto pl-[3rem] md:pl-[18rem] transition-all duration-300">
               <Rooms />
             </main>
           </SidebarProvider>
@@ -77,7 +78,7 @@ export const AppRoutes = (
         <div className="flex h-screen w-full">
           <SidebarProvider>
             <Sidebar />
-            <main className="flex-1 overflow-auto transition-all duration-300">
+            <main className="flex-1 overflow-auto pl-[3rem] md:pl-[18rem] transition-all duration-300">
               <Staff />
             </main>
           </SidebarProvider>
@@ -90,7 +91,7 @@ export const AppRoutes = (
         <div className="flex h-screen w-full">
           <SidebarProvider>
             <Sidebar />
-            <main className="flex-1 overflow-auto transition-all duration-300">
+            <main className="flex-1 overflow-auto pl-[3rem] md:pl-[18rem] transition-all duration-300">
               <Menu />
             </main>
           </SidebarProvider>
@@ -103,7 +104,7 @@ export const AppRoutes = (
         <div className="flex h-screen w-full">
           <SidebarProvider>
             <Sidebar />
-            <main className="flex-1 overflow-auto transition-all duration-300">
+            <main className="flex-1 overflow-auto pl-[3rem] md:pl-[18rem] transition-all duration-300">
               <Tables />
             </main>
           </SidebarProvider>
@@ -116,7 +117,7 @@ export const AppRoutes = (
         <div className="flex h-screen w-full">
           <SidebarProvider>
             <Sidebar />
-            <main className="flex-1 overflow-auto transition-all duration-300">
+            <main className="flex-1 overflow-auto pl-[3rem] md:pl-[18rem] transition-all duration-300">
               <Reservations />
             </main>
           </SidebarProvider>
@@ -129,7 +130,7 @@ export const AppRoutes = (
         <div className="flex h-screen w-full">
           <SidebarProvider>
             <Sidebar />
-            <main className="flex-1 overflow-auto transition-all duration-300">
+            <main className="flex-1 overflow-auto pl-[3rem] md:pl-[18rem] transition-all duration-300">
               <Customers />
             </main>
           </SidebarProvider>
@@ -142,7 +143,7 @@ export const AppRoutes = (
         <div className="flex h-screen w-full">
           <SidebarProvider>
             <Sidebar />
-            <main className="flex-1 overflow-auto transition-all duration-300">
+            <main className="flex-1 overflow-auto pl-[3rem] md:pl-[18rem] transition-all duration-300">
               <CRM />
             </main>
           </SidebarProvider>
@@ -155,7 +156,7 @@ export const AppRoutes = (
         <div className="flex h-screen w-full">
           <SidebarProvider>
             <Sidebar />
-            <main className="flex-1 overflow-auto transition-all duration-300">
+            <main className="flex-1 overflow-auto pl-[3rem] md:pl-[18rem] transition-all duration-300">
               <Analytics />
             </main>
           </SidebarProvider>
@@ -168,7 +169,7 @@ export const AppRoutes = (
         <div className="flex h-screen w-full">
           <SidebarProvider>
             <Sidebar />
-            <main className="flex-1 overflow-auto transition-all duration-300">
+            <main className="flex-1 overflow-auto pl-[3rem] md:pl-[18rem] transition-all duration-300">
               <Settings />
             </main>
           </SidebarProvider>
@@ -181,7 +182,7 @@ export const AppRoutes = (
         <div className="flex h-screen w-full">
           <SidebarProvider>
             <Sidebar />
-            <main className="flex-1 overflow-auto transition-all duration-300">
+            <main className="flex-1 overflow-auto pl-[3rem] md:pl-[18rem] transition-all duration-300">
               <KitchenDisplay />
             </main>
           </SidebarProvider>
@@ -194,7 +195,7 @@ export const AppRoutes = (
         <div className="flex h-screen w-full">
           <SidebarProvider>
             <Sidebar />
-            <main className="flex-1 overflow-auto transition-all duration-300">
+            <main className="flex-1 overflow-auto pl-[3rem] md:pl-[18rem] transition-all duration-300">
               <AI />
             </main>
           </SidebarProvider>
@@ -207,7 +208,7 @@ export const AppRoutes = (
         <div className="flex h-screen w-full">
           <SidebarProvider>
             <Sidebar />
-            <main className="flex-1 overflow-auto transition-all duration-300">
+            <main className="flex-1 overflow-auto pl-[3rem] md:pl-[18rem] transition-all duration-300">
               <BusinessDashboard />
             </main>
           </SidebarProvider>
@@ -220,7 +221,7 @@ export const AppRoutes = (
         <div className="flex h-screen w-full">
           <SidebarProvider>
             <Sidebar />
-            <main className="flex-1 overflow-auto transition-all duration-300">
+            <main className="flex-1 overflow-auto pl-[3rem] md:pl-[18rem] transition-all duration-300">
               <Inventory />
             </main>
           </SidebarProvider>
@@ -233,7 +234,7 @@ export const AppRoutes = (
         <div className="flex h-screen w-full">
           <SidebarProvider>
             <Sidebar />
-            <main className="flex-1 overflow-auto transition-all duration-300">
+            <main className="flex-1 overflow-auto pl-[3rem] md:pl-[18rem] transition-all duration-300">
               <Suppliers />
             </main>
           </SidebarProvider>
