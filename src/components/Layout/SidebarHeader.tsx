@@ -11,7 +11,7 @@ interface SidebarHeaderProps {
 export const SidebarHeader = ({ restaurantName = "Restaurant" }: SidebarHeaderProps) => {
   const { setOpenMobile } = useSidebar();
   
-  // Format the restaurant name with "Management System" suffix
+  // Format the restaurant name with "Management" suffix
   const displayName = restaurantName ? `${restaurantName} Management` : "RMS Pro";
 
   return (
