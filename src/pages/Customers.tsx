@@ -1,255 +1,71 @@
-import React, { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import React, { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import CustomerList from "@/components/CRM/CustomerList";
 import CustomerDetail from "@/components/CRM/CustomerDetail";
 import CustomerDialog from "@/components/CRM/CustomerDialog";
-import { Customer, CustomerOrder, CustomerNote, CustomerActivity } from "@/types/customer";
+import RealtimeCustomers from "@/components/CRM/RealtimeCustomers";
+import { Customer } from "@/types/customer";
 import { User } from "lucide-react";
+import { useCustomerData } from "@/hooks/useCustomerData";
 
 const Customers = () => {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [customerToEdit, setCustomerToEdit] = useState<Customer | null>(null);
-
-  // Fetch customers data
-  const { data: customers = [], isLoading: isLoadingCustomers } = useQuery({
-    queryKey: ["customers"],
-    queryFn: async () => {
-      const { data: profile } = await supabase.auth.getUser();
-      if (!profile.user) throw new Error("No user found");
-
-      const { data: userProfile } = await supabase
-        .from("profiles")
-        .select("restaurant_id")
-        .eq("id", profile.user.id)
-        .single();
-
-      if (!userProfile?.restaurant_id) {
-        throw new Error("No restaurant found for user");
-      }
-
-      const { data, error } = await supabase
-        .from("customers")
-        .select("*")
-        .eq("restaurant_id", userProfile.restaurant_id);
-
-      if (error) throw error;
-      
-      return data.map((customer): Customer => ({
-        id: customer.id,
-        name: customer.name,
-        email: customer.email || null,
-        phone: customer.phone || null,
-        address: customer.address || null,
-        birthday: customer.birthday || null,
-        created_at: customer.created_at,
-        restaurant_id: customer.restaurant_id,
-        loyalty_points: customer.loyalty_points,
-        loyalty_tier: calculateLoyaltyTier(
-          customer.total_spent || 0,
-          customer.visit_count || 0,
-          calculateDaysSince(customer.last_visit_date)
-        ),
-        tags: customer.tags || [],
-        preferences: customer.preferences || null,
-        last_visit_date: customer.last_visit_date || null,
-        total_spent: customer.total_spent || 0,
-        visit_count: customer.visit_count || 0,
-        average_order_value: customer.average_order_value || 0
-      }));
-    },
-  });
   
-  // Fetch customer orders
-  const { data: customerOrders = [], isLoading: isLoadingOrders } = useQuery({
-    queryKey: ["customer-orders", selectedCustomer?.name],
-    queryFn: async () => {
-      if (!selectedCustomer) return [];
-      
-      const { data: profile } = await supabase.auth.getUser();
-      if (!profile.user) throw new Error("No user found");
+  const {
+    customers,
+    isLoadingCustomers,
+    saveCustomer,
+    getCustomerNotes,
+    getCustomerActivities,
+    getCustomerOrders,
+    addNote,
+    updateTags
+  } = useCustomerData();
 
-      const { data: userProfile } = await supabase
-        .from("profiles")
-        .select("restaurant_id")
-        .eq("id", profile.user.id)
-        .single();
-        
-      const { data, error } = await supabase
-        .from("orders")
-        .select("*")
-        .eq("restaurant_id", userProfile?.restaurant_id)
-        .eq("customer_name", selectedCustomer.name)
-        .order("created_at", { ascending: false });
-        
-      if (error) throw error;
-      
-      return data.map((order): CustomerOrder => ({
-        id: order.id,
-        date: order.created_at,
-        amount: order.total,
-        order_id: order.id,
-        status: order.status,
-        items: order.items || []
-      }));
-    },
+  // Customer orders query
+  const { 
+    data: customerOrders = [], 
+    isLoading: isLoadingOrders,
+    refetch: refetchOrders
+  } = useQuery({
+    queryKey: ["customer-orders", selectedCustomer?.id],
+    queryFn: () => selectedCustomer ? getCustomerOrders(selectedCustomer.name) : Promise.resolve([]),
     enabled: !!selectedCustomer,
   });
 
-  // Mock data for customer notes (to be implemented with real backend later)
-  const mockNotes: CustomerNote[] = selectedCustomer ? [
-    {
-      id: '1',
-      customer_id: selectedCustomer.id,
-      content: 'Customer prefers corner tables near the window.',
-      created_at: new Date(new Date().setDate(new Date().getDate() - 14)).toISOString(),
-      created_by: 'John Manager'
-    },
-    {
-      id: '2',
-      customer_id: selectedCustomer.id,
-      content: 'Allergic to nuts. Always confirm ingredients with kitchen.',
-      created_at: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString(),
-      created_by: 'Sarah Server'
-    }
-  ] : [];
-
-  // Mock data for customer activities (to be implemented with real backend later)
-  const mockActivities: CustomerActivity[] = selectedCustomer ? [
-    {
-      id: '1',
-      customer_id: selectedCustomer.id,
-      activity_type: 'order_placed',
-      description: 'Placed an order for ₹2,350',
-      created_at: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString()
-    },
-    {
-      id: '2',
-      customer_id: selectedCustomer.id,
-      activity_type: 'email_sent',
-      description: 'Sent birthday discount promotion email',
-      created_at: new Date(new Date().setDate(new Date().getDate() - 12)).toISOString()
-    },
-    {
-      id: '3',
-      customer_id: selectedCustomer.id,
-      activity_type: 'note_added',
-      description: 'Staff added note about seating preferences',
-      created_at: new Date(new Date().setDate(new Date().getDate() - 14)).toISOString()
-    },
-    {
-      id: '4',
-      customer_id: selectedCustomer.id,
-      activity_type: 'tag_added',
-      description: 'Added tag "Wine Enthusiast"',
-      created_at: new Date(new Date().setDate(new Date().getDate() - 20)).toISOString()
-    }
-  ] : [];
-
-  // Mutation for adding/updating customer
-  const saveCustomer = useMutation({
-    mutationFn: async (customer: Partial<Customer>) => {
-      const { data: profile } = await supabase.auth.getUser();
-      if (!profile.user) throw new Error("No user found");
-
-      const { data: userProfile } = await supabase
-        .from("profiles")
-        .select("restaurant_id")
-        .eq("id", profile.user.id)
-        .single();
-        
-      if (!userProfile?.restaurant_id) {
-        throw new Error("No restaurant found for user");
-      }
-
-      // If editing existing customer
-      if (customer.id) {
-        const { data, error } = await supabase
-          .from("customers")
-          .update({
-            name: customer.name,
-            email: customer.email,
-            phone: customer.phone,
-            address: customer.address,
-            birthday: customer.birthday,
-            preferences: customer.preferences,
-            tags: customer.tags || []
-          })
-          .eq("id", customer.id)
-          .select();
-          
-        if (error) throw error;
-        return data;
-      } 
-      // If creating new customer
-      else {
-        const { data, error } = await supabase
-          .from("customers")
-          .insert([
-            {
-              name: customer.name,
-              email: customer.email,
-              phone: customer.phone,
-              address: customer.address,
-              birthday: customer.birthday,
-              preferences: customer.preferences,
-              restaurant_id: userProfile.restaurant_id,
-              tags: customer.tags || []
-            }
-          ])
-          .select();
-          
-        if (error) throw error;
-        return data;
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["customers"] });
-      setDialogOpen(false);
-      setCustomerToEdit(null);
-      toast({
-        title: customerToEdit ? "Customer Updated" : "Customer Added",
-        description: customerToEdit
-          ? "The customer information has been successfully updated."
-          : "A new customer has been successfully added to your database.",
-      });
-    },
-    onError: (error) => {
-      console.error("Error saving customer:", error);
-      toast({
-        title: "Error",
-        description: "There was a problem saving the customer information.",
-        variant: "destructive",
-      });
-    },
+  // Customer notes query
+  const {
+    data: customerNotes = [],
+    refetch: refetchNotes
+  } = useQuery({
+    queryKey: ["customer-notes", selectedCustomer?.id],
+    queryFn: () => selectedCustomer ? getCustomerNotes(selectedCustomer.id) : Promise.resolve([]),
+    enabled: !!selectedCustomer,
   });
 
-  // Calculate loyalty tier based on customer data
-  function calculateLoyaltyTier(
-    totalSpent: number,
-    visitCount: number,
-    daysSinceFirstVisit: number
-  ): Customer['loyalty_tier'] {
-    // Simplified loyalty tier calculation
-    if (totalSpent > 20000 && visitCount > 15) return "Diamond";
-    if (totalSpent > 10000 && visitCount > 10) return "Platinum";
-    if (totalSpent > 5000 && visitCount > 8) return "Gold";
-    if (totalSpent > 2500 && visitCount > 5) return "Silver";
-    if (totalSpent > 1000 || visitCount > 3) return "Bronze";
-    return "None";
-  }
-  
-  // Calculate days since a given date
-  function calculateDaysSince(dateString?: string | null): number {
-    if (!dateString) return 0;
-    const date = new Date(dateString);
-    const now = new Date();
-    return Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-  }
+  // Customer activities query
+  const {
+    data: customerActivities = [],
+    refetch: refetchActivities
+  } = useQuery({
+    queryKey: ["customer-activities", selectedCustomer?.id],
+    queryFn: () => selectedCustomer ? getCustomerActivities(selectedCustomer.id) : Promise.resolve([]),
+    enabled: !!selectedCustomer,
+  });
+
+  // Update selected customer when the customers array changes
+  useEffect(() => {
+    if (selectedCustomer && customers.length > 0) {
+      const updatedCustomer = customers.find(c => c.id === selectedCustomer.id);
+      if (updatedCustomer) {
+        setSelectedCustomer(updatedCustomer);
+      }
+    }
+  }, [customers, selectedCustomer]);
 
   const handleSelectCustomer = (customer: Customer) => {
     setSelectedCustomer(customer);
@@ -266,28 +82,54 @@ const Customers = () => {
   };
 
   const handleFilterCustomers = (filters: any) => {
-    // Implement filtering logic (would update a state with filter criteria)
+    // Implement filtering logic
     console.log("Filter applied:", filters);
-    // This would typically update a state that the CustomerList would use for filtering
   };
 
   const handleAddNote = (customerId: string, content: string) => {
-    // This would typically be implemented as a backend call
-    console.log("Add note for customer:", customerId, "Content:", content);
+    if (content.trim()) {
+      addNote.mutate(
+        { 
+          customerId, 
+          content, 
+          createdBy: "Staff Member" // You could get the actual staff name from context or state
+        },
+        {
+          onSuccess: () => {
+            refetchNotes();
+            refetchActivities();
+          }
+        }
+      );
+    }
   };
 
   const handleAddTag = (customerId: string, tag: string) => {
-    // This would typically be implemented as a backend call
-    console.log("Add tag for customer:", customerId, "Tag:", tag);
+    if (!tag.trim()) return;
+    
+    const customer = customers.find(c => c.id === customerId);
+    if (customer) {
+      const updatedTags = [...(customer.tags || [])];
+      if (!updatedTags.includes(tag)) {
+        updatedTags.push(tag);
+        updateTags.mutate({ customerId, tags: updatedTags });
+      }
+    }
   };
 
   const handleRemoveTag = (customerId: string, tag: string) => {
-    // This would typically be implemented as a backend call
-    console.log("Remove tag for customer:", customerId, "Tag:", tag);
+    const customer = customers.find(c => c.id === customerId);
+    if (customer && customer.tags) {
+      const updatedTags = customer.tags.filter(t => t !== tag);
+      updateTags.mutate({ customerId, tags: updatedTags });
+    }
   };
 
   return (
     <div className="p-6 h-screen flex flex-col">
+      {/* Enable real-time updates */}
+      <RealtimeCustomers />
+      
       <div className="mb-6">
         <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
           Customer Relationship Management
@@ -339,8 +181,8 @@ const Customers = () => {
               <CustomerDetail
                 customer={selectedCustomer}
                 orders={customerOrders}
-                notes={mockNotes}
-                activities={mockActivities}
+                notes={customerNotes}
+                activities={customerActivities}
                 loading={isLoadingOrders}
                 onEditCustomer={handleEditCustomer}
                 onAddNote={handleAddNote}

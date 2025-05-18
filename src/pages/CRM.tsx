@@ -1,10 +1,16 @@
 
-import React from "react";
-import { Navigate } from "react-router-dom";
+import React, { useEffect } from "react";
+import { Navigate, useNavigate } from "react-router-dom";
 
 const CRM = () => {
-  // For now, we'll redirect to the customers page since that's our existing CRM functionality
-  return <Navigate to="/customers" replace />;
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    // Redirect to the customers page
+    navigate('/customers', { replace: true });
+  }, [navigate]);
+  
+  return null;
 };
 
 export default CRM;
