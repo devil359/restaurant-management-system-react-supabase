@@ -1,8 +1,42 @@
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 
 const BrandingSection: React.FC = () => {
+  const [restaurantName, setRestaurantName] = useState<string | null>(null);
+  
+  useEffect(() => {
+    // Try to get the restaurant from the last login if available
+    const getLastRestaurant = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data.session?.user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("restaurant_id")
+          .eq("id", data.session.user.id)
+          .single();
+          
+        if (profile?.restaurant_id) {
+          const { data: restaurant } = await supabase
+            .from("restaurants")
+            .select("name")
+            .eq("id", profile.restaurant_id)
+            .single();
+            
+          if (restaurant?.name) {
+            setRestaurantName(restaurant.name);
+          }
+        }
+      }
+    };
+    
+    getLastRestaurant();
+  }, []);
+
+  // Format the display name
+  const displayName = restaurantName ? `${restaurantName} Management` : "RMS Pro";
+
   return (
     <div className="max-w-md mx-auto">
       <div className="mb-8">
@@ -23,7 +57,7 @@ const BrandingSection: React.FC = () => {
             <path d="m12 12 4 4"></path>
             <path d="M20 12h-8"></path>
           </svg>
-          <span className="text-2xl font-bold">RMS Pro</span>
+          <span className="text-2xl font-bold">{displayName}</span>
         </div>
         <h1 className="text-3xl font-bold bg-gradient-to-r from-brand-deep-blue to-brand-success-green bg-clip-text text-transparent mb-4">
           Swadeshi Solutions

@@ -18,6 +18,7 @@ const Sidebar = () => {
   const { openMobile, setOpenMobile } = useSidebar();
   const [staffName, setStaffName] = useState<string | null>(null);
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
+  const [restaurantName, setRestaurantName] = useState<string | null>(null);
   const { toast } = useToast();
 
   const { data: allowedComponents = [] } = useQuery({
@@ -56,9 +57,33 @@ const Sidebar = () => {
 
         setStaffName(displayName.trim());
         setRestaurantId(profile?.restaurant_id || null);
+        
+        // Fetch restaurant name
+        if (profile?.restaurant_id) {
+          fetchRestaurantName(profile.restaurant_id);
+        }
       }
     } catch (error) {
       console.error("Profile fetch error:", error);
+    }
+  };
+  
+  const fetchRestaurantName = async (restId: string) => {
+    try {
+      const { data: restaurant, error } = await supabase
+        .from("restaurants")
+        .select("name")
+        .eq("id", restId)
+        .single();
+        
+      if (error) {
+        console.error("Error fetching restaurant:", error);
+        return;
+      }
+      
+      setRestaurantName(restaurant?.name || "Restaurant");
+    } catch (error) {
+      console.error("Restaurant fetch error:", error);
     }
   };
 
@@ -83,7 +108,7 @@ const Sidebar = () => {
     <>
       {mobileToggle}
       <SidebarComponent className="bg-sidebar-purple">
-        <SidebarHeader />
+        <SidebarHeader restaurantName={restaurantName} />
         <SidebarNavigation allowedComponents={allowedComponents} />
         <SidebarFooter staffName={staffName} />
       </SidebarComponent>

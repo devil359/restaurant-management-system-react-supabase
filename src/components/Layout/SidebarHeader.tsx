@@ -4,8 +4,15 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useSidebar } from "@/components/ui/sidebar";
 
-export const SidebarHeader = () => {
+interface SidebarHeaderProps {
+  restaurantName: string | null;
+}
+
+export const SidebarHeader = ({ restaurantName = "Restaurant" }: SidebarHeaderProps) => {
   const { setOpenMobile } = useSidebar();
+  
+  // Format the restaurant name with "Management System" suffix
+  const displayName = restaurantName ? `${restaurantName} Management` : "RMS Pro";
 
   return (
     <div className="flex items-center justify-between border-b border-sidebar-border p-4">
@@ -13,7 +20,7 @@ export const SidebarHeader = () => {
         <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
           <Utensils className="h-4 w-4 text-sidebar-purple" />
         </div>
-        <h1 className="text-lg font-bold text-white">RMS Pro</h1>
+        <h1 className="text-lg font-bold text-white truncate max-w-[150px]">{displayName}</h1>
       </div>
       <div className="flex items-center gap-2">
         <ThemeToggle />

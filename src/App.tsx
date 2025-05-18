@@ -29,10 +29,12 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <ErrorBoundary>
           <Router>
-            <div className="flex h-screen overflow-hidden bg-gray-100 dark:bg-gray-900">
-              <Routes />
-              <Toaster />
-            </div>
+            <SidebarProvider>
+              <div className="flex h-screen w-full overflow-hidden bg-gray-100 dark:bg-gray-900">
+                <Routes />
+                <Toaster />
+              </div>
+            </SidebarProvider>
           </Router>
         </ErrorBoundary>
       </QueryClientProvider>
