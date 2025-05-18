@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -26,13 +27,13 @@ const Customers = () => {
     updateTags
   } = useCustomerData();
 
-  // Customer orders query
+  // Customer orders query - includes all order types
   const { 
     data: customerOrders = [], 
     isLoading: isLoadingOrders,
     refetch: refetchOrders
   } = useQuery({
-    queryKey: ["customer-orders", selectedCustomer?.id],
+    queryKey: ["customer-orders", selectedCustomer?.name], // Using name to fetch orders
     queryFn: () => selectedCustomer ? getCustomerOrders(selectedCustomer.name) : Promise.resolve([]),
     enabled: !!selectedCustomer,
   });
@@ -67,25 +68,30 @@ const Customers = () => {
     }
   }, [customers, selectedCustomer]);
 
+  // Handle customer selection
   const handleSelectCustomer = (customer: Customer) => {
     setSelectedCustomer(customer);
   };
 
+  // Handle add customer button
   const handleAddCustomer = () => {
     setCustomerToEdit(null);
     setDialogOpen(true);
   };
 
+  // Handle edit customer button
   const handleEditCustomer = (customer: Customer) => {
     setCustomerToEdit(customer);
     setDialogOpen(true);
   };
 
+  // Handle filter button click
   const handleFilterCustomers = (filters: any) => {
     // Implement filtering logic
     console.log("Filter applied:", filters);
   };
 
+  // Handle add note
   const handleAddNote = (customerId: string, content: string) => {
     if (content.trim()) {
       addNote.mutate(
@@ -104,6 +110,7 @@ const Customers = () => {
     }
   };
 
+  // Handle add tag
   const handleAddTag = (customerId: string, tag: string) => {
     if (!tag.trim()) return;
     
@@ -117,6 +124,7 @@ const Customers = () => {
     }
   };
 
+  // Handle remove tag
   const handleRemoveTag = (customerId: string, tag: string) => {
     const customer = customers.find(c => c.id === customerId);
     if (customer && customer.tags) {
@@ -127,7 +135,7 @@ const Customers = () => {
 
   return (
     <div className="p-6 h-screen flex flex-col">
-      {/* Enable real-time updates */}
+      {/* Enable real-time updates for all customer-related data */}
       <RealtimeCustomers />
       
       <div className="mb-6">
@@ -142,7 +150,7 @@ const Customers = () => {
       {isLoadingCustomers && customers.length === 0 ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="animate-pulse space-y-4 w-full max-w-md">
-            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+            <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded mb-4"></div>
             <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded"></div>
             <div className="h-32 bg-gray-200 dark:bg-gray-700 rounded"></div>
           </div>

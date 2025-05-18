@@ -44,7 +44,7 @@ export const useRealtimeSubscription = ({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [table, schema, queryKey, queryClient, filter]);
+  }, [table, schema, queryKey, queryClient, filter?.column, filter?.value]);
 };
 
 export default useRealtimeSubscription;

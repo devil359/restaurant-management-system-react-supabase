@@ -338,7 +338,14 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
                       >
                         <div>
                           <div className="font-medium">{formatDate(order.date)}</div>
-                          <div className="text-xs text-gray-500">Order #{order.order_id.substring(0, 8)}</div>
+                          <div className="text-xs text-gray-500">
+                            Order #{order.order_id.substring(0, 8)}
+                            {order.source && (
+                              <Badge variant="outline" className="ml-2 text-xs capitalize">
+                                {order.source === 'pos' ? 'POS' : order.source === 'room_service' ? 'Room Service' : order.source}
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                         <div className="text-right">
                           <div className="font-bold">{formatCurrency(order.amount)}</div>
@@ -363,7 +370,7 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
               <CardHeader>
                 <CardTitle>Order History</CardTitle>
                 <CardDescription>
-                  Showing all orders for {customer.name}
+                  Showing all orders for {customer?.name}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -376,7 +383,14 @@ const CustomerDetail: React.FC<CustomerDetailProps> = ({
                       >
                         <div className="flex-1">
                           <div className="font-medium">{formatDate(order.date)}</div>
-                          <div className="text-xs text-gray-500">Order #{order.order_id.substring(0, 8)}</div>
+                          <div className="text-xs text-gray-500">
+                            Order #{order.order_id.substring(0, 8)}
+                            {order.source && (
+                              <Badge variant="outline" className="ml-2 text-xs capitalize">
+                                {order.source === 'pos' ? 'POS' : order.source === 'room_service' ? 'Room Service' : order.source}
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                         <div className="flex-1">
                           <div className="text-sm">

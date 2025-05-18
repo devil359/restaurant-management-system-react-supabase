@@ -5,11 +5,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { useRestaurantId } from "@/hooks/useRestaurantId";
 import { Customer, CustomerNote, CustomerActivity } from "@/types/customer";
 import { useToast } from "@/hooks/use-toast";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 
 export const useCustomerData = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { restaurantId } = useRestaurantId();
+
+  // Subscribe to all relevant tables using the reusable hook
+  useRealtimeSubscription({
+    table: "customers",
+    queryKey: "customers",
+    filter: restaurantId ? { column: "restaurant_id", value: restaurantId } : null
+  });
 
   // Fetch customers data
   const {
@@ -23,6 +31,7 @@ export const useCustomerData = () => {
     queryFn: async () => {
       if (!restaurantId) return [];
 
+      // Get all customers associated with this restaurant
       const { data, error } = await supabase
         .from("customers")
         .select("*")
@@ -33,28 +42,80 @@ export const useCustomerData = () => {
         throw error;
       }
 
-      return data.map((customer) => ({
-        id: customer.id,
-        name: customer.name,
-        email: customer.email || null,
-        phone: customer.phone || null,
-        address: customer.address || null,
-        birthday: customer.birthday || null,
-        created_at: customer.created_at,
-        restaurant_id: customer.restaurant_id,
-        loyalty_points: customer.loyalty_points || 0,
-        loyalty_tier: calculateLoyaltyTier(
-          customer.total_spent || 0,
-          customer.visit_count || 0,
-          calculateDaysSince(customer.last_visit_date)
-        ),
-        tags: customer.tags || [],
-        preferences: customer.preferences || null,
-        last_visit_date: customer.last_visit_date || null,
-        total_spent: customer.total_spent || 0,
-        visit_count: customer.visit_count || 0,
-        average_order_value: customer.average_order_value || 0,
-      }));
+      // For each customer, enrich their data with information from all order types
+      const enrichedCustomers = await Promise.all(
+        data.map(async (customer) => {
+          // Get regular orders
+          const { data: orderData } = await supabase
+            .from("orders")
+            .select("total, created_at")
+            .eq("restaurant_id", restaurantId)
+            .eq("customer_name", customer.name)
+            .order("created_at", { ascending: false });
+            
+          // Get room food orders
+          const { data: roomFoodOrders } = await supabase
+            .from("room_food_orders")
+            .select("total, created_at")
+            .eq("restaurant_id", restaurantId)
+            .eq("customer_name", customer.name)
+            .order("created_at", { ascending: false });
+            
+          // Get reservations
+          const { data: reservations } = await supabase
+            .from("reservations")
+            .select("created_at")
+            .eq("restaurant_id", restaurantId)
+            .eq("customer_name", customer.name)
+            .order("created_at", { ascending: false });
+
+          // Combine all interactions to calculate metrics
+          const allOrders = [
+            ...(orderData || []).map(o => ({ total: o.total, date: o.created_at })),
+            ...(roomFoodOrders || []).map(o => ({ total: o.total, date: o.created_at }))
+          ];
+          
+          // Calculate metrics
+          const totalSpent = allOrders.reduce((sum, order) => sum + Number(order.total || 0), 0);
+          const visitCount = allOrders.length + (reservations?.length || 0);
+          const averageOrderValue = visitCount > 0 ? totalSpent / visitCount : 0;
+          
+          // Find most recent interaction date
+          const allDates = [
+            ...allOrders.map(o => new Date(o.date).getTime()),
+            ...(reservations || []).map(r => new Date(r.created_at).getTime())
+          ];
+          
+          const lastVisitDate = allDates.length > 0 
+            ? new Date(Math.max(...allDates)).toISOString()
+            : customer.last_visit_date;
+
+          return {
+            id: customer.id,
+            name: customer.name,
+            email: customer.email || null,
+            phone: customer.phone || null,
+            address: customer.address || null,
+            birthday: customer.birthday || null,
+            created_at: customer.created_at,
+            restaurant_id: customer.restaurant_id,
+            loyalty_points: customer.loyalty_points || 0,
+            loyalty_tier: calculateLoyaltyTier(
+              totalSpent,
+              visitCount,
+              calculateDaysSince(lastVisitDate)
+            ),
+            tags: customer.tags || [],
+            preferences: customer.preferences || null,
+            last_visit_date: lastVisitDate || null,
+            total_spent: totalSpent,
+            visit_count: visitCount,
+            average_order_value: averageOrderValue,
+          };
+        })
+      );
+
+      return enrichedCustomers;
     },
   });
 
@@ -90,30 +151,60 @@ export const useCustomerData = () => {
     return data || [];
   };
 
-  // Fetch customer orders
+  // Fetch customer orders from all sources
   const getCustomerOrders = async (customerName: string) => {
     if (!restaurantId || !customerName) return [];
-      
-    const { data, error } = await supabase
+    
+    // Get standard orders
+    const { data: orders, error: ordersError } = await supabase
       .from("orders")
       .select("*")
       .eq("restaurant_id", restaurantId)
       .eq("customer_name", customerName)
       .order("created_at", { ascending: false });
       
-    if (error) {
-      console.error("Error fetching customer orders:", error);
-      throw error;
+    if (ordersError) {
+      console.error("Error fetching customer orders:", ordersError);
+      throw ordersError;
     }
+    
+    // Get room food orders
+    const { data: roomOrders, error: roomError } = await supabase
+      .from("room_food_orders")
+      .select("*")
+      .eq("restaurant_id", restaurantId)
+      .eq("customer_name", customerName)
+      .order("created_at", { ascending: false });
       
-    return data.map((order) => ({
-      id: order.id,
-      date: order.created_at,
-      amount: order.total,
-      order_id: order.id,
-      status: order.status,
-      items: order.items || []
-    }));
+    if (roomError) {
+      console.error("Error fetching room food orders:", roomError);
+      throw roomError;
+    }
+    
+    // Combine and format all orders
+    const allOrders = [
+      ...(orders || []).map((order) => ({
+        id: order.id,
+        date: order.created_at,
+        amount: order.total,
+        order_id: order.id,
+        status: order.status,
+        items: order.items || [],
+        source: "pos"
+      })),
+      ...(roomOrders || []).map((order) => ({
+        id: order.id,
+        date: order.created_at,
+        amount: order.total,
+        order_id: order.id,
+        status: order.status,
+        items: order.items || [],
+        source: "room_service"
+      }))
+    ];
+    
+    // Sort by date, most recent first
+    return allOrders.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   };
 
   // Add note mutation

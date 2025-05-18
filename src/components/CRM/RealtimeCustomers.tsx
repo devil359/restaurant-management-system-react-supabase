@@ -37,7 +37,7 @@ const RealtimeCustomers = () => {
         { event: '*', schema: 'public', table: 'customer_notes' },
         (payload) => {
           // Invalidate specific customer notes
-          if (payload.new && payload.new.customer_id) {
+          if (payload.new && 'customer_id' in payload.new) {
             queryClient.invalidateQueries({ 
               queryKey: ['customer-notes', payload.new.customer_id] 
             });
@@ -54,11 +54,54 @@ const RealtimeCustomers = () => {
         { event: '*', schema: 'public', table: 'customer_activities' },
         (payload) => {
           // Invalidate specific customer activities
-          if (payload.new && payload.new.customer_id) {
+          if (payload.new && 'customer_id' in payload.new) {
             queryClient.invalidateQueries({ 
               queryKey: ['customer-activities', payload.new.customer_id] 
             });
           }
+        }
+      )
+      .subscribe();
+    
+    // Enable real-time updates for room bookings
+    const roomOrdersChannel = supabase
+      .channel('room-orders-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'room_food_orders' },
+        () => {
+          // Invalidate all customer orders data since we need to refresh
+          queryClient.invalidateQueries({ queryKey: ['customers'] });
+          // Also refresh any current customer orders
+          queryClient.invalidateQueries({ queryKey: ['customer-orders'] });
+        }
+      )
+      .subscribe();
+      
+    // Enable real-time updates for all orders (POS, Table orders)
+    const ordersChannel = supabase
+      .channel('orders-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders' },
+        () => {
+          // Invalidate all customer data when orders change
+          queryClient.invalidateQueries({ queryKey: ['customers'] });
+          // Also refresh any current customer orders
+          queryClient.invalidateQueries({ queryKey: ['customer-orders'] });
+        }
+      )
+      .subscribe();
+      
+    // Enable real-time updates for reservations
+    const reservationsChannel = supabase
+      .channel('reservations-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'reservations' },
+        () => {
+          // Invalidate all customer data when reservations change
+          queryClient.invalidateQueries({ queryKey: ['customers'] });
         }
       )
       .subscribe();
@@ -68,6 +111,9 @@ const RealtimeCustomers = () => {
       supabase.removeChannel(customersChannel);
       supabase.removeChannel(notesChannel);
       supabase.removeChannel(activitiesChannel);
+      supabase.removeChannel(roomOrdersChannel);
+      supabase.removeChannel(ordersChannel);
+      supabase.removeChannel(reservationsChannel);
     };
   }, [queryClient, restaurantId]);
   
