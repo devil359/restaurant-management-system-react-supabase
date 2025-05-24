@@ -1,18 +1,18 @@
 
-import React, { useState } from 'react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
+import React, { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
-import { Search, Filter, Plus, ChevronDown, User, Mail, Phone, Calendar } from "lucide-react";
-import LoyaltyBadge from "@/components/Customers/LoyaltyBadge";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Search, Plus, Filter, Users, TrendingUp, Calendar, Phone, Mail } from "lucide-react";
 import { Customer } from "@/types/customer";
-import { formatDate, formatCurrency } from "@/utils/formatters";
+import { cn } from "@/lib/utils";
 
 interface CustomerListProps {
   customers: Customer[];
-  loading: boolean;
-  selectedCustomerId: string | null;
+  loading?: boolean;
+  selectedCustomerId?: string | null;
   onSelectCustomer: (customer: Customer) => void;
   onAddCustomer: () => void;
   onFilterCustomers: (filters: any) => void;
@@ -20,218 +20,194 @@ interface CustomerListProps {
 
 const CustomerList: React.FC<CustomerListProps> = ({
   customers,
-  loading,
+  loading = false,
   selectedCustomerId,
   onSelectCustomer,
   onAddCustomer,
   onFilterCustomers,
 }) => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [page, setPage] = useState(1);
-  const itemsPerPage = 10;
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
 
-  // Filter customers based on search query
-  const filteredCustomers = customers.filter(customer => {
-    if (!searchQuery.trim()) return true;
-    
-    const query = searchQuery.toLowerCase();
-    return (
-      customer.name.toLowerCase().includes(query) ||
-      (customer.email || '').toLowerCase().includes(query) ||
-      (customer.phone || '').toLowerCase().includes(query)
-    );
-  });
-
-  // Pagination
-  const totalPages = Math.ceil(filteredCustomers.length / itemsPerPage);
-  const paginatedCustomers = filteredCustomers.slice(
-    (page - 1) * itemsPerPage,
-    page * itemsPerPage
+  const filteredCustomers = customers.filter((customer) =>
+    customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    customer.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    customer.phone?.includes(searchTerm)
   );
 
-  const handlePageChange = (newPage: number) => {
-    setPage(newPage);
+  const getLoyaltyColor = (tier: string) => {
+    switch (tier) {
+      case "Diamond": return "bg-purple-600 text-white";
+      case "Platinum": return "bg-gray-400 text-white";
+      case "Gold": return "bg-yellow-500 text-white";
+      case "Silver": return "bg-gray-300 text-gray-800";
+      case "Bronze": return "bg-amber-600 text-white";
+      default: return "bg-gray-100 text-gray-800";
+    }
   };
 
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+    }).format(amount);
+  };
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "Never";
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  if (loading && customers.length === 0) {
+    return (
+      <Card className="h-full bg-background border-border">
+        <CardHeader className="border-b border-border">
+          <div className="animate-pulse space-y-2">
+            <div className="h-6 bg-muted rounded w-3/4"></div>
+            <div className="h-4 bg-muted rounded w-1/2"></div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className="animate-pulse space-y-4">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="p-4 border border-border rounded-lg">
+                <div className="space-y-2">
+                  <div className="h-4 bg-muted rounded w-3/4"></div>
+                  <div className="h-3 bg-muted rounded w-1/2"></div>
+                  <div className="h-3 bg-muted rounded w-2/3"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow-sm border border-gray-200 dark:border-gray-700">
-      {/* Header with search and actions */}
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
-              placeholder="Search customers..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8"
-            />
+    <Card className="h-full flex flex-col bg-background border-border">
+      <CardHeader className="border-b border-border pb-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <Users className="h-5 w-5 text-primary" />
+              Customers
+            </CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              {customers.length} total customers
+            </p>
           </div>
           <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => onFilterCustomers({})}
-            className="flex items-center gap-1"
-          >
-            <Filter className="h-4 w-4" />
-            <span>Filter</span>
-            <ChevronDown className="h-3 w-3 opacity-70" />
-          </Button>
-          <Button 
             onClick={onAddCustomer}
-            className="bg-purple-600 hover:bg-purple-700"
+            size="sm"
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
-            <Plus className="h-4 w-4 mr-1" /> Add Customer
+            <Plus className="h-4 w-4 mr-2" />
+            Add Customer
           </Button>
         </div>
-      </div>
 
-      {/* Customer list */}
-      <div className="flex-1 overflow-auto">
-        <Table>
-          <TableHeader className="sticky top-0 bg-gray-50 dark:bg-gray-800">
-            <TableRow>
-              <TableHead>Customer</TableHead>
-              <TableHead>Contact</TableHead>
-              <TableHead>Loyalty</TableHead>
-              <TableHead>Last Visit</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              Array(5).fill(0).map((_, i) => (
-                <TableRow key={i}>
-                  <TableCell colSpan={4} className="p-2">
-                    <div className="animate-pulse h-10 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : paginatedCustomers.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center py-8">
-                  <div className="flex flex-col items-center text-gray-500">
-                    <User className="h-10 w-10 mb-2 opacity-40" />
-                    <p>No customers found</p>
-                    <Button variant="link" onClick={onAddCustomer}>
-                      Add your first customer
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
+        <div className="flex gap-2 mt-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Search customers..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 bg-background border-input"
+            />
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowFilters(!showFilters)}
+            className="bg-background border-input text-foreground hover:bg-muted"
+          >
+            <Filter className="h-4 w-4" />
+          </Button>
+        </div>
+      </CardHeader>
+
+      <CardContent className="flex-1 p-0">
+        <ScrollArea className="h-full">
+          <div className="p-4 space-y-3">
+            {filteredCustomers.length === 0 ? (
+              <div className="text-center py-8">
+                <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-foreground">No customers found</h3>
+                <p className="text-sm text-muted-foreground">
+                  {searchTerm ? "Try adjusting your search terms" : "Add your first customer to get started"}
+                </p>
+              </div>
             ) : (
-              paginatedCustomers.map(customer => (
-                <TableRow 
+              filteredCustomers.map((customer) => (
+                <div
                   key={customer.id}
-                  className={`cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 ${
-                    selectedCustomerId === customer.id ? 'bg-purple-50 dark:bg-purple-900/20' : ''
-                  }`}
                   onClick={() => onSelectCustomer(customer)}
+                  className={cn(
+                    "p-4 rounded-lg border cursor-pointer transition-all duration-200 hover:shadow-sm",
+                    selectedCustomerId === customer.id
+                      ? "border-primary bg-primary/5 shadow-sm"
+                      : "border-border bg-background hover:bg-muted/50"
+                  )}
                 >
-                  <TableCell>
-                    <div className="font-medium">{customer.name}</div>
-                    {customer.total_spent > 0 && (
-                      <div className="text-xs text-gray-500">
-                        {formatCurrency(customer.total_spent)} · {customer.visit_count} visits
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h3 className="font-medium text-foreground">{customer.name}</h3>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge 
+                            className={cn("text-xs", getLoyaltyColor(customer.loyalty_tier))}
+                          >
+                            {customer.loyalty_tier}
+                          </Badge>
+                          {customer.tags && customer.tags.length > 0 && (
+                            <Badge variant="outline" className="text-xs border-input">
+                              +{customer.tags.length} tags
+                            </Badge>
+                          )}
+                        </div>
                       </div>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-col text-sm">
+                      <div className="text-right">
+                        <div className="text-sm font-medium text-foreground">
+                          {formatCurrency(customer.total_spent)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {customer.visit_count} visits
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
                       {customer.email && (
                         <div className="flex items-center gap-1">
-                          <Mail className="h-3 w-3 text-gray-400" />
-                          <span className="truncate max-w-[120px]">{customer.email}</span>
+                          <Mail className="h-3 w-3" />
+                          <span className="truncate">{customer.email}</span>
                         </div>
                       )}
                       {customer.phone && (
                         <div className="flex items-center gap-1">
-                          <Phone className="h-3 w-3 text-gray-400" />
+                          <Phone className="h-3 w-3" />
                           <span>{customer.phone}</span>
                         </div>
                       )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <LoyaltyBadge tier={customer.loyalty_tier} />
-                  </TableCell>
-                  <TableCell>
-                    {customer.last_visit_date ? (
-                      <div className="flex items-center gap-1 text-sm">
-                        <Calendar className="h-3 w-3 text-gray-400" />
-                        <span>{formatDate(customer.last_visit_date)}</span>
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        <span>Last visit: {formatDate(customer.last_visit_date)}</span>
                       </div>
-                    ) : (
-                      <span className="text-sm text-gray-400">Never</span>
-                    )}
-                  </TableCell>
-                </TableRow>
+                      <div className="flex items-center gap-1">
+                        <TrendingUp className="h-3 w-3" />
+                        <span>Avg: {formatCurrency(customer.average_order_value)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               ))
             )}
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="border-t border-gray-200 dark:border-gray-700 py-2">
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious 
-                  onClick={() => handlePageChange(Math.max(1, page - 1))}
-                  className={page === 1 ? 'pointer-events-none opacity-50' : ''}
-                />
-              </PaginationItem>
-              
-              {Array.from({length: Math.min(5, totalPages)}, (_, i) => {
-                // Logic for showing a window of pages
-                let pageNum;
-                if (totalPages <= 5) {
-                  pageNum = i + 1;
-                } else if (page <= 3) {
-                  pageNum = i + 1;
-                } else if (page >= totalPages - 2) {
-                  pageNum = totalPages - 4 + i;
-                } else {
-                  pageNum = page - 2 + i;
-                }
-                
-                return (
-                  <PaginationItem key={i}>
-                    <PaginationLink 
-                      isActive={pageNum === page}
-                      onClick={() => handlePageChange(pageNum)}
-                    >
-                      {pageNum}
-                    </PaginationLink>
-                  </PaginationItem>
-                );
-              })}
-              
-              {totalPages > 5 && page < totalPages - 2 && (
-                <>
-                  <PaginationItem>
-                    <PaginationEllipsis />
-                  </PaginationItem>
-                  <PaginationItem>
-                    <PaginationLink onClick={() => handlePageChange(totalPages)}>
-                      {totalPages}
-                    </PaginationLink>
-                  </PaginationItem>
-                </>
-              )}
-              
-              <PaginationItem>
-                <PaginationNext 
-                  onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
-                  className={page === totalPages ? 'pointer-events-none opacity-50' : ''}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        </div>
-      )}
-    </div>
+          </div>
+        </ScrollArea>
+      </CardContent>
+    </Card>
   );
 };
 

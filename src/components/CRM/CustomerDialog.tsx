@@ -1,19 +1,16 @@
 
-import React from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import React, { useState, useEffect } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Customer } from "@/types/customer";
-import { useForm, Controller } from "react-hook-form";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
 
 interface CustomerDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  customer: Partial<Customer> | null;
+  customer?: Customer | null;
   onSave: (customer: Partial<Customer>) => void;
   isLoading?: boolean;
 }
@@ -23,175 +20,151 @@ const CustomerDialog: React.FC<CustomerDialogProps> = ({
   onOpenChange,
   customer,
   onSave,
-  isLoading = false
+  isLoading = false,
 }) => {
-  const isEditing = !!customer?.id;
-  
-  const { control, handleSubmit, formState: { errors } } = useForm<Partial<Customer>>({
-    defaultValues: customer || {
-      name: '',
-      email: '',
-      phone: '',
-      address: '',
-      birthday: '',
-      preferences: '',
-      tags: []
-    }
+  const [formData, setFormData] = useState<Partial<Customer>>({
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
+    birthday: "",
+    preferences: "",
+    tags: [],
   });
 
-  const onSubmit = (data: Partial<Customer>) => {
-    onSave({
-      ...customer,
-      ...data
-    });
+  useEffect(() => {
+    if (customer) {
+      setFormData({
+        id: customer.id,
+        name: customer.name || "",
+        email: customer.email || "",
+        phone: customer.phone || "",
+        address: customer.address || "",
+        birthday: customer.birthday || "",
+        preferences: customer.preferences || "",
+        tags: customer.tags || [],
+      });
+    } else {
+      setFormData({
+        name: "",
+        email: "",
+        phone: "",
+        address: "",
+        birthday: "",
+        preferences: "",
+        tags: [],
+      });
+    }
+  }, [customer, open]);
+
+  const handleSave = () => {
+    onSave(formData);
+    onOpenChange(false);
   };
+
+  const isEditing = !!customer?.id;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <DialogHeader>
-            <DialogTitle>{isEditing ? 'Edit Customer' : 'Add Customer'}</DialogTitle>
-            <DialogDescription>
-              {isEditing 
-                ? 'Update customer information in your database.'
-                : 'Add a new customer to your restaurant management system.'
-              }
-            </DialogDescription>
-          </DialogHeader>
+      <DialogContent className="sm:max-w-[600px] bg-background border border-border">
+        <DialogHeader>
+          <DialogTitle className="text-foreground">
+            {isEditing ? "Edit Customer" : "Add New Customer"}
+          </DialogTitle>
+          <DialogDescription className="text-muted-foreground">
+            {isEditing
+              ? "Update customer information and details."
+              : "Add a new customer to your database."}
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <Label htmlFor="name" className="text-foreground">Name *</Label>
+            <Input
+              id="name"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="Enter customer name"
+              className="bg-background border-input"
+            />
+          </div>
           
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-1 gap-2">
-              <Label htmlFor="name">
-                Name <span className="text-red-500">*</span>
-              </Label>
-              <Controller
-                name="name"
-                control={control}
-                rules={{ required: "Customer name is required" }}
-                render={({ field }) => (
-                  <Input id="name" placeholder="Customer name" {...field} />
-                )}
-              />
-              {errors.name && (
-                <p className="text-sm text-red-500">{errors.name.message}</p>
-              )}
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
-                <Controller
-                  name="email"
-                  control={control}
-                  rules={{
-                    pattern: {
-                      value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                      message: "Invalid email address"
-                    }
-                  }}
-                  render={({ field }) => (
-                    <Input 
-                      id="email" 
-                      placeholder="customer@example.com" 
-                      {...field} 
-                      value={field.value || ''} 
-                    />
-                  )}
-                />
-                {errors.email && (
-                  <p className="text-sm text-red-500">{errors.email.message}</p>
-                )}
-              </div>
-              
-              <div className="grid gap-2">
-                <Label htmlFor="phone">Phone</Label>
-                <Controller
-                  name="phone"
-                  control={control}
-                  render={({ field }) => (
-                    <Input 
-                      id="phone" 
-                      placeholder="Phone number" 
-                      {...field} 
-                      value={field.value || ''} 
-                    />
-                  )}
-                />
-              </div>
-            </div>
-            
+          <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="address">Address</Label>
-              <Controller
-                name="address"
-                control={control}
-                render={({ field }) => (
-                  <Input 
-                    id="address" 
-                    placeholder="Customer address" 
-                    {...field} 
-                    value={field.value || ''} 
-                  />
-                )}
+              <Label htmlFor="email" className="text-foreground">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                placeholder="customer@email.com"
+                className="bg-background border-input"
               />
             </div>
             
             <div className="grid gap-2">
-              <Label htmlFor="birthday">Birthday</Label>
-              <Controller
-                name="birthday"
-                control={control}
-                render={({ field }) => (
-                  <Input 
-                    id="birthday" 
-                    type="date" 
-                    {...field} 
-                    value={field.value?.split('T')[0] || ''} 
-                  />
-                )}
-              />
-            </div>
-            
-            <div className="grid gap-2">
-              <Label htmlFor="preferences">Preferences & Notes</Label>
-              <Controller
-                name="preferences"
-                control={control}
-                render={({ field }) => (
-                  <Textarea 
-                    id="preferences" 
-                    placeholder="Allergies, table preferences, etc." 
-                    {...field} 
-                    value={field.value || ''} 
-                    className="min-h-[100px]" 
-                  />
-                )}
+              <Label htmlFor="phone" className="text-foreground">Phone</Label>
+              <Input
+                id="phone"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                placeholder="+1 (555) 123-4567"
+                className="bg-background border-input"
               />
             </div>
           </div>
           
-          {errors.root && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>{errors.root.message}</AlertDescription>
-            </Alert>
-          )}
+          <div className="grid gap-2">
+            <Label htmlFor="address" className="text-foreground">Address</Label>
+            <Textarea
+              id="address"
+              value={formData.address}
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              placeholder="Enter customer address"
+              className="bg-background border-input min-h-[80px]"
+            />
+          </div>
           
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Saving...' : isEditing ? 'Update Customer' : 'Add Customer'}
-            </Button>
-          </DialogFooter>
-        </form>
+          <div className="grid gap-2">
+            <Label htmlFor="birthday" className="text-foreground">Birthday</Label>
+            <Input
+              id="birthday"
+              type="date"
+              value={formData.birthday}
+              onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
+              className="bg-background border-input"
+            />
+          </div>
+          
+          <div className="grid gap-2">
+            <Label htmlFor="preferences" className="text-foreground">Preferences</Label>
+            <Textarea
+              id="preferences"
+              value={formData.preferences}
+              onChange={(e) => setFormData({ ...formData, preferences: e.target.value })}
+              placeholder="Customer preferences, dietary restrictions, etc."
+              className="bg-background border-input min-h-[80px]"
+            />
+          </div>
+        </div>
+        
+        <DialogFooter className="gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => onOpenChange(false)}
+            className="bg-background border-input text-foreground hover:bg-muted"
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSave} 
+            disabled={!formData.name || isLoading}
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            {isLoading ? "Saving..." : isEditing ? "Update Customer" : "Add Customer"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

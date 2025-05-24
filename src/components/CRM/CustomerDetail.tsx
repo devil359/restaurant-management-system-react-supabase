@@ -1,558 +1,460 @@
-import React, { useState } from 'react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+
+import React, { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
-import { 
-  Edit, Mail, Phone, MapPin, Calendar, Settings, 
-  Tag, Plus, Trash2, Send, MessageSquare, FileText, 
-  AlertCircle, Clock, BarChart3, Coffee, User
-} from "lucide-react";
-import { formatDate, formatCurrency, calculateDaysSince } from "@/utils/formatters";
-import { Customer, CustomerOrder, CustomerNote, CustomerActivity } from "@/types/customer";
-import LoyaltyBadge from "@/components/Customers/LoyaltyBadge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { 
+  User, 
+  Mail, 
+  Phone, 
+  MapPin, 
+  Calendar, 
+  Edit, 
+  Plus, 
+  X,
+  MessageSquare,
+  ShoppingBag,
+  Activity,
+  Tag,
+  TrendingUp,
+  Star,
+  Clock
+} from "lucide-react";
+import { Customer, CustomerOrder, CustomerNote, CustomerActivity } from "@/types/customer";
+import { cn } from "@/lib/utils";
 
 interface CustomerDetailProps {
   customer: Customer | null;
   orders: CustomerOrder[];
   notes: CustomerNote[];
   activities: CustomerActivity[];
-  loading: boolean;
+  loading?: boolean;
   onEditCustomer: (customer: Customer) => void;
-  onAddNote: (customerId: string, note: string) => void;
+  onAddNote: (customerId: string, content: string) => void;
   onAddTag: (customerId: string, tag: string) => void;
   onRemoveTag: (customerId: string, tag: string) => void;
 }
 
 const CustomerDetail: React.FC<CustomerDetailProps> = ({
   customer,
-  orders = [],
-  notes = [],
-  activities = [],
-  loading,
+  orders,
+  notes,
+  activities,
+  loading = false,
   onEditCustomer,
   onAddNote,
   onAddTag,
   onRemoveTag,
 }) => {
-  const [activeTab, setActiveTab] = useState('overview');
-  const [addNoteDialogOpen, setAddNoteDialogOpen] = useState(false);
-  const [newNote, setNewNote] = useState('');
-  const [addTagDialogOpen, setAddTagDialogOpen] = useState(false);
-  const [newTag, setNewTag] = useState('');
-  
-  // Helper function to handle note submission
-  const handleNoteSubmit = () => {
-    if (customer && newNote.trim()) {
-      onAddNote(customer.id, newNote);
-      setNewNote('');
-      setAddNoteDialogOpen(false);
-    }
-  };
-  
-  // Helper function to handle tag submission
-  const handleTagSubmit = () => {
-    if (customer && newTag.trim()) {
-      onAddTag(customer.id, newTag);
-      setNewTag('');
-      setAddTagDialogOpen(false);
-    }
-  };
-  
-  if (loading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <div className="animate-pulse space-y-4 w-full max-w-md">
-          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
-          <div className="h-40 bg-gray-200 dark:bg-gray-700 rounded"></div>
-          <div className="h-40 bg-gray-200 dark:bg-gray-700 rounded"></div>
-        </div>
-      </div>
-    );
-  }
+  const [newNote, setNewNote] = useState("");
+  const [newTag, setNewTag] = useState("");
+  const [showAddTag, setShowAddTag] = useState(false);
 
   if (!customer) {
     return (
-      <div className="flex h-full flex-col items-center justify-center text-center p-8">
-        <div className="rounded-full bg-gray-100 dark:bg-gray-800 p-6 mb-4">
-          <User className="h-12 w-12 text-gray-400" />
-        </div>
-        <h3 className="text-lg font-medium">No Customer Selected</h3>
-        <p className="text-gray-500 dark:text-gray-400 mt-2 max-w-md">
-          Select a customer from the list to view their details, or add a new customer to get started.
-        </p>
-      </div>
+      <Card className="h-full flex items-center justify-center bg-background border-border">
+        <CardContent className="text-center p-8">
+          <User className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-xl font-medium text-foreground mb-2">Select a Customer</h3>
+          <p className="text-muted-foreground">
+            Choose a customer from the list to view their details and history.
+          </p>
+        </CardContent>
+      </Card>
     );
   }
 
-  // Organize customer stats
-  const stats = [
-    { label: 'Total Spent', value: formatCurrency(customer.total_spent), icon: <BarChart3 className="h-4 w-4" /> },
-    { label: 'Visits', value: customer.visit_count.toString(), icon: <Coffee className="h-4 w-4" /> },
-    { label: 'Avg. Order', value: formatCurrency(customer.average_order_value), icon: <FileText className="h-4 w-4" /> },
-    { 
-      label: 'Last Visit', 
-      value: customer.last_visit_date 
-        ? `${calculateDaysSince(customer.last_visit_date)} days ago` 
-        : 'Never', 
-      icon: <Clock className="h-4 w-4" /> 
-    },
-  ];
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+    }).format(amount);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-IN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const getLoyaltyColor = (tier: string) => {
+    switch (tier) {
+      case "Diamond": return "bg-purple-600 text-white";
+      case "Platinum": return "bg-gray-400 text-white";
+      case "Gold": return "bg-yellow-500 text-white";
+      case "Silver": return "bg-gray-300 text-gray-800";
+      case "Bronze": return "bg-amber-600 text-white";
+      default: return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  const getOrderSourceColor = (source: string) => {
+    switch (source) {
+      case "pos": return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300";
+      case "room_service": return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
+      case "table": return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300";
+      default: return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300";
+    }
+  };
+
+  const handleAddNote = () => {
+    if (newNote.trim()) {
+      onAddNote(customer.id, newNote.trim());
+      setNewNote("");
+    }
+  };
+
+  const handleAddTag = () => {
+    if (newTag.trim()) {
+      onAddTag(customer.id, newTag.trim());
+      setNewTag("");
+      setShowAddTag(false);
+    }
+  };
 
   return (
-    <>
-      <div className="h-full overflow-auto">
-        {/* Header with actions */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-10">
-          <div>
-            <h2 className="text-xl font-bold">{customer.name}</h2>
-            <div className="flex items-center gap-2">
-              <LoyaltyBadge tier={customer.loyalty_tier} />
-              {customer.last_visit_date && (
-                <span className="text-sm text-gray-500 dark:text-gray-400">
-                  Last visit: {formatDate(customer.last_visit_date)}
-                </span>
-              )}
+    <div className="h-full flex flex-col">
+      {/* Customer Header */}
+      <Card className="mb-6 bg-background border-border">
+        <CardHeader>
+          <div className="flex items-start justify-between">
+            <div className="flex items-start gap-4">
+              <div className="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center">
+                <User className="h-8 w-8 text-primary" />
+              </div>
+              <div className="flex-1">
+                <h1 className="text-2xl font-bold text-foreground">{customer.name}</h1>
+                <div className="flex items-center gap-2 mt-2">
+                  <Badge className={cn("text-sm", getLoyaltyColor(customer.loyalty_tier))}>
+                    <Star className="h-3 w-3 mr-1" />
+                    {customer.loyalty_tier}
+                  </Badge>
+                  <span className="text-sm text-muted-foreground">
+                    Customer since {formatDate(customer.created_at)}
+                  </span>
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
+            <Button 
               onClick={() => onEditCustomer(customer)}
-            >
-              <Edit className="h-4 w-4 mr-1" /> Edit
-            </Button>
-            <Button
               variant="outline"
               size="sm"
+              className="bg-background border-input text-foreground hover:bg-muted"
             >
-              <Send className="h-4 w-4 mr-1" /> Message
+              <Edit className="h-4 w-4 mr-2" />
+              Edit
             </Button>
           </div>
-        </div>
+        </CardHeader>
+      </Card>
 
-        {/* Tabs */}
-        <Tabs 
-          defaultValue="overview" 
-          value={activeTab} 
-          onValueChange={setActiveTab}
-          className="p-4"
-        >
-          <TabsList className="mb-4">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="orders">Orders</TabsTrigger>
-            <TabsTrigger value="notes">Notes</TabsTrigger>
-            <TabsTrigger value="activity">Activity Log</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="space-y-4">
-            {/* Contact Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-md flex items-center">
-                  <div className="flex-1">Contact Information</div>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="h-8"
-                    onClick={() => onEditCustomer(customer)}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {customer.email && (
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-gray-500" />
-                    <span>{customer.email}</span>
-                  </div>
-                )}
-                {customer.phone && (
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-gray-500" />
-                    <span>{customer.phone}</span>
-                  </div>
-                )}
-                {customer.address && (
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-gray-500" />
-                    <span>{customer.address}</span>
-                  </div>
-                )}
-                {customer.birthday && (
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-gray-500" />
-                    <span>{formatDate(customer.birthday)}</span>
-                  </div>
-                )}
-                {!customer.email && !customer.phone && !customer.address && !customer.birthday && (
-                  <div className="text-gray-500 text-center py-2">
-                    No contact information available
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Stats and Metrics */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-md">Customer Metrics</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  {stats.map((stat, index) => (
-                    <div key={index} className="flex flex-col items-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 mb-2">
-                        {stat.icon}
-                      </div>
-                      <div className="text-sm font-medium text-gray-500 dark:text-gray-400">{stat.label}</div>
-                      <div className="text-lg font-bold">{stat.value}</div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Loyalty Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-md">Loyalty Program</CardTitle>
-                {customer.loyalty_tier !== 'None' && (
-                  <CardDescription>
-                    Current tier: <LoyaltyBadge tier={customer.loyalty_tier} /> with {customer.loyalty_points} points
-                  </CardDescription>
-                )}
-              </CardHeader>
-              <CardContent>
-                {customer.loyalty_tier === 'None' ? (
-                  <div className="text-center py-3">
-                    <p className="text-gray-500">Not enrolled in loyalty program</p>
-                    <Button variant="link" className="mt-2">
-                      Enroll customer
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="flex items-center">
-                      <div className="flex-1">
-                        <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full">
-                          <div 
-                            className="h-2 bg-purple-500 rounded-full" 
-                            style={{ width: `${Math.min(100, customer.loyalty_points / 10)}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                      <span className="ml-2 text-sm font-medium">{customer.loyalty_points} pts</span>
-                    </div>
-                    
-                    <div className="flex justify-between text-sm">
-                      <span>Next reward at 1000 pts</span>
-                      <Button variant="link" size="sm" className="h-auto p-0">
-                        <Settings className="h-3 w-3 mr-1" /> Loyalty Settings
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Tags and Preferences */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-md">Tags & Preferences</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div>
-                    <div className="text-sm font-medium mb-2">Customer Tags</div>
-                    <div className="flex flex-wrap gap-2">
-                      {customer.tags?.length > 0 ? (
-                        customer.tags.map((tag, index) => (
-                          <Badge 
-                            key={index} 
-                            variant="secondary"
-                            className="flex items-center gap-1 px-2 py-1"
-                          >
-                            {tag}
-                            <button 
-                              onClick={() => onRemoveTag(customer.id, tag)}
-                              className="ml-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 p-0.5"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </button>
-                          </Badge>
-                        ))
-                      ) : (
-                        <span className="text-gray-500 text-sm">No tags</span>
-                      )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-6 w-6 p-0 rounded-full"
-                        onClick={() => onAddTag(customer.id, 'New Tag')} // This would open a dialog
-                      >
-                        <Plus className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div>
-                    <div className="text-sm font-medium mb-2">Customer Preferences</div>
-                    <div className="bg-gray-50 dark:bg-gray-800 rounded p-3">
-                      {customer.preferences ? (
-                        <p className="text-sm">{customer.preferences}</p>
-                      ) : (
-                        <p className="text-gray-500 text-sm italic">No preferences recorded</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Recent Orders */}
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <CardTitle className="text-md">Recent Orders</CardTitle>
-                  <Button variant="link" className="p-0 h-auto" onClick={() => setActiveTab('orders')}>
-                    View All
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {orders.length > 0 ? (
-                  <div className="space-y-3">
-                    {orders.slice(0, 3).map(order => (
-                      <div 
-                        key={order.id}
-                        className="flex justify-between items-center p-2 rounded border border-gray-200 dark:border-gray-700"
-                      >
-                        <div>
-                          <div className="font-medium">{formatDate(order.date)}</div>
-                          <div className="text-xs text-gray-500">
-                            Order #{order.order_id.substring(0, 8)}
-                            {order.source && (
-                              <Badge variant="outline" className="ml-2 text-xs capitalize">
-                                {order.source === 'pos' ? 'POS' : order.source === 'room_service' ? 'Room Service' : order.source}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-bold">{formatCurrency(order.amount)}</div>
-                          <Badge variant="outline" className="text-xs">
-                            {order.status}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-3 text-gray-500">
-                    No orders found for this customer
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="orders" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Order History</CardTitle>
-                <CardDescription>
-                  Showing all orders for {customer?.name}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {orders.length > 0 ? (
-                  <div className="space-y-3">
-                    {orders.map(order => (
-                      <div 
-                        key={order.id}
-                        className="flex justify-between items-center p-3 rounded border border-gray-200 dark:border-gray-700"
-                      >
-                        <div className="flex-1">
-                          <div className="font-medium">{formatDate(order.date)}</div>
-                          <div className="text-xs text-gray-500">
-                            Order #{order.order_id.substring(0, 8)}
-                            {order.source && (
-                              <Badge variant="outline" className="ml-2 text-xs capitalize">
-                                {order.source === 'pos' ? 'POS' : order.source === 'room_service' ? 'Room Service' : order.source}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex-1">
-                          <div className="text-sm">
-                            {order.items.length} {order.items.length === 1 ? 'item' : 'items'}
-                          </div>
-                          <Badge variant="outline" className="text-xs">
-                            {order.status}
-                          </Badge>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-bold">{formatCurrency(order.amount)}</div>
-                          <Button variant="link" size="sm" className="h-auto p-0 text-xs">
-                            View Details
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <FileText className="h-10 w-10 mx-auto mb-2 opacity-40" />
-                    <p>No orders found for this customer</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="notes" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <CardTitle>Customer Notes</CardTitle>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => setAddNoteDialogOpen(true)}
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add Note
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {notes.length > 0 ? (
-                  <div className="space-y-4">
-                    {notes.map(note => (
-                      <div 
-                        key={note.id}
-                        className="p-3 rounded border border-gray-200 dark:border-gray-700"
-                      >
-                        <p className="text-sm mb-2">{note.content}</p>
-                        <div className="flex justify-between text-xs text-gray-500">
-                          <span>By: {note.created_by}</span>
-                          <span>{formatDate(note.created_at)}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <MessageSquare className="h-10 w-10 mx-auto mb-2 opacity-40" />
-                    <p>No notes found for this customer</p>
-                    <Button 
-                      variant="link" 
-                      onClick={() => setAddNoteDialogOpen(true)}
-                    >
-                      Add your first note
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="activity" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Activity Log</CardTitle>
-                <CardDescription>
-                  Recent activities and interactions
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {activities.length > 0 ? (
-                  <div className="relative pl-6 border-l border-gray-200 dark:border-gray-700">
-                    {activities.map((activity, index) => (
-                      <div 
-                        key={activity.id}
-                        className={`relative pb-6 ${index === activities.length - 1 ? '' : ''}`}
-                      >
-                        <div className="absolute -left-[20px] w-5 h-5 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center border border-gray-200 dark:border-gray-700">
-                          {activity.activity_type === 'note_added' && <MessageSquare className="h-2.5 w-2.5" />}
-                          {activity.activity_type === 'email_sent' && <Mail className="h-2.5 w-2.5" />}
-                          {activity.activity_type === 'order_placed' && <FileText className="h-2.5 w-2.5" />}
-                          {activity.activity_type === 'tag_added' && <Tag className="h-2.5 w-2.5" />}
-                          {activity.activity_type === 'promotion_sent' && <Send className="h-2.5 w-2.5" />}
-                        </div>
-                        <div>
-                          <p className="text-sm">{activity.description}</p>
-                          <p className="text-xs text-gray-500">{formatDate(activity.created_at)}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <Clock className="h-10 w-10 mx-auto mb-2 opacity-40" />
-                    <p>No activity recorded for this customer</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <Card className="bg-background border-border">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-primary" />
+              <div>
+                <p className="text-sm text-muted-foreground">Total Spent</p>
+                <p className="text-xl font-bold text-foreground">{formatCurrency(customer.total_spent)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="bg-background border-border">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <ShoppingBag className="h-5 w-5 text-primary" />
+              <div>
+                <p className="text-sm text-muted-foreground">Total Orders</p>
+                <p className="text-xl font-bold text-foreground">{customer.visit_count}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="bg-background border-border">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-primary" />
+              <div>
+                <p className="text-sm text-muted-foreground">Avg Order</p>
+                <p className="text-xl font-bold text-foreground">{formatCurrency(customer.average_order_value)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="bg-background border-border">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-primary" />
+              <div>
+                <p className="text-sm text-muted-foreground">Last Visit</p>
+                <p className="text-sm font-medium text-foreground">
+                  {customer.last_visit_date ? formatDate(customer.last_visit_date) : "Never"}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Add Note Dialog */}
-      <Dialog open={addNoteDialogOpen} onOpenChange={setAddNoteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Note for {customer?.name}</DialogTitle>
-          </DialogHeader>
-          <Textarea
-            placeholder="Enter your note..."
-            value={newNote}
-            onChange={(e) => setNewNote(e.target.value)}
-            className="min-h-[100px]"
-          />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddNoteDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleNoteSubmit}>
-              Save Note
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Main Content Tabs */}
+      <Card className="flex-1 bg-background border-border">
+        <Tabs defaultValue="overview" className="h-full flex flex-col">
+          <CardHeader className="border-b border-border">
+            <TabsList className="bg-muted">
+              <TabsTrigger value="overview" className="data-[state=active]:bg-background">Overview</TabsTrigger>
+              <TabsTrigger value="orders" className="data-[state=active]:bg-background">Orders ({orders.length})</TabsTrigger>
+              <TabsTrigger value="notes" className="data-[state=active]:bg-background">Notes ({notes.length})</TabsTrigger>
+              <TabsTrigger value="activity" className="data-[state=active]:bg-background">Activity</TabsTrigger>
+            </TabsList>
+          </CardHeader>
 
-      {/* Add Tag Dialog */}
-      <Dialog open={addTagDialogOpen} onOpenChange={setAddTagDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Tag for {customer?.name}</DialogTitle>
-          </DialogHeader>
-          <Input
-            placeholder="Enter tag name..."
-            value={newTag}
-            onChange={(e) => setNewTag(e.target.value)}
-          />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddTagDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleTagSubmit}>
-              Add Tag
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+          <CardContent className="flex-1 p-6">
+            <TabsContent value="overview" className="h-full">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
+                {/* Contact Information */}
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground mb-4">Contact Information</h3>
+                    <div className="space-y-3">
+                      {customer.email && (
+                        <div className="flex items-center gap-3">
+                          <Mail className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-foreground">{customer.email}</span>
+                        </div>
+                      )}
+                      {customer.phone && (
+                        <div className="flex items-center gap-3">
+                          <Phone className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-foreground">{customer.phone}</span>
+                        </div>
+                      )}
+                      {customer.address && (
+                        <div className="flex items-center gap-3">
+                          <MapPin className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-foreground">{customer.address}</span>
+                        </div>
+                      )}
+                      {customer.birthday && (
+                        <div className="flex items-center gap-3">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-foreground">{formatDate(customer.birthday)}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Preferences */}
+                  {customer.preferences && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-foreground mb-4">Preferences</h3>
+                      <p className="text-muted-foreground">{customer.preferences}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Tags */}
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-foreground">Tags</h3>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setShowAddTag(true)}
+                      className="bg-background border-input text-foreground hover:bg-muted"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Tag
+                    </Button>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-2">
+                    {customer.tags && customer.tags.map((tag, index) => (
+                      <Badge
+                        key={index}
+                        variant="secondary"
+                        className="flex items-center gap-1 bg-secondary text-secondary-foreground"
+                      >
+                        <Tag className="h-3 w-3" />
+                        {tag}
+                        <button
+                          onClick={() => onRemoveTag(customer.id, tag)}
+                          className="ml-1 hover:bg-secondary-foreground/20 rounded-full p-0.5"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+
+                  {showAddTag && (
+                    <div className="flex gap-2 mt-4">
+                      <Input
+                        placeholder="Enter tag name"
+                        value={newTag}
+                        onChange={(e) => setNewTag(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
+                        className="bg-background border-input"
+                      />
+                      <Button onClick={handleAddTag} size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90">
+                        Add
+                      </Button>
+                      <Button 
+                        onClick={() => setShowAddTag(false)} 
+                        size="sm" 
+                        variant="outline"
+                        className="bg-background border-input text-foreground hover:bg-muted"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="orders" className="h-full">
+              <ScrollArea className="h-full">
+                {orders.length === 0 ? (
+                  <div className="text-center py-8">
+                    <ShoppingBag className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-foreground">No orders found</h3>
+                    <p className="text-sm text-muted-foreground">This customer hasn't placed any orders yet.</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-border">
+                        <TableHead className="text-foreground">Order ID</TableHead>
+                        <TableHead className="text-foreground">Date</TableHead>
+                        <TableHead className="text-foreground">Source</TableHead>
+                        <TableHead className="text-foreground">Amount</TableHead>
+                        <TableHead className="text-foreground">Status</TableHead>
+                        <TableHead className="text-foreground">Items</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {orders.map((order) => (
+                        <TableRow key={order.id} className="border-border">
+                          <TableCell className="font-mono text-foreground">{order.order_id.slice(-8)}</TableCell>
+                          <TableCell className="text-foreground">{formatDate(order.date)}</TableCell>
+                          <TableCell>
+                            <Badge className={cn("text-xs", getOrderSourceColor(order.source || 'pos'))}>
+                              {order.source === 'room_service' ? 'Room Service' : 
+                               order.source === 'pos' ? 'POS' : 
+                               order.source === 'table' ? 'Table Order' : 'Unknown'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="font-medium text-foreground">{formatCurrency(order.amount)}</TableCell>
+                          <TableCell>
+                            <Badge variant={order.status === 'completed' ? 'default' : 'secondary'}>
+                              {order.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-foreground">
+                            {order.items?.length || 0} items
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </ScrollArea>
+            </TabsContent>
+
+            <TabsContent value="notes" className="h-full">
+              <div className="space-y-4">
+                {/* Add Note */}
+                <div className="border border-border rounded-lg p-4 bg-background">
+                  <h4 className="font-medium text-foreground mb-3">Add New Note</h4>
+                  <div className="space-y-3">
+                    <Textarea
+                      placeholder="Enter your note about this customer..."
+                      value={newNote}
+                      onChange={(e) => setNewNote(e.target.value)}
+                      className="bg-background border-input"
+                    />
+                    <Button 
+                      onClick={handleAddNote} 
+                      disabled={!newNote.trim()}
+                      size="sm"
+                      className="bg-primary text-primary-foreground hover:bg-primary/90"
+                    >
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Add Note
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Notes List */}
+                <ScrollArea className="h-96">
+                  {notes.length === 0 ? (
+                    <div className="text-center py-8">
+                      <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-foreground">No notes yet</h3>
+                      <p className="text-sm text-muted-foreground">Add your first note about this customer.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {notes.map((note) => (
+                        <div key={note.id} className="border border-border rounded-lg p-4 bg-background">
+                          <div className="flex justify-between items-start mb-2">
+                            <span className="text-sm font-medium text-foreground">{note.created_by}</span>
+                            <span className="text-xs text-muted-foreground">{formatDate(note.created_at)}</span>
+                          </div>
+                          <p className="text-foreground">{note.content}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="activity" className="h-full">
+              <ScrollArea className="h-full">
+                {activities.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Activity className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-foreground">No activity yet</h3>
+                    <p className="text-sm text-muted-foreground">Customer activity will appear here.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {activities.map((activity) => (
+                      <div key={activity.id} className="border border-border rounded-lg p-4 bg-background">
+                        <div className="flex items-start gap-3">
+                          <Activity className="h-5 w-5 text-primary mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-foreground">{activity.description}</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {formatDate(activity.created_at)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </TabsContent>
+          </CardContent>
+        </Tabs>
+      </Card>
+    </div>
   );
 };
 
