@@ -3,36 +3,67 @@ import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { Navigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { LogOut, RefreshCw } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import BrandingSection from "@/components/Auth/BrandingSection";
 import AuthForm from "@/components/Auth/AuthForm";
 
 const Auth = () => {
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
-  const [sessionChecked, setSessionChecked] = useState(false);
-  const [session, setSession] = useState<any>(null);
+  const { toast } = useToast();
 
-  useEffect(() => {
-    const checkSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        setSession(session);
-        setSessionChecked(true);
-      } catch (error) {
-        console.error("Error checking session:", error);
-        setSessionChecked(true);
-      }
-    };
+  console.log("Auth page: Rendering auth form");
 
-    checkSession();
-  }, []);
+  const handleClearAuth = async () => {
+    try {
+      console.log("Auth page: Clearing all auth data");
+      
+      // Sign out from Supabase
+      await supabase.auth.signOut();
+      
+      // Clear all storage
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      toast({
+        title: "Authentication cleared",
+        description: "All authentication data has been cleared.",
+      });
+      
+      // Force page reload to reset everything
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } catch (error) {
+      console.error("Auth page: Error clearing auth:", error);
+      toast({
+        title: "Error",
+        description: "Failed to clear auth data. Refreshing page...",
+        variant: "destructive",
+      });
+      
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    }
+  };
 
-  // Redirect to dashboard if already authenticated
-  if (sessionChecked && session) {
-    return <Navigate to="/" replace />;
-  }
-
+  // Show auth form directly
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+      {/* Clear auth button for debugging */}
+      <div className="fixed top-4 right-4 z-50 flex gap-2">
+        <Button onClick={handleClearAuth} variant="outline" size="sm">
+          <LogOut className="h-4 w-4 mr-2" />
+          Clear Auth
+        </Button>
+        <Button onClick={() => window.location.reload()} variant="outline" size="sm">
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Refresh
+        </Button>
+      </div>
+
       {/* Left side - branding and info */}
       <div className="w-full lg:w-3/5 p-6 md:p-12 flex flex-col justify-center relative overflow-hidden">
         {/* Decorative background elements */}

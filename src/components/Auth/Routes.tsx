@@ -3,21 +3,41 @@ import { Routes as Switch, Route, Navigate } from "react-router-dom";
 import { useAuthState } from "@/hooks/useAuthState";
 import { AppRoutes } from "./AppRoutes";
 import AuthLoader from "./AuthLoader";
+import Auth from "@/pages/Auth";
 
 /**
- * Main Routes component that renders all application routes
- * Refactored to improve maintainability and readability
+ * Main routing component that handles authentication-based routing
  */
 const Routes = () => {
-  const { loading } = useAuthState();
+  const { user, loading } = useAuthState();
   
-  // If authentication is still loading, show the loader
+  console.log("Routes: Loading:", loading, "User:", user ? "authenticated" : "not authenticated");
+  
+  // Show loading spinner while checking auth
   if (loading) {
+    console.log("Routes: Still loading, showing AuthLoader");
     return <AuthLoader />;
   }
 
-  // Once authentication check is complete, render routes
-  return <>{AppRoutes}</>;
+  // If no user, show auth page for any route
+  if (!user) {
+    console.log("Routes: No user, redirecting to auth");
+    return (
+      <Switch>
+        <Route path="/auth" element={<Auth />} />
+        <Route path="*" element={<Navigate to="/auth" replace />} />
+      </Switch>
+    );
+  }
+
+  // User is authenticated, show app routes
+  console.log("Routes: User authenticated, showing app routes");
+  return (
+    <Switch>
+      <Route path="/auth" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<AppRoutes />} />
+    </Switch>
+  );
 };
 
 export default Routes;
