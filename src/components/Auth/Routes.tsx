@@ -32,12 +32,7 @@ const Routes = () => {
 
   // User is authenticated, show app routes
   console.log("Routes: User authenticated, showing app routes");
-  return (
-    <Switch>
-      <Route path="/auth" element={<Navigate to="/" replace />} />
-      <Route path="*" element={<AppRoutes />} />
-    </Switch>
-  );
+  return <AppRoutes />;
 };
 
 export default Routes;

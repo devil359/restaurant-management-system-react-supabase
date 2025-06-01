@@ -1,103 +1,80 @@
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 220 33% 98%;  /* #F7FAFC - light background */
-    --foreground: 222 47% 11%;  /* #1A202C */
-
-    --card: 0 0% 100%;  /* White */
-    --card-foreground: 222 47% 11%;  /* #1A202C */
-    
-    --card-glass: 0 0% 100%;
-    --card-glass-foreground: 222 47% 11%;
-    
-    --card-accent: 216 12% 95%;  /* Lighter version of brand-deep-blue */
-    --card-accent-foreground: 222 47% 11%;
-
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-
-    --primary: 247 61% 39%;  /* #3f3698 - sidebar purple */
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
     --primary-foreground: 210 40% 98%;
-
-    --secondary: 153 55% 50%;  /* #48BB78 */
-    --secondary-foreground: 222 47% 11%;
-
-    --muted: 220 16% 96%;
-    --muted-foreground: 215 16% 47%;
-
-    --accent: 33 95% 65%;  /* #F6AD55 */
-    --accent-foreground: 222 47% 11%;
-
-    --destructive: 0 84% 60%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 220 24% 23%;
-    
-    --toast-background: 0 0% 100%;
-
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
     --radius: 0.5rem;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
 
-    --sidebar-background: 247 61% 39%;  /* #3f3698 - sidebar purple */
-    --sidebar-foreground: 0 0% 100%;  /* White text */
-    --sidebar-primary: 0 0% 100%;  /* White for active items */
-    --sidebar-primary-foreground: 247 61% 39%;  /* Sidebar purple */
-    --sidebar-accent: 249 48% 33%;  /* #2f2b7a - darker purple */
-    --sidebar-accent-foreground: 0 0% 100%;  /* White text */
-    --sidebar-border: 249 48% 33%;  /* #2f2b7a - darker purple */
-    --sidebar-ring: 0 0% 100%;  /* White ring */
+    /* Brand colors */
+    --brand-deep-blue: 210 100% 12%;
+    --brand-success-green: 142 71% 45%;
+    --brand-warm-orange: 25 95% 53%;
+    
+    /* Sidebar colors */
+    --sidebar-background: 210 100% 12%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 210 100% 12%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 210 100% 15%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 210 100% 15%;
+    --sidebar-ring: 210 100% 20%;
+    --sidebar-purple: 258 90% 66%;
+    --sidebar-purple-dark: 258 100% 50%;
   }
 
   .dark {
-    --background: 222 47% 11%;  /* #1A202C */
-    --foreground: 220 33% 98%;  /* #F7FAFC */
-
-    --card: 222 50% 13%; /* Slightly lighter than background */
-    --card-foreground: 220 33% 98%;
-    
-    --card-glass: 222 47% 11%;
-    --card-glass-foreground: 220 33% 98%;
-    
-    --card-accent: 220 24% 16%;  /* Darker version of brand-deep-blue */
-    --card-accent-foreground: 220 33% 98%;
-
-    --popover: 222 47% 11%;
-    --popover-foreground: 220 33% 98%;
-
-    --primary: 247 61% 29%;  /* Darker version of sidebar purple */
-    --primary-foreground: 210 40% 98%;
-
-    --secondary: 153 55% 45%;  /* Slightly darker version of #48BB78 for dark mode */
-    --secondary-foreground: 222 47% 11%;
-
-    --muted: 217 33% 18%;
-    --muted-foreground: 215 20% 75%; /* Increased brightness for better contrast */
-
-    --accent: 33 85% 60%;  /* Slightly darker version of #F6AD55 for dark mode */
-    --accent-foreground: 222 47% 11%;
-
-    --destructive: 0 63% 50%; /* Brighter for better visibility */
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 84% 4.9%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-
-    --border: 217 33% 25%; /* Brighter border for better visibility */
-    --input: 217 33% 25%;
-    --ring: 153 55% 50%;
-    
-    --toast-background: 217 33% 18%;
-
-    --sidebar-background: 249 48% 23%;  /* Darker sidebar purple */
-    --sidebar-foreground: 220 33% 98%;
-    --sidebar-primary: 220 33% 98%;
-    --sidebar-primary-foreground: 249 48% 23%;
-    --sidebar-accent: 247 61% 29%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 247 61% 19%;
-    --sidebar-ring: 220 33% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 94.1%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
   }
 }
 
@@ -105,202 +82,63 @@
   * {
     @apply border-border;
   }
-
   body {
-    @apply bg-background text-foreground antialiased;
-    font-family: 'Inter', 'SF Pro Display', sans-serif;
-  }
-  
-  ::selection {
-    @apply bg-brand-success-green/20 text-foreground;
+    @apply bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
   }
 }
 
-@layer components {
-  /* Standardized component classes */
-  .standardized-page {
-    @apply p-4 md:p-6 space-y-6 bg-gradient-to-br from-gray-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 min-h-screen;
+/* Custom animations */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
-  
-  .standardized-header {
-    @apply mb-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm p-6;
-  }
-  
-  .standardized-title {
-    @apply text-2xl md:text-3xl font-bold bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent;
-  }
-  
-  .standardized-description {
-    @apply text-gray-600 dark:text-gray-400 mt-1;
-  }
-  
-  .standardized-card {
-    @apply bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm hover:shadow-md transition-all duration-200;
-  }
-  
-  .standardized-card-elevated {
-    @apply bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200;
-  }
-  
-  .standardized-card-glass {
-    @apply bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-white/20 dark:border-gray-700/30 rounded-xl shadow-lg transition-all duration-200;
-  }
-  
-  .standardized-button-primary {
-    @apply bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-medium px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
-  }
-  
-  .standardized-button-secondary {
-    @apply bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium px-4 py-2 rounded-lg shadow-sm hover:shadow-md transition-all duration-200;
-  }
-  
-  .standardized-input {
-    @apply w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white dark:bg-gray-800;
-  }
-  
-  .standardized-table {
-    @apply w-full border-collapse bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow-sm;
-  }
-  
-  .standardized-table-header {
-    @apply bg-gray-50 dark:bg-gray-700 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider;
-  }
-  
-  .standardized-table-cell {
-    @apply px-4 py-3 text-sm text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-600;
-  }
-  
-  .standardized-badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
-  }
-  
-  .standardized-badge-success {
-    @apply bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400;
-  }
-  
-  .standardized-badge-warning {
-    @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400;
-  }
-  
-  .standardized-badge-error {
-    @apply bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400;
-  }
-  
-  .standardized-badge-info {
-    @apply bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400;
-  }
-  
-  /* Role-based styling */
-  .role-super-admin {
-    @apply bg-gradient-to-r from-purple-500 to-purple-700 text-white;
-  }
-  
-  .role-admin {
-    @apply bg-gradient-to-r from-blue-500 to-blue-600 text-white;
-  }
-  
-  .role-manager {
-    @apply bg-gradient-to-r from-green-500 to-green-600 text-white;
-  }
-  
-  .role-staff {
-    @apply bg-gradient-to-r from-yellow-500 to-yellow-600 text-white;
-  }
-  
-  .role-viewer {
-    @apply bg-gradient-to-r from-gray-500 to-gray-600 text-white;
-  }
-
-  /* Legacy styles for existing components */
-  .bg-gradient-pattern {
-    @apply bg-background bg-toast-pattern;
-  }
-  
-  .bg-glass {
-    @apply backdrop-blur-sm bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10;
-  }
-  
-  .card-fancy {
-    @apply bg-card/90 backdrop-blur-sm border border-border/50 shadow-card hover:shadow-card-hover transition-all duration-200;
-  }
-  
-  .card-glass {
-    @apply bg-card-glass/30 backdrop-blur-md border border-white/20 dark:border-white/5 shadow-lg;
-  }
-  
-  .card-accent {
-    @apply bg-card-accent/90 backdrop-blur-sm border border-primary/10 shadow-card;
-  }
-  
-  .chart-container {
-    @apply bg-chart-area-bg dark:bg-brand-deep-blue/80 backdrop-blur-sm border border-border/50 rounded-lg p-4 shadow-card;
-  }
-  
-  .toast-card {
-    @apply bg-white dark:bg-brand-deep-blue shadow-toast border border-gray-100 dark:border-gray-800 rounded-lg;
-  }
-  
-  .btn-primary {
-    @apply bg-primary text-white hover:bg-primary/90 transition-colors;
-  }
-  
-  .btn-success {
-    @apply bg-brand-success-green text-white hover:bg-brand-success-green/90 transition-colors;
-  }
-  
-  .btn-accent {
-    @apply bg-brand-warm-orange text-brand-dark-grey hover:bg-brand-warm-orange/90 transition-colors;
-  }
-  
-  .insights-card {
-    @apply bg-insights-bg border border-insights-border rounded-lg p-4;
-  }
-  
-  .stat-card {
-    @apply bg-stat-card-bg border border-border/50 rounded-lg p-4 shadow-card;
-  }
-  
-  /* Chat Component Styles */
-  .chat-bubble-user {
-    background-color: #4f46e5; /* primary */
-    color: white;
-    border-radius: 1rem 1rem 0 1rem; /* Rounded corners, except bottom-right */
-  }
-  
-  .chat-bubble-ai {
-    background-color: #e5e7eb; /* gray-200 */
-    color: #1f2937; /* gray-800 */
-    border-radius: 1rem 1rem 1rem 0; /* Rounded corners, except bottom-left */
-  }
-  
-  /* Capability Card Style */
-  .capability-card {
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-  }
-  
-  .capability-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  }
-  
-  /* Sample Question Button Style */
-  .sample-question-btn {
-    transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-@font-face {
-  font-family: 'Inter';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@keyframes pulse-gentle {
+  0%, 100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.6;
+  }
 }
 
-@font-face {
-  font-family: 'SF Pro Display';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('https://applesocial.s3.amazonaws.com/assets/styles/fonts/sanfrancisco/sanfranciscodisplay-regular-webfont.woff');
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out;
+}
+
+.animate-pulse-gentle {
+  animation: pulse-gentle 4s ease-in-out infinite;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
 }
