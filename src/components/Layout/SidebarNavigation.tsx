@@ -1,177 +1,147 @@
 
-import { NavLink, useLocation } from "react-router-dom";
-import {
-  Home,
-  Utensils,
-  ShoppingCart,
-  Coffee,
+import { 
+  LayoutDashboard, 
+  ShoppingCart, 
+  Menu, 
+  BarChart3, 
+  Package, 
+  Truck, 
+  Building2, 
   Users,
-  PackageOpen,
-  Bed,
-  Truck,
-  BarChart3,
-  Settings,
-  LayoutDashboard,
-  Bot,
-  ChefHat,
-  Contact,
-  Receipt,
+  Calendar,
+  UserCheck,
+  Star,
+  CreditCard,
   Sparkles,
+  Settings,
+  Home,
+  MessageCircle,
+  TrendingUp,
+  Award
 } from "lucide-react";
-import {
-  SidebarContent,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-} from "@/components/ui/sidebar";
+import { Link, useLocation } from "react-router-dom";
+import { cn } from "@/lib/utils";
 
-interface NavigationItem {
-  name: string;
-  href: string;
-  icon: any;
-  component: string;
-}
-
-const navigationItems: NavigationItem[] = [
-  { 
-    name: "Dashboard", 
-    href: "/", 
-    icon: Home, 
-    component: "dashboard"
-  },
-  { 
-    name: "Menu", 
-    href: "/menu", 
-    icon: Utensils, 
-    component: "menu"
-  },
-  { 
-    name: "Orders", 
-    href: "/orders", 
-    icon: ShoppingCart, 
-    component: "orders"
-  },
-  { 
-    name: "Tables", 
-    href: "/tables", 
-    icon: Coffee, 
-    component: "tables"
-  },
-  { 
-    name: "Staff", 
-    href: "/staff", 
-    icon: Users, 
-    component: "staff"
-  },
-  { 
-    name: "Customers", 
-    href: "/customers", 
-    icon: Users, 
-    component: "customers"
-  },
-  { 
-    name: "CRM", 
-    href: "/crm", 
-    icon: Contact, 
-    component: "crm"
-  },
-  { 
-    name: "Inventory", 
-    href: "/inventory", 
-    icon: PackageOpen, 
-    component: "inventory"
-  },
-  { 
-    name: "Rooms", 
-    href: "/rooms", 
-    icon: Bed, 
-    component: "rooms"
-  },
-  { 
-    name: "Housekeeping", 
-    href: "/housekeeping", 
-    icon: Sparkles, 
-    component: "housekeeping"
-  },
-  { 
-    name: "Suppliers", 
-    href: "/suppliers", 
-    icon: Truck, 
-    component: "suppliers"
-  },
-  { 
-    name: "Expenses", 
-    href: "/expenses", 
-    icon: Receipt, 
-    component: "analytics"
-  },
-  { 
-    name: "Analytics", 
-    href: "/analytics", 
-    icon: BarChart3, 
-    component: "analytics"
+const navigationItems = [
+  {
+    title: "Dashboard",
+    href: "/",
+    icon: LayoutDashboard,
   },
   {
-    name: "Business Dashboard",
-    href: "/business-dashboard",
-    icon: LayoutDashboard,
-    component: "business_dashboard"
+    title: "Orders",
+    href: "/orders",
+    icon: ShoppingCart,
   },
-  { 
-    name: "AI Assistant", 
-    href: "/ai", 
-    icon: Bot, 
-    component: "dashboard"
+  {
+    title: "Menu",
+    href: "/menu",
+    icon: Menu,
   },
-  { 
-    name: "Kitchen Display", 
-    href: "/kitchen", 
-    icon: ChefHat, 
-    component: "dashboard"
+  {
+    title: "Analytics",
+    href: "/analytics",
+    icon: BarChart3,
   },
-  { 
-    name: "Settings", 
-    href: "/settings", 
-    icon: Settings, 
-    component: "settings"
+  {
+    title: "Inventory",
+    href: "/inventory",
+    icon: Package,
+  },
+  {
+    title: "Suppliers",
+    href: "/suppliers",
+    icon: Truck,
+  },
+  {
+    title: "Rooms",
+    href: "/rooms",
+    icon: Building2,
+  },
+  {
+    title: "Tables",
+    href: "/tables",
+    icon: Home,
+  },
+  {
+    title: "Reservations",
+    href: "/reservations",
+    icon: Calendar,
+  },
+  {
+    title: "Staff",
+    href: "/staff",
+    icon: Users,
+  },
+  {
+    title: "CRM",
+    href: "/crm",
+    icon: UserCheck,
+  },
+  {
+    title: "Customers",
+    href: "/customers",
+    icon: Star,
+  },
+  {
+    title: "Expenses",
+    href: "/expenses",
+    icon: CreditCard,
+  },
+  {
+    title: "Housekeeping",
+    href: "/housekeeping",
+    icon: Sparkles,
+  },
+  {
+    title: "Marketing",
+    href: "/marketing",
+    icon: Award,
+  },
+  {
+    title: "Reports",
+    href: "/reports",
+    icon: TrendingUp,
+  },
+  {
+    title: "AI Assistant",
+    href: "/ai",
+    icon: MessageCircle,
+  },
+  {
+    title: "Settings",
+    href: "/settings",
+    icon: Settings,
   },
 ];
 
-interface Props {
-  allowedComponents: string[];
-}
-
-export const SidebarNavigation = ({ allowedComponents }: Props) => {
+const SidebarNavigation = () => {
   const location = useLocation();
-  
-  const filteredNavigation = navigationItems.filter((item) => {
-    // Show all components for now (simplified permissions)
-    return allowedComponents.length === 0 || allowedComponents.includes(item.component);
-  });
 
   return (
-    <SidebarContent className="py-4">
-      <SidebarMenu>
-        {filteredNavigation.map((item) => (
-          <SidebarMenuItem key={item.name}>
-            <SidebarMenuButton
-              asChild
-              isActive={location.pathname === item.href}
-              tooltip={item.name}
-              className={
-                location.pathname === item.href
-                  ? "bg-white text-sidebar-purple hover:bg-white hover:text-sidebar-purple"
-                  : "text-white hover:bg-sidebar-purple-dark"
-              }
-            >
-              <NavLink to={item.href} className="flex items-center space-x-2">
-                <item.icon className="h-4 w-4" />
-                <span>{item.name}</span>
-              </NavLink>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        ))}
-      </SidebarMenu>
-    </SidebarContent>
+    <nav className="space-y-1">
+      {navigationItems.map((item) => {
+        const isActive = location.pathname === item.href;
+        const Icon = item.icon;
+        
+        return (
+          <Link
+            key={item.href}
+            to={item.href}
+            className={cn(
+              "flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors",
+              isActive
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-accent"
+            )}
+          >
+            <Icon className="mr-3 h-4 w-4" />
+            {item.title}
+          </Link>
+        );
+      })}
+    </nav>
   );
 };
+
+export default SidebarNavigation;
