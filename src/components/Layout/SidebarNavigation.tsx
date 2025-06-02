@@ -23,16 +23,12 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
-import { useAuth } from "@/hooks/useAuth";
-import { Permission } from "@/types/auth";
 
 interface NavigationItem {
   name: string;
   href: string;
   icon: any;
   component: string;
-  permission?: Permission;
-  permissions?: Permission[];
 }
 
 const navigationItems: NavigationItem[] = [
@@ -40,113 +36,97 @@ const navigationItems: NavigationItem[] = [
     name: "Dashboard", 
     href: "/", 
     icon: Home, 
-    component: "dashboard",
-    permission: "dashboard.view"
+    component: "dashboard"
   },
   { 
     name: "Menu", 
     href: "/menu", 
     icon: Utensils, 
-    component: "menu",
-    permission: "menu.view"
+    component: "menu"
   },
   { 
     name: "Orders", 
     href: "/orders", 
     icon: ShoppingCart, 
-    component: "orders",
-    permission: "orders.view"
+    component: "orders"
   },
   { 
     name: "Tables", 
     href: "/tables", 
     icon: Coffee, 
-    component: "tables",
-    permission: "orders.view"
+    component: "tables"
   },
   { 
     name: "Staff", 
     href: "/staff", 
     icon: Users, 
-    component: "staff",
-    permission: "staff.view"
+    component: "staff"
   },
   { 
     name: "Customers", 
     href: "/customers", 
     icon: Users, 
-    component: "customers",
-    permission: "customers.view"
+    component: "customers"
   },
   { 
     name: "CRM", 
     href: "/crm", 
     icon: Contact, 
-    component: "crm",
-    permission: "customers.view"
+    component: "crm"
   },
   { 
     name: "Inventory", 
     href: "/inventory", 
     icon: PackageOpen, 
-    component: "inventory",
-    permission: "inventory.view"
+    component: "inventory"
   },
   { 
     name: "Rooms", 
     href: "/rooms", 
     icon: Bed, 
-    component: "rooms",
-    permission: "rooms.view"
+    component: "rooms"
   },
   { 
     name: "Suppliers", 
     href: "/suppliers", 
     icon: Truck, 
-    component: "suppliers",
-    permission: "inventory.view"
+    component: "suppliers"
   },
   { 
     name: "Expenses", 
     href: "/expenses", 
     icon: Receipt, 
-    component: "analytics",
-    permission: "analytics.view"
+    component: "analytics"
   },
   { 
     name: "Analytics", 
     href: "/analytics", 
     icon: BarChart3, 
-    component: "analytics",
-    permission: "analytics.view"
+    component: "analytics"
   },
   {
     name: "Business Dashboard",
     href: "/business-dashboard",
     icon: LayoutDashboard,
-    component: "business_dashboard",
-    permission: "dashboard.analytics"
+    component: "business_dashboard"
   },
   { 
     name: "AI Assistant", 
     href: "/ai", 
     icon: Bot, 
-    component: "dashboard",
-    permission: "ai.access"
+    component: "dashboard"
   },
   { 
     name: "Kitchen Display", 
     href: "/kitchen", 
     icon: ChefHat, 
-    component: "dashboard",
-    permission: "orders.view"
+    component: "dashboard"
   },
   { 
     name: "Settings", 
     href: "/settings", 
     icon: Settings, 
-    component: "settings",
-    permission: "settings.view"
+    component: "settings"
   },
 ];
 
@@ -156,25 +136,10 @@ interface Props {
 
 export const SidebarNavigation = ({ allowedComponents }: Props) => {
   const location = useLocation();
-  const { hasPermission, hasAnyPermission } = useAuth();
   
   const filteredNavigation = navigationItems.filter((item) => {
-    // First check if component is allowed
-    const componentAllowed = allowedComponents.length === 0 || allowedComponents.includes(item.component);
-    
-    if (!componentAllowed) return false;
-    
-    // Then check permissions
-    if (item.permission) {
-      return hasPermission(item.permission);
-    }
-    
-    if (item.permissions) {
-      return hasAnyPermission(item.permissions);
-    }
-    
-    // If no specific permission required, show the item
-    return true;
+    // Show all components for now (simplified permissions)
+    return allowedComponents.length === 0 || allowedComponents.includes(item.component);
   });
 
   return (
