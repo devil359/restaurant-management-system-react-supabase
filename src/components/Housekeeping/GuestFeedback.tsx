@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -332,7 +331,7 @@ const GuestFeedback = () => {
               {item.status === 'new' && (
                 <StandardizedButton
                   size="sm"
-                  variant="outline"
+                  variant="secondary"
                   onClick={() => updateStatusMutation.mutate({ id: item.id, status: 'acknowledged' })}
                 >
                   <Eye className="h-3 w-3 mr-1" />

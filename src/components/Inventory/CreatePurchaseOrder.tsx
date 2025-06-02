@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -255,7 +254,7 @@ const CreatePurchaseOrder = ({ isOpen, onClose }: CreatePurchaseOrderProps) => {
                   </div>
                   <StandardizedButton
                     type="button"
-                    variant="outline"
+                    variant="secondary"
                     size="sm"
                     onClick={() => removeOrderItem(index)}
                   >
@@ -283,7 +282,7 @@ const CreatePurchaseOrder = ({ isOpen, onClose }: CreatePurchaseOrderProps) => {
           </div>
 
           <div className="flex justify-end gap-2">
-            <StandardizedButton type="button" variant="outline" onClick={onClose}>
+            <StandardizedButton type="button" variant="secondary" onClick={onClose}>
               Cancel
             </StandardizedButton>
             <StandardizedButton type="submit" disabled={createPurchaseOrderMutation.isPending}>

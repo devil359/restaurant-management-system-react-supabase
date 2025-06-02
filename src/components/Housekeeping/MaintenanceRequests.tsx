@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -347,7 +346,7 @@ const MaintenanceRequests = () => {
               {request.status === 'open' && (
                 <StandardizedButton
                   size="sm"
-                  variant="outline"
+                  variant="secondary"
                   onClick={() => updateStatusMutation.mutate({ id: request.id, status: 'in_progress' })}
                 >
                   Start Work
