@@ -21,6 +21,7 @@ import Inventory from "@/pages/Inventory";
 import Suppliers from "@/pages/Suppliers";
 import CRM from "@/pages/CRM";
 import Expenses from "@/pages/Expenses";
+import Housekeeping from "@/pages/Housekeeping";
 import NotFound from "@/pages/NotFound";
 
 const Routes = () => {
@@ -147,6 +148,12 @@ const Routes = () => {
       <Route path="/expenses" element={
         <SimpleLayout>
           <Expenses />
+        </SimpleLayout>
+      } />
+      
+      <Route path="/housekeeping" element={
+        <SimpleLayout>
+          <Housekeeping />
         </SimpleLayout>
       } />
       

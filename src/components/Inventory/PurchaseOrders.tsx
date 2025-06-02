@@ -8,10 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Package, Eye, Check, X, Truck } from "lucide-react";
 import { useRestaurantId } from "@/hooks/useRestaurantId";
+import CreatePurchaseOrder from "./CreatePurchaseOrder";
 
 interface PurchaseOrder {
   id: string;
@@ -48,6 +48,7 @@ const statusColors = {
 const PurchaseOrders = () => {
   const [selectedOrder, setSelectedOrder] = useState<PurchaseOrder | null>(null);
   const [isReceivingDialogOpen, setIsReceivingDialogOpen] = useState(false);
+  const [isCreateOrderOpen, setIsCreateOrderOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { restaurantId } = useRestaurantId();
@@ -148,7 +149,10 @@ const PurchaseOrders = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Purchase Orders</h2>
-        <Button className="bg-purple-600 hover:bg-purple-700">
+        <Button 
+          className="bg-purple-600 hover:bg-purple-700"
+          onClick={() => setIsCreateOrderOpen(true)}
+        >
           <Plus className="h-4 w-4 mr-2" />
           Create Purchase Order
         </Button>
@@ -207,6 +211,12 @@ const PurchaseOrders = () => {
           </Card>
         ))}
       </div>
+
+      {/* Create Purchase Order Dialog */}
+      <CreatePurchaseOrder
+        isOpen={isCreateOrderOpen}
+        onClose={() => setIsCreateOrderOpen(false)}
+      />
 
       {/* Receiving Dialog */}
       <Dialog open={isReceivingDialogOpen} onOpenChange={setIsReceivingDialogOpen}>

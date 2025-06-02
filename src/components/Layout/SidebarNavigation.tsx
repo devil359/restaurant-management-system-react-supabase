@@ -16,6 +16,7 @@ import {
   ChefHat,
   Contact,
   Receipt,
+  Sparkles,
 } from "lucide-react";
 import {
   SidebarContent,
@@ -85,6 +86,12 @@ const navigationItems: NavigationItem[] = [
     href: "/rooms", 
     icon: Bed, 
     component: "rooms"
+  },
+  { 
+    name: "Housekeeping", 
+    href: "/housekeeping", 
+    icon: Sparkles, 
+    component: "housekeeping"
   },
   { 
     name: "Suppliers", 
