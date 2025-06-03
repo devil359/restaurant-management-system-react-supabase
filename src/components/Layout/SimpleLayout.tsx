@@ -12,7 +12,7 @@ export const SimpleLayout = ({ children }: SimpleLayoutProps) => {
     <SidebarProvider>
       <div className="flex h-screen w-full">
         <Sidebar />
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto" style={{ paddingLeft: '7rem' }}>
           <div className="p-4">
             {children}
           </div>

@@ -17,6 +17,7 @@ import Inventory from "@/pages/Inventory";
 import Suppliers from "@/pages/Suppliers";
 import CRM from "@/pages/CRM";
 import Expenses from "@/pages/Expenses";
+import Housekeeping from "@/pages/Housekeeping";
 import NotFound from "@/pages/NotFound";
 import Auth from "@/pages/Auth";
 
@@ -43,6 +44,7 @@ export const AppRoutes = () => (
     <Route path="/inventory" element={<Inventory />} />
     <Route path="/suppliers" element={<Suppliers />} />
     <Route path="/expenses" element={<Expenses />} />
+    <Route path="/housekeeping" element={<Housekeeping />} />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );
