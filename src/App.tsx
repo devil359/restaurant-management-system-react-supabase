@@ -7,7 +7,6 @@ import "./App.css";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { ErrorBoundary } from "./components/ui/error-boundary";
 import { AuthProvider } from "@/hooks/useAuth";
-import ProtectedRoute from "./components/Auth/ProtectedRoute";
 import { SimpleLayout } from "./components/Layout/SimpleLayout";
 import { AppRoutes } from "./components/Auth/AppRoutes";
 
@@ -32,11 +31,9 @@ function App() {
           <AuthProvider>
             <Router>
               <div className="h-screen w-full overflow-hidden bg-gray-100 dark:bg-gray-900">
-                <ProtectedRoute>
-                  <SimpleLayout>
-                    <AppRoutes />
-                  </SimpleLayout>
-                </ProtectedRoute>
+                <SimpleLayout>
+                  <AppRoutes />
+                </SimpleLayout>
                 <Toaster />
               </div>
             </Router>
