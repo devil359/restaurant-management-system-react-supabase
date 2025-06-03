@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Menu as MenuIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { fetchAllowedComponents } from "@/utils/subscriptionUtils";
 import {
   Sidebar as SidebarComponent,
+  SidebarContent,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { SidebarHeader } from "./SidebarHeader";
@@ -108,9 +108,13 @@ const Sidebar = () => {
     <>
       {mobileToggle}
       <SidebarComponent className="bg-sidebar-purple">
-        <SidebarHeader restaurantName={restaurantName} />
-        <SidebarNavigation allowedComponents={allowedComponents} />
-        <SidebarFooter staffName={staffName} />
+        <SidebarContent>
+          <SidebarHeader restaurantName={restaurantName} />
+          <div className="flex-1 px-2 py-4">
+            <SidebarNavigation allowedComponents={allowedComponents} />
+          </div>
+          <SidebarFooter staffName={staffName} />
+        </SidebarContent>
       </SidebarComponent>
     </>
   );

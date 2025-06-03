@@ -9,13 +9,15 @@ interface SimpleLayoutProps {
 
 export const SimpleLayout = ({ children }: SimpleLayoutProps) => {
   return (
-    <div className="flex h-screen w-full">
-      <SidebarProvider>
+    <SidebarProvider>
+      <div className="flex h-screen w-full">
         <Sidebar />
-        <main className="flex-1 overflow-auto pl-[3rem] md:pl-[18rem] transition-all duration-300">
-          {children}
+        <main className="flex-1 overflow-auto">
+          <div className="p-4">
+            {children}
+          </div>
         </main>
-      </SidebarProvider>
-    </div>
+      </div>
+    </SidebarProvider>
   );
 };
