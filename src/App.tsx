@@ -7,7 +7,9 @@ import "./App.css";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { ErrorBoundary } from "./components/ui/error-boundary";
 import { AuthProvider } from "@/hooks/useAuth";
-import Routes from "./components/Auth/Routes";
+import ProtectedRoute from "./components/Auth/ProtectedRoute";
+import { SimpleLayout } from "./components/Layout/SimpleLayout";
+import { AppRoutes } from "./components/Auth/AppRoutes";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -30,7 +32,11 @@ function App() {
           <AuthProvider>
             <Router>
               <div className="h-screen w-full overflow-hidden bg-gray-100 dark:bg-gray-900">
-                <Routes />
+                <ProtectedRoute>
+                  <SimpleLayout>
+                    <AppRoutes />
+                  </SimpleLayout>
+                </ProtectedRoute>
                 <Toaster />
               </div>
             </Router>

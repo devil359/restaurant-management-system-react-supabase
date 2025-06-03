@@ -18,12 +18,14 @@ import Suppliers from "@/pages/Suppliers";
 import CRM from "@/pages/CRM";
 import Expenses from "@/pages/Expenses";
 import NotFound from "@/pages/NotFound";
+import Auth from "@/pages/Auth";
 
 /**
- * Simple app routes without complex guards
+ * App routes with authentication page
  */
 export const AppRoutes = () => (
   <Routes>
+    <Route path="/auth" element={<Auth />} />
     <Route path="/" element={<Index />} />
     <Route path="/orders" element={<Orders />} />
     <Route path="/rooms" element={<Rooms />} />

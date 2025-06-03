@@ -19,10 +19,12 @@ import Reservations from "@/pages/Reservations";
 import Marketing from "@/pages/Marketing";
 import Reports from "@/pages/Reports";
 import NotFound from "@/pages/NotFound";
+import Auth from "@/pages/Auth";
 
 const AppRoutes = () => {
   return (
     <Routes>
+      <Route path="/auth" element={<Auth />} />
       <Route path="/" element={<Index />} />
       <Route path="/orders" element={<Orders />} />
       <Route path="/menu" element={<Menu />} />
