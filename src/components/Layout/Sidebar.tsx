@@ -8,6 +8,7 @@ import { fetchAllowedComponents } from "@/utils/subscriptionUtils";
 import {
   Sidebar as SidebarComponent,
   SidebarContent,
+  SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { SidebarHeader } from "./SidebarHeader";
@@ -91,23 +92,14 @@ const Sidebar = () => {
     getProfileData();
   }, []);
 
-  const mobileToggle = (
-    <div className="fixed top-4 left-4 z-40 lg:hidden">
-      <Button
-        onClick={() => setOpenMobile(true)}
-        variant="outline"
-        size="icon"
-        className="bg-card"
-      >
-        <MenuIcon className="h-5 w-5" />
-      </Button>
-    </div>
-  );
-
   return (
     <>
-      {mobileToggle}
-      <SidebarComponent className="bg-sidebar-purple">
+      {/* Mobile trigger - only show on mobile */}
+      <div className="lg:hidden">
+        <SidebarTrigger />
+      </div>
+      
+      <SidebarComponent className="bg-sidebar-purple border-r border-border/50">
         <SidebarContent>
           <SidebarHeader restaurantName={restaurantName} />
           <div className="flex-1 px-2 py-4">
