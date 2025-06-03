@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, memo } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,7 +23,7 @@ interface MenuItem {
   is_special?: boolean;
 }
 
-// Memoized MenuItem component with enhanced design
+// Memoized MenuItem component to avoid re-renders
 const MenuItemCard = memo(({ 
   item, 
   onEdit, 
@@ -34,61 +35,50 @@ const MenuItemCard = memo(({
   onDelete: (id: string) => void, 
   getCategoryIcon: (category: string) => JSX.Element 
 }) => (
-  <Card key={item.id} className="group overflow-hidden hover:shadow-xl transition-all duration-300 border-0 shadow-md hover:scale-[1.02]">
-    <div className="relative h-52">
+  <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+    <div className="relative h-48">
       <img
         src={item.image_url || "/placeholder.svg"}
         alt={item.name}
-        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+        className="w-full h-full object-cover"
         loading="lazy"
       />
-      
-      {/* Category Icon */}
-      <div className="absolute top-3 right-3">
-        <div className="p-2 bg-white/95 backdrop-blur-sm rounded-full shadow-lg">
+      <div className="absolute top-2 right-2">
+        <div className="p-2 bg-white/90 rounded-full shadow-md">
           {getCategoryIcon(item.category)}
         </div>
       </div>
-      
-      {/* Veg/Non-Veg Badge */}
-      <div className="absolute top-3 left-3">
-        {item.is_veg ? (
-          <div className="bg-green-500 text-white text-xs font-medium px-3 py-1 rounded-full shadow-md">
-            Veg
-          </div>
-        ) : (
-          <div className="bg-red-500 text-white text-xs font-medium px-3 py-1 rounded-full shadow-md">
-            Non-Veg
-          </div>
-        )}
-      </div>
-      
-      {/* Special Badge */}
-      {item.is_special && (
-        <div className="absolute bottom-3 right-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white text-xs font-medium px-3 py-1 rounded-full shadow-md">
-          ⭐ Special
+      {item.is_veg && (
+        <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full">
+          Veg
         </div>
       )}
-      
-      {/* Price Overlay */}
-      <div className="absolute bottom-3 left-3 bg-black/70 backdrop-blur-sm text-white px-3 py-1 rounded-full">
-        <span className="font-bold text-lg">₹{item.price}</span>
-      </div>
+      {!item.is_veg && (
+        <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+          Non-Veg
+        </div>
+      )}
+      {item.is_special && (
+        <div className="absolute bottom-2 right-2 bg-purple-600 text-white text-xs px-2 py-1 rounded-full">
+          Special
+        </div>
+      )}
     </div>
-    
-    <div className="p-5">
-      <div className="mb-4">
-        <h3 className="font-bold text-lg text-gray-800 mb-1 line-clamp-1">{item.name}</h3>
-        <p className="text-sm text-purple-600 font-medium mb-2">{item.category}</p>
-        {item.description && (
-          <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">{item.description}</p>
-        )}
+    <div className="p-4">
+      <div className="flex justify-between items-start">
+        <div>
+          <h3 className="font-semibold text-gray-800">{item.name}</h3>
+          <p className="text-sm text-muted-foreground">{item.category}</p>
+          {item.description && (
+            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{item.description}</p>
+          )}
+        </div>
+        <p className="font-bold text-purple-600">₹{item.price}</p>
       </div>
-      
-      <div className="flex gap-3">
+      <div className="flex gap-2 mt-4">
         <Button 
           variant="outline" 
-          className="flex-1 hover:bg-purple-50 hover:border-purple-200 hover:text-purple-700 transition-colors"
+          className="flex-1 hover:bg-purple-50"
           onClick={() => onEdit(item)}
         >
           <Edit2 className="w-4 h-4 mr-2" />
@@ -96,7 +86,7 @@ const MenuItemCard = memo(({
         </Button>
         <Button 
           variant="outline" 
-          className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50 hover:border-red-200 transition-colors"
+          className="flex-1 text-destructive hover:text-destructive hover:bg-red-50"
           onClick={() => onDelete(item.id)}
         >
           <Trash2 className="w-4 h-4 mr-2" />
@@ -167,15 +157,15 @@ const MenuGrid = () => {
   const getCategoryIcon = useCallback((category: string) => {
     switch (category?.toLowerCase()) {
       case 'desserts':
-        return <CakeSlice className="h-5 w-5 text-pink-500" />;
+        return <CakeSlice className="h-6 w-6 text-pink-500" />;
       case 'beverages':
-        return <Coffee className="h-5 w-5 text-brown-500" />;
+        return <Coffee className="h-6 w-6 text-brown-500" />;
       case 'main course':
-        return <Pizza className="h-5 w-5 text-orange-500" />;
+        return <Pizza className="h-6 w-6 text-orange-500" />;
       case 'non-veg':
-        return <Beef className="h-5 w-5 text-red-500" />;
+        return <Beef className="h-6 w-6 text-red-500" />;
       default:
-        return <Soup className="h-5 w-5 text-purple-600" />;
+        return <Soup className="h-6 w-6 text-primary" />;
     }
   }, []);
 
@@ -235,99 +225,71 @@ const MenuGrid = () => {
   const groupedItemsData = groupedItems();
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading menu items...</p>
-        </div>
-      </div>
-    );
+    return <div className="p-8 text-center">Loading menu items...</div>;
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Header with Add Button */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800">Menu Items</h2>
-          <p className="text-gray-600 mt-1">Manage your restaurant's delicious offerings</p>
-        </div>
+    <div className="space-y-4 animate-fade-in">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Menu Items</h2>
         <Button 
-          className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+          className="bg-purple-600 hover:bg-purple-700 text-white"
           onClick={() => {
             setEditingItem(null);
             setShowAddForm(true);
           }}
         >
           <Plus className="w-4 h-4 mr-2" />
-          Add New Item
+          Add Item
         </Button>
       </div>
 
-      {/* Enhanced Search Bar */}
+      {/* Search bar */}
       <div className="relative">
-        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
         <Input
-          placeholder="Search menu items by name, description, or category..."
-          className="pl-12 h-12 text-base border-gray-200 focus:border-purple-400 focus:ring-purple-400"
+          placeholder="Search menu items..."
+          className="pl-10"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
       </div>
 
-      {/* Enhanced Category Tabs */}
+      {/* Category tabs */}
       <Tabs defaultValue="all" value={activeCategory} onValueChange={setActiveCategory}>
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1 h-auto p-1 bg-gray-100">
-          <TabsTrigger value="all" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">All Items</TabsTrigger>
-          <TabsTrigger value="veg" className="text-green-600 data-[state=active]:bg-green-600 data-[state=active]:text-white">Vegetarian</TabsTrigger>
-          <TabsTrigger value="non-veg" className="text-red-600 data-[state=active]:bg-red-600 data-[state=active]:text-white">Non-Veg</TabsTrigger>
-          <TabsTrigger value="special" className="text-purple-600 data-[state=active]:bg-purple-600 data-[state=active]:text-white">Specials</TabsTrigger>
-          {Object.keys(groupedItemsData).slice(0, 3).map((category) => (
-            <TabsTrigger key={category} value={category} className="data-[state=active]:bg-purple-600 data-[state=active]:text-white">
+        <TabsList className="mb-4 w-full justify-start overflow-x-auto">
+          <TabsTrigger value="all">All Items</TabsTrigger>
+          <TabsTrigger value="veg" className="text-green-600">Vegetarian</TabsTrigger>
+          <TabsTrigger value="non-veg" className="text-red-600">Non-Vegetarian</TabsTrigger>
+          <TabsTrigger value="special" className="text-purple-600">Restaurant Specials</TabsTrigger>
+          {Object.keys(groupedItemsData).map((category) => (
+            <TabsTrigger key={category} value={category}>
               {category}
             </TabsTrigger>
           ))}
         </TabsList>
 
-        {/* Category Statistics */}
-        {activeCategory === "all" && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mt-6">
-            {Object.entries(groupedItemsData).map(([category, items]) => (
-              <Card key={category} className="flex items-center gap-3 p-4 bg-gradient-to-br from-white to-gray-50 border-0 shadow-md hover:shadow-lg transition-shadow cursor-pointer">
-                {getCategoryIcon(category)}
-                <div>
-                  <h3 className="font-semibold text-gray-700 text-sm">{category}</h3>
-                  <p className="text-xs text-gray-500">
-                    {items.length} item{items.length !== 1 ? 's' : ''}
-                  </p>
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
+        {/* All items are shown in each tab, but filtered accordingly */}
+        <div className="flex flex-wrap gap-4 mb-6">
+          {activeCategory === "all" && Object.entries(groupedItemsData).map(([category, items]) => (
+            <Card key={category} className="flex items-center gap-3 p-4 bg-gradient-to-br from-white to-gray-50 border-none shadow-md">
+              {getCategoryIcon(category)}
+              <div>
+                <h3 className="font-medium text-gray-700">{category}</h3>
+                <p className="text-sm text-muted-foreground">
+                  {items.length} items
+                </p>
+              </div>
+            </Card>
+          ))}
+        </div>
       </Tabs>
 
-      {/* Enhanced Menu Items Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+      {/* Menu items grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredMenuItems?.length === 0 ? (
-          <div className="col-span-full">
-            <Card className="p-12 text-center border-2 border-dashed border-gray-200">
-              <div className="text-gray-400 mb-4">
-                <Soup className="h-16 w-16 mx-auto" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-600 mb-2">No menu items found</h3>
-              <p className="text-gray-500 mb-4">Try adjusting your search or category filter</p>
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setSearchQuery("");
-                  setActiveCategory("all");
-                }}
-              >
-                Clear Filters
-              </Button>
-            </Card>
+          <div className="col-span-full text-center p-8 text-muted-foreground">
+            No menu items found. Try a different search or category.
           </div>
         ) : (
           filteredMenuItems?.map((item) => (

@@ -1,7 +1,7 @@
 
 import { ReactNode } from "react";
 import Sidebar from "./Sidebar";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 
 interface SimpleLayoutProps {
   children: ReactNode;
@@ -12,11 +12,11 @@ export const SimpleLayout = ({ children }: SimpleLayoutProps) => {
     <SidebarProvider>
       <div className="flex h-screen w-full">
         <Sidebar />
-        <SidebarInset className="flex-1 overflow-auto">
-          <div className="p-4 md:p-6">
+        <main className="flex-1 overflow-auto">
+          <div className="p-4">
             {children}
           </div>
-        </SidebarInset>
+        </main>
       </div>
     </SidebarProvider>
   );
