@@ -190,7 +190,7 @@ const AdvancedAnalytics = () => {
       <div className="flex flex-wrap gap-4 mb-6">
         <div className="flex items-center gap-2">
           <Calendar className="h-4 w-4" />
-          <DatePickerWithRange date={dateRange} setDate={setDateRange} />
+          <DatePickerWithRange onDateRangeChange={setDateRange} />
         </div>
         <Select value={reportType} onValueChange={setReportType}>
           <SelectTrigger className="w-48">
