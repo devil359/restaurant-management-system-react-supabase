@@ -2,7 +2,8 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Permission, UserProfile, UserRole, rolePermissions } from "@/types/auth";
-import type { Session } from '@supabase/supabase-js';
+import type { Session, User } from '@supabase/supabase-js';
+import { useToast } from "@/hooks/use-toast";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -24,78 +25,61 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [sessionState, setSessionState] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
-    setLoading(true);
-    console.log("AuthProvider: Effect triggered. Initial loading state forced to true.");
-
+    console.log("AuthProvider: Setting up authentication");
+    
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
-        console.log(`AuthProvider: onAuthStateChange event: ${event}, session present: ${!!currentSession}`);
+        console.log(`AuthProvider: Auth event: ${event}`, currentSession ? 'with session' : 'no session');
+        
         setSessionState(currentSession);
         
-        try {
-          if (currentSession?.user && currentSession.user.id) {
-            const userId = currentSession.user.id;
-            const userEmail = currentSession.user.email;
-
-            console.log(`AuthProvider: User session active. User ID: ${userId}`);
-
-            const { data: profile, error: profileError } = await supabase
+        if (currentSession?.user) {
+          try {
+            // Fetch user profile
+            const { data: profile, error } = await supabase
               .from('profiles')
               .select('*')
-              .eq('id', userId)
+              .eq('id', currentSession.user.id)
               .single();
 
-            if (profileError) {
-              console.error(`AuthProvider: Error fetching profile for user ${userId}:`, profileError.message);
-              
-              // If profile doesn't exist (not found error), create one
-              if (profileError.code === 'PGRST116') {
-                console.log(`AuthProvider: Profile not found for user ${userId}. Creating new profile.`);
-                const { data: newProfileData, error: newProfileError } = await supabase
-                  .from('profiles')
-                  .insert({
-                    id: userId,
-                    role: 'staff',
-                    first_name: userEmail?.split('@')[0] || 'User'
-                  })
-                  .select()
-                  .single();
+            if (error && error.code === 'PGRST116') {
+              // Profile doesn't exist, create one
+              const { data: newProfile, error: createError } = await supabase
+                .from('profiles')
+                .insert({
+                  id: currentSession.user.id,
+                  role: 'staff',
+                  first_name: currentSession.user.email?.split('@')[0] || 'User'
+                })
+                .select()
+                .single();
 
-                if (newProfileError) {
-                  console.error(`AuthProvider: Error creating profile for user ${userId}:`, newProfileError.message);
-                  // Sign out user if profile creation fails
-                  await supabase.auth.signOut();
-                  setUser(null);
-                  return;
-                } else if (newProfileData) {
-                  console.log(`AuthProvider: New profile created for user ${userId}.`);
-                  setUser({
-                    id: newProfileData.id,
-                    email: userEmail,
-                    role: newProfileData.role as UserRole,
-                    restaurant_id: newProfileData.restaurant_id,
-                    first_name: newProfileData.first_name,
-                    last_name: newProfileData.last_name,
-                    avatar_url: newProfileData.avatar_url,
-                    phone: newProfileData.phone,
-                    is_active: newProfileData.is_active ?? true,
-                    created_at: newProfileData.created_at,
-                    updated_at: newProfileData.updated_at
-                  });
-                }
-              } else {
-                // For other errors, sign out the user
-                console.error(`AuthProvider: Critical profile error for user ${userId}, signing out.`);
-                await supabase.auth.signOut();
+              if (createError) {
+                console.error('Failed to create profile:', createError);
                 setUser(null);
+              } else {
+                setUser({
+                  id: newProfile.id,
+                  email: currentSession.user.email,
+                  role: newProfile.role as UserRole,
+                  restaurant_id: newProfile.restaurant_id,
+                  first_name: newProfile.first_name,
+                  last_name: newProfile.last_name,
+                  avatar_url: newProfile.avatar_url,
+                  phone: newProfile.phone,
+                  is_active: newProfile.is_active ?? true,
+                  created_at: newProfile.created_at,
+                  updated_at: newProfile.updated_at
+                });
               }
             } else if (profile) {
-              console.log(`AuthProvider: Profile found for user ${userId}.`);
               setUser({
                 id: profile.id,
-                email: userEmail,
+                email: currentSession.user.email,
                 first_name: profile.first_name,
                 last_name: profile.last_name,
                 role: profile.role as UserRole,
@@ -107,43 +91,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 updated_at: profile.updated_at
               });
             } else {
-              console.warn(`AuthProvider: Profile query returned no data for user ${userId}.`);
-              // Sign out if profile exists but returned no data
-              await supabase.auth.signOut();
               setUser(null);
             }
-          } else {
-            console.log("AuthProvider: No active session or user ID. Setting user to null.");
+          } catch (error) {
+            console.error('Error fetching profile:', error);
             setUser(null);
           }
-        } catch (error: any) {
-          console.error("AuthProvider: Unexpected error during auth state change processing:", error.message);
-          // Sign out on unexpected errors
-          await supabase.auth.signOut();
+        } else {
           setUser(null);
-        } finally {
-          console.log("AuthProvider: Auth processing finished (onAuthStateChange). Setting loading to false.");
-          setLoading(false);
         }
+        
+        setLoading(false);
       }
     );
 
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
-      console.log(`AuthProvider: getSession() resolved. Initial session present: ${!!initialSession}`);
-      if (initialSession && !sessionState) {
-        setSessionState(initialSession);
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('AuthProvider: Initial session check:', session ? 'found' : 'none');
+      if (!session) {
+        setLoading(false);
       }
-    }).catch(error => {
-      console.error("AuthProvider: Error in getSession() during initial check:", error.message);
-      setLoading(false);
     });
 
     return () => {
-      console.log("AuthProvider: Unsubscribing from auth state changes.");
       subscription.unsubscribe();
     };
-  }, []);
+  }, [toast]);
 
   const hasPermission = (permission: Permission): boolean => {
     if (!user) return false;
@@ -161,9 +134,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const signOut = async (): Promise<void> => {
-    console.log("AuthProvider: Signing out.");
-    setLoading(true); 
-    await supabase.auth.signOut();
+    console.log("AuthProvider: Signing out");
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Sign out error:', error);
+        toast({
+          title: "Error",
+          description: "Failed to sign out. Please try again.",
+          variant: "destructive",
+        });
+      } else {
+        setUser(null);
+        setSessionState(null);
+        toast({
+          title: "Signed out",
+          description: "You have been successfully signed out.",
+        });
+      }
+    } catch (error) {
+      console.error('Unexpected sign out error:', error);
+      toast({
+        title: "Error", 
+        description: "An unexpected error occurred during sign out.",
+        variant: "destructive",
+      });
+    }
   };
 
   const value: AuthContextType = {

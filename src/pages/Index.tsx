@@ -17,11 +17,13 @@ import {
   Shield
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import Stats from "@/components/Dashboard/Stats";
 import WeeklySalesChart from "@/components/Dashboard/WeeklySalesChart";
 
 const Index = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const quickActions = [
     {
@@ -54,10 +56,12 @@ const Index = () => {
     }
   ];
 
+  const displayName = user?.first_name || user?.email?.split('@')[0] || "User";
+
   return (
     <div className="p-4 md:p-6 space-y-6 bg-gradient-to-br from-gray-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 min-h-screen">
       <PageHeader
-        title="Welcome to Restaurant Management Dashboard!"
+        title={`Welcome back, ${displayName}!`}
         description="Here's an overview of your restaurant and hotel operations"
       />
 
@@ -71,13 +75,13 @@ const Index = () => {
                 Welcome to your Dashboard
               </h3>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                You have full access to all restaurant management features.
+                You have access to restaurant management features as a {user?.role || 'staff member'}.
               </p>
             </div>
           </div>
           <div className="bg-white dark:bg-gray-800 px-3 py-1 rounded-full">
             <span className="text-xs font-medium text-purple-600 dark:text-purple-400">
-              Demo Mode
+              {user?.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'Staff'}
             </span>
           </div>
         </div>
