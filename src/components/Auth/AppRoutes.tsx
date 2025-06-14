@@ -20,31 +20,201 @@ import Expenses from "@/pages/Expenses";
 import Housekeeping from "@/pages/Housekeeping";
 import NotFound from "@/pages/NotFound";
 import Auth from "@/pages/Auth";
+import RestaurantDetailsPage from "@/pages/Setup/RestaurantDetailsPage"; // New import
+import { ProtectedRoute } from "./RouteGuards"; // Assuming ProtectedRoute handles general auth
+import RestaurantSetupGuard from "./RestaurantSetupGuard"; // New import
 
 /**
- * App routes with authentication page
+ * App routes with authentication and setup guard
  */
 export const AppRoutes = () => (
   <Routes>
     <Route path="/auth" element={<Auth />} />
-    <Route path="/" element={<Index />} />
-    <Route path="/orders" element={<Orders />} />
-    <Route path="/rooms" element={<Rooms />} />
-    <Route path="/staff" element={<Staff />} />
-    <Route path="/menu" element={<Menu />} />
-    <Route path="/tables" element={<Tables />} />
-    <Route path="/reservations" element={<Reservations />} />
-    <Route path="/customers" element={<Customers />} />
-    <Route path="/crm" element={<CRM />} />
-    <Route path="/analytics" element={<Analytics />} />
-    <Route path="/settings" element={<Settings />} />
-    <Route path="/kitchen" element={<KitchenDisplay />} />
-    <Route path="/ai" element={<AI />} />
-    <Route path="/business-dashboard" element={<BusinessDashboard />} />
-    <Route path="/inventory" element={<Inventory />} />
-    <Route path="/suppliers" element={<Suppliers />} />
-    <Route path="/expenses" element={<Expenses />} />
-    <Route path="/housekeeping" element={<Housekeeping />} />
+    <Route path="/setup/restaurant-details" element={<ProtectedRoute><RestaurantDetailsPage /></ProtectedRoute>} />
+
+    {/* Protected routes that require setup to be complete */}
+    <Route 
+      path="/" 
+      element={
+        <ProtectedRoute>
+          <RestaurantSetupGuard>
+            <Index />
+          </RestaurantSetupGuard>
+        </ProtectedRoute>
+      } 
+    />
+    <Route 
+      path="/orders" 
+      element={
+        <ProtectedRoute>
+          <RestaurantSetupGuard>
+            <Orders />
+          </RestaurantSetupGuard>
+        </ProtectedRoute>
+      } 
+    />
+    <Route 
+      path="/rooms" 
+      element={
+        <ProtectedRoute>
+          <RestaurantSetupGuard>
+            <Rooms />
+          </RestaurantSetupGuard>
+        </ProtectedRoute>
+      } 
+    />
+    <Route 
+      path="/staff" 
+      element={
+        <ProtectedRoute>
+          <RestaurantSetupGuard>
+            <Staff />
+          </RestaurantSetupGuard>
+        </ProtectedRoute>
+      } 
+    />
+    <Route 
+      path="/menu" 
+      element={
+        <ProtectedRoute>
+          <RestaurantSetupGuard>
+            <Menu />
+          </RestaurantSetupGuard>
+        </ProtectedRoute>
+      } 
+    />
+    <Route 
+      path="/tables" 
+      element={
+        <ProtectedRoute>
+          <RestaurantSetupGuard>
+            <Tables />
+          </RestaurantSetupGuard>
+        </ProtectedRoute>
+      } 
+    />
+    <Route 
+      path="/reservations" 
+      element={
+        <ProtectedRoute>
+          <RestaurantSetupGuard>
+            <Reservations />
+          </RestaurantSetupGuard>
+        </ProtectedRoute>
+      } 
+    />
+    <Route 
+      path="/customers" 
+      element={
+        <ProtectedRoute>
+          <RestaurantSetupGuard>
+            <Customers />
+          </RestaurantSetupGuard>
+        </ProtectedRoute>
+      } 
+    />
+    <Route 
+      path="/crm" 
+      element={
+        <ProtectedRoute>
+          <RestaurantSetupGuard>
+            <CRM />
+          </RestaurantSetupGuard>
+        </ProtectedRoute>
+      } 
+    />
+    <Route 
+      path="/analytics" 
+      element={
+        <ProtectedRoute>
+          <RestaurantSetupGuard>
+            <Analytics />
+          </RestaurantSetupGuard>
+        </ProtectedRoute>
+      } 
+    />
+    <Route 
+      path="/settings" 
+      element={
+        <ProtectedRoute>
+          <RestaurantSetupGuard>
+            <Settings />
+          </RestaurantSetupGuard>
+        </ProtectedRoute>
+      } 
+    />
+    <Route 
+      path="/kitchen" 
+      element={
+        <ProtectedRoute>
+          <RestaurantSetupGuard>
+            <KitchenDisplay />
+          </RestaurantSetupGuard>
+        </ProtectedRoute>
+      } 
+    />
+    <Route 
+      path="/ai" 
+      element={
+        <ProtectedRoute>
+          <RestaurantSetupGuard>
+            <AI />
+          </RestaurantSetupGuard>
+        </ProtectedRoute>
+      } 
+    />
+    <Route 
+      path="/business-dashboard" 
+      element={
+        <ProtectedRoute>
+          <RestaurantSetupGuard>
+            <BusinessDashboard />
+          </RestaurantSetupGuard>
+        </ProtectedRoute>
+      } 
+    />
+    <Route 
+      path="/inventory" 
+      element={
+        <ProtectedRoute>
+          <RestaurantSetupGuard>
+            <Inventory />
+          </RestaurantSetupGuard>
+        </ProtectedRoute>
+      } 
+    />
+    <Route 
+      path="/suppliers" 
+      element={
+        <ProtectedRoute>
+          <RestaurantSetupGuard>
+            <Suppliers />
+          </RestaurantSetupGuard>
+        </ProtectedRoute>
+      } 
+    />
+    <Route 
+      path="/expenses" 
+      element={
+        <ProtectedRoute>
+          <RestaurantSetupGuard>
+            <Expenses />
+          </RestaurantSetupGuard>
+        </ProtectedRoute>
+      } 
+    />
+    <Route 
+      path="/housekeeping" 
+      element={
+        <ProtectedRoute>
+          <RestaurantSetupGuard>
+            <Housekeeping />
+          </RestaurantSetupGuard>
+        </ProtectedRoute>
+      } 
+    />
+    {/* Add other main routes here, wrapped similarly */}
+
     <Route path="*" element={<NotFound />} />
   </Routes>
 );
