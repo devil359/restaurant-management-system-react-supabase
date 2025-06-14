@@ -25,16 +25,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
         setSessionState(currentSession);
-        if (currentSession?.user) {
-          // Fetch user profile with role information
+        if (currentSession?.user && currentSession.user.id) { // Ensure user and user.id exist
+          const userId = currentSession.user.id; // Use a variable for clarity and safety
+
           const { data: profile } = await supabase
             .from('profiles')
             .select('*')
-            .eq('id', currentSession.user.id)
+            .eq('id', userId) // Use guarded userId
             .single();
 
           if (profile) {
@@ -52,13 +52,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               updated_at: profile.updated_at
             });
           } else {
-            // Create default profile if doesn't exist
             const { data: newProfileData, error: newProfileError } = await supabase
               .from('profiles')
               .insert({
-                id: currentSession.user.id,
+                id: userId, // Use guarded userId
                 email: currentSession.user.email,
-                role: 'staff',
+                role: 'staff', 
                 is_active: true
               })
               .select()
@@ -84,7 +83,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             }
           }
         } else {
-          setUser(null);
+          setUser(null); // No session, no user, or no user.id
         }
         setLoading(false);
       }

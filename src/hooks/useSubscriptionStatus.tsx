@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { checkSubscriptionStatus } from '@/utils/subscriptionUtils';
-import { supabase } from '@/integrations/supabase/client'; // Added for onAuthStateChange
+import { supabase } from '@/integrations/supabase/client';
 
 interface UseSubscriptionStatusReturn {
   hasActiveSubscription: boolean | null;
@@ -13,14 +13,14 @@ interface UseSubscriptionStatusReturn {
 export const useSubscriptionStatus = (initialRestaurantId: string | null | undefined): UseSubscriptionStatusReturn => {
   const [hasActiveSubscription, setHasActiveSubscription] = useState<boolean | null>(null);
   const [isLoadingSubscription, setIsLoadingSubscription] = useState(true);
-  // This state is to ensure we use the restaurant_id from the latest profile after auth state change
-  const [restaurantIdFromProfile, setRestaurantIdFromProfile] = useState<string | null>(initialRestaurantId || null);
+  const [restaurantIdFromProfile, setRestaurantIdFromProfile] = useState<string | null>(initialRestaurantId === undefined ? null : initialRestaurantId);
 
   useEffect(() => {
-    // This effect helps ensure restaurantIdFromProfile is updated if initialRestaurantId changes
-    // e.g. when user from useAuth() updates.
     if (initialRestaurantId !== undefined) {
         setRestaurantIdFromProfile(initialRestaurantId);
+    } else {
+        // If initialRestaurantId becomes undefined (e.g. user logs out from useAuth), set to null
+        setRestaurantIdFromProfile(null);
     }
   }, [initialRestaurantId]);
 
@@ -59,45 +59,48 @@ export const useSubscriptionStatus = (initialRestaurantId: string | null | undef
 
     fetchSubStatus(restaurantIdFromProfile);
 
-    // Listen for auth changes to re-fetch profile and then subscription status
-    // This is important if the user logs in/out or session changes,
-    // as their restaurant_id might change or become available.
     const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log("useSubscriptionStatus: Auth state changed:", event);
         if (mounted) {
-          if (session?.user) {
-            setIsLoadingSubscription(true); // Indicate loading while we fetch new profile/sub
+          if (session?.user && session.user.id) { // Ensure user and user.id exist
+            setIsLoadingSubscription(true);
+            const userId = session.user.id; // Use a variable
+
             const { data: profile, error: profileError } = await supabase
               .from("profiles")
               .select("restaurant_id")
-              .eq("id", session.user.id)
+              .eq("id", userId) // Use guarded userId
               .maybeSingle();
 
             if (profileError) {
               console.error("useSubscriptionStatus (auth change): Profile error:", profileError);
               setRestaurantIdFromProfile(null);
-              fetchSubStatus(null); // Re-check with null restaurantId
+              // fetchSubStatus(null); // This will be triggered by restaurantIdFromProfile change
+              setIsLoadingSubscription(false); // Ensure loading state is updated
               return;
             }
             
             const newRestaurantId = profile?.restaurant_id || null;
             console.log("useSubscriptionStatus (auth change): New restaurant_id:", newRestaurantId);
-            setRestaurantIdFromProfile(newRestaurantId);
-            // fetchSubStatus will be triggered by restaurantIdFromProfile change if it's different,
-            // or we can call it directly if needed, but useEffect on restaurantIdFromProfile handles it.
-            // For safety, let's ensure it runs.
+            
+            // setRestaurantIdFromProfile will trigger the other useEffect to call fetchSubStatus
             if (newRestaurantId !== restaurantIdFromProfile) {
-                 // The useEffect for restaurantIdFromProfile will handle this.
+                 setRestaurantIdFromProfile(newRestaurantId);
             } else {
-                fetchSubStatus(newRestaurantId); // If restaurantId didn't change, still re-fetch.
+                // If restaurantId didn't change, but auth event happened, might still need to re-fetch.
+                // Or, if profile fetch was successful but didn't change the ID,
+                // and we were previously in a loading state from this auth change.
+                fetchSubStatus(newRestaurantId); 
             }
-
+            // setIsLoadingSubscription(false) will be handled by fetchSubStatus
           } else {
-            // No session, clear restaurant_id and set subscription to false
-            console.log("useSubscriptionStatus (auth change): No session, clearing restaurant_id.");
+            console.log("useSubscriptionStatus (auth change): No session or no user.id, clearing restaurant_id.");
             setRestaurantIdFromProfile(null);
-            fetchSubStatus(null);
+            // fetchSubStatus(null); // This will be triggered by restaurantIdFromProfile change
+            // Ensure loading is false if we are clearing due to no session.
+            if (isLoadingSubscription) setIsLoadingSubscription(false); 
+            if (hasActiveSubscription !== false) setHasActiveSubscription(false);
           }
         }
       }
@@ -111,4 +114,3 @@ export const useSubscriptionStatus = (initialRestaurantId: string | null | undef
 
   return { hasActiveSubscription, isLoadingSubscription, restaurantIdFromProfile, setRestaurantIdFromProfile };
 };
-
