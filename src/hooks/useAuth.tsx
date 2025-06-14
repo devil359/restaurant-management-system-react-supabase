@@ -1,9 +1,19 @@
-
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Permission, UserProfile, UserRole, rolePermissions, AuthContextType } from "@/types/auth";
+import { Permission, UserProfile, UserRole, rolePermissions } from "@/types/auth";
+import type { Session } from '@supabase/supabase-js';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+interface AuthContextType {
+  user: UserProfile | null;
+  session: Session | null;
+  loading: boolean;
+  hasPermission: (permission: Permission) => boolean;
+  hasAnyPermission: (permissions: Permission[]) => boolean;
+  isRole: (role: UserRole) => boolean;
+  signOut: () => Promise<void>;
+}
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -11,24 +21,26 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [sessionState, setSessionState] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (session?.user) {
+      async (event, currentSession) => {
+        setSessionState(currentSession);
+        if (currentSession?.user) {
           // Fetch user profile with role information
           const { data: profile } = await supabase
             .from('profiles')
             .select('*')
-            .eq('id', session.user.id)
+            .eq('id', currentSession.user.id)
             .single();
 
           if (profile) {
             setUser({
               id: profile.id,
-              email: session.user.email,
+              email: currentSession.user.email,
               first_name: profile.first_name,
               last_name: profile.last_name,
               role: profile.role as UserRole,
@@ -41,24 +53,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             });
           } else {
             // Create default profile if doesn't exist
-            const { data: newProfile } = await supabase
+            const { data: newProfileData, error: newProfileError } = await supabase
               .from('profiles')
               .insert({
-                id: session.user.id,
+                id: currentSession.user.id,
+                email: currentSession.user.email,
                 role: 'staff',
                 is_active: true
               })
               .select()
               .single();
 
-            if (newProfile) {
+            if (newProfileError) {
+              console.error("Error creating profile:", newProfileError);
+              setUser(null);
+            } else if (newProfileData) {
               setUser({
-                id: newProfile.id,
-                email: session.user.email,
-                role: 'staff',
-                is_active: true,
-                created_at: newProfile.created_at,
-                updated_at: newProfile.updated_at
+                id: newProfileData.id,
+                email: currentSession.user.email,
+                role: newProfileData.role as UserRole,
+                restaurant_id: newProfileData.restaurant_id,
+                first_name: newProfileData.first_name,
+                last_name: newProfileData.last_name,
+                avatar_url: newProfileData.avatar_url,
+                phone: newProfileData.phone,
+                is_active: newProfileData.is_active ?? true,
+                created_at: newProfileData.created_at,
+                updated_at: newProfileData.updated_at
               });
             }
           }
@@ -70,8 +91,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     );
 
     // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      setSessionState(initialSession);
+      if (!initialSession) {
         setLoading(false);
       }
     });
@@ -97,10 +119,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signOut = async (): Promise<void> => {
     await supabase.auth.signOut();
     setUser(null);
+    setSessionState(null);
   };
 
   const value: AuthContextType = {
     user,
+    session: sessionState,
     loading,
     hasPermission,
     hasAnyPermission,
