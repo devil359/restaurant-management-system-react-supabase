@@ -20,6 +20,7 @@ import Expenses from "@/pages/Expenses";
 import Housekeeping from "@/pages/Housekeeping";
 import NotFound from "@/pages/NotFound";
 import Auth from "@/pages/Auth";
+import Reports from "@/pages/Reports";
 import RestaurantDetailsPage from "@/pages/Setup/RestaurantDetailsPage";
 import ProtectedRoute from "./ProtectedRoute"; // Still needed for the setup route
 import GuardedRouteElement from "./GuardedRouteElement"; // New import
@@ -50,6 +51,7 @@ export const AppRoutes = () => (
     <Route path="/customers" element={<GuardedRouteElement component={<Customers />} />} />
     <Route path="/crm" element={<GuardedRouteElement component={<CRM />} />} />
     <Route path="/analytics" element={<GuardedRouteElement component={<Analytics />} />} />
+    <Route path="/reports" element={<GuardedRouteElement component={<Reports />} />} />
     <Route path="/settings" element={<GuardedRouteElement component={<Settings />} />} />
     <Route path="/kitchen" element={<GuardedRouteElement component={<KitchenDisplay />} />} />
     <Route path="/ai" element={<GuardedRouteElement component={<AI />} />} />
