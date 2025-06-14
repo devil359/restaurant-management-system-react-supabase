@@ -22,10 +22,13 @@ export interface KitchenOrder {
 }
 
 // --- Modern UI: glass card helpers ---
-function GlassyCard({ children, className = "" }) {
+function GlassyCard({ children, className = "", style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
   // semi-transparent white/blurred bg, glass effect
   return (
-    <div className={`rounded-2xl bg-white/60 dark:bg-white/10 backdrop-blur-md shadow-xl border border-white/30 dark:border-white/5 ${className}`}>
+    <div
+      className={`rounded-2xl bg-white/60 dark:bg-white/10 backdrop-blur-md shadow-xl border border-white/30 dark:border-white/5 ${className}`}
+      style={style}
+    >
       {children}
     </div>
   );
