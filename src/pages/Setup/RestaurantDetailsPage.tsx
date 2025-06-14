@@ -1,6 +1,5 @@
-
 import React, { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form'; // Added Controller import
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,13 +11,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useSimpleAuth } from '@/hooks/useSimpleAuth'; // To get user and restaurant_id
+import { useAuth } from '@/hooks/useAuth'; // Changed from useSimpleAuth
 
 const restaurantDetailsSchema = z.object({
   name: z.string().min(2, { message: "Restaurant name must be at least 2 characters." }),
   address: z.string().min(5, { message: "Address must be at least 5 characters." }),
   currency: z.string().min(3, { message: "Currency code must be 3 characters (e.g., USD)." }),
-  // Add other fields like phone, email, timezone later if needed
 });
 
 type RestaurantDetailsFormData = z.infer<typeof restaurantDetailsSchema>;
@@ -37,8 +35,8 @@ const RestaurantDetailsPage = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user, profile } = useSimpleAuth();
-  const restaurantId = profile?.restaurant_id;
+  const { user, loading: isLoadingUser } = useAuth(); // Use user from useAuth, and its loading state
+  const restaurantId = user?.restaurant_id;
 
   const { data: restaurant, isLoading: isLoadingRestaurant } = useQuery({
     queryKey: ['restaurant', restaurantId],
@@ -86,8 +84,8 @@ const RestaurantDetailsPage = () => {
         description: "Your restaurant information has been updated.",
       });
       queryClient.invalidateQueries({ queryKey: ['restaurant', restaurantId] });
-      queryClient.invalidateQueries({ queryKey: ['restaurantSetupStatus', restaurantId] }); // To help guard
-      navigate('/'); // Navigate to dashboard or next setup step
+      queryClient.invalidateQueries({ queryKey: ['restaurantSetupStatus', restaurantId] });
+      navigate('/');
     },
     onError: (error: Error) => {
       toast({
@@ -102,16 +100,19 @@ const RestaurantDetailsPage = () => {
     mutation.mutate(data);
   };
 
-  if (isLoadingRestaurant && !restaurant) {
+  if (isLoadingUser || (restaurantId && isLoadingRestaurant && !restaurant)) {
     return <div className="flex justify-center items-center h-screen">Loading restaurant data...</div>;
   }
   
-  if (!restaurantId && !profile) {
-     return <div className="flex justify-center items-center h-screen">Loading user profile... If this persists, please try logging in again.</div>;
+  if (!isLoadingUser && !user) {
+     // This case should ideally be handled by ProtectedRoute redirecting to /auth
+     return <div className="flex justify-center items-center h-screen">User not authenticated. Redirecting...</div>;
   }
   
-  if (!restaurantId && profile) {
-    return <div className="flex justify-center items-center h-screen text-red-500">Error: No restaurant associated with this account. Please contact support.</div>;
+  if (!isLoadingUser && user && !restaurantId) {
+    // User is loaded and authenticated, but no restaurant_id associated.
+    // This is an account setup issue.
+    return <div className="flex justify-center items-center h-screen text-red-500">Error: No restaurant associated with this account. Please contact support or check your profile.</div>;
   }
 
 
@@ -144,7 +145,7 @@ const RestaurantDetailsPage = () => {
                 name="currency"
                 control={control}
                 render={({ field }) => (
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} defaultValue={field.value || undefined} value={field.value || undefined}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select currency" />
                     </SelectTrigger>
@@ -159,7 +160,7 @@ const RestaurantDetailsPage = () => {
               {errors.currency && <p className="text-red-500 text-sm mt-1">{errors.currency.message}</p>}
             </div>
             
-            <Button type="submit" className="w-full" disabled={mutation.isPending}>
+            <Button type="submit" className="w-full" disabled={mutation.isPending || isLoadingUser}>
               {mutation.isPending ? 'Saving...' : 'Save and Continue'}
             </Button>
           </form>

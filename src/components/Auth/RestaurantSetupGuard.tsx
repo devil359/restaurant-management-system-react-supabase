@@ -3,61 +3,68 @@ import React, { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useSimpleAuth } from '@/hooks/useSimpleAuth'; // Ensure this hook provides profile and restaurant_id
+import { useAuth } from '@/hooks/useAuth'; // Changed from useSimpleAuth
 
 interface RestaurantSetupGuardProps {
   children: ReactNode;
 }
 
 const RestaurantSetupGuard = ({ children }: RestaurantSetupGuardProps) => {
-  const { profile, isLoading: isLoadingProfile } = useSimpleAuth();
+  const { user: profile, loading: isLoadingProfile } = useAuth(); // Use user as profile, and loading as isLoadingProfile
   const location = useLocation();
   const restaurantId = profile?.restaurant_id;
 
   const { data: restaurantSetupStatus, isLoading: isLoadingSetupStatus } = useQuery({
     queryKey: ['restaurantSetupStatus', restaurantId],
     queryFn: async () => {
-      if (!restaurantId) return { isSetupComplete: false, error: 'No restaurant ID' }; // Or handle as needed
+      if (!restaurantId) return { isSetupComplete: false, error: 'No restaurant ID' };
       const { data, error } = await supabase
         .from('restaurants')
-        .select('name, address, currency') // Check for essential fields
+        .select('name, address, currency')
         .eq('id', restaurantId)
         .single();
 
       if (error) {
         console.error('Error fetching restaurant details for setup guard:', error);
-        // Potentially treat error as setup incomplete or navigate to an error page
         return { isSetupComplete: false, error: error.message }; 
       }
-      // Define "setup complete" as having a name. More fields can be added.
       const isSetupComplete = !!data?.name && !!data?.address && !!data?.currency;
       return { isSetupComplete, error: null };
     },
-    enabled: !!restaurantId && !isLoadingProfile, // Only run if restaurantId is available
+    enabled: !!restaurantId && !isLoadingProfile,
   });
 
   if (isLoadingProfile || (restaurantId && isLoadingSetupStatus)) {
-    return <div className="flex justify-center items-center h-screen">Checking setup status...</div>; // Or a more sophisticated loader
+    return <div className="flex justify-center items-center h-screen">Checking setup status...</div>;
   }
   
-  if (!restaurantId && !isLoadingProfile) {
-    // This case might mean the user profile isn't fully loaded or there's an issue.
-    // Depending on app flow, could redirect to login or show an error.
-    // For now, let's assume ProtectedRoute handles authentication, so if we are here, user is authenticated.
-    // This could imply a problem with profile creation or association.
-    console.warn("RestaurantSetupGuard: No restaurant ID found on profile.");
-    // Potentially navigate to an error page or a page to create/associate a restaurant
-    // For simplicity, if no restaurant_id, maybe they shouldn't be past login.
-    // This guard assumes a restaurant_id SHOULD exist for an authenticated user needing setup.
+  // If profile is loaded but there's no restaurantId, it means the user.restaurant_id is null.
+  // This could happen if the profile creation didn't assign one, or if it's a new user type
+  // that doesn't inherently have a restaurant.
+  // For the setup flow, if they are authenticated but don't have a restaurant_id,
+  // this implies an issue with their account setup that needs to be handled,
+  // potentially redirecting to an error page or a specific step to create/link a restaurant.
+  // The current logic in AppRoutes.tsx creates a restaurant_id upon profile creation,
+  // so this guard is primarily for checking if essential details (name, address, currency) are filled.
+  if (!restaurantId && !isLoadingProfile && profile) { 
+    // This scenario implies user is loaded, authenticated, but no restaurant_id.
+    // This might indicate an issue with the profile creation or association.
+    // For now, the setup page itself handles this by showing an error.
+    // The guard's primary role is to redirect to setup if restaurant_id exists but setup is incomplete.
+    // If no restaurant_id, it's a different kind of problem than "setup incomplete".
+    // Allowing children to render might lead them to a page that breaks without restaurantId.
+    // However, the RestaurantDetailsPage itself shows an error if no restaurantId.
+    // Let's rely on the setup page's own error handling for no restaurantId.
+    // The guard will effectively do nothing if no restaurantId.
+    console.warn("RestaurantSetupGuard: No restaurant ID found on profile. The page being guarded should handle this.");
   }
 
+
   if (restaurantId && restaurantSetupStatus && !restaurantSetupStatus.isSetupComplete && restaurantSetupStatus.error === null) {
-    // If setup is not complete and no error fetching status, redirect to setup
     return <Navigate to="/setup/restaurant-details" state={{ from: location }} replace />;
   }
   
   if (restaurantId && restaurantSetupStatus && restaurantSetupStatus.error) {
-    // Handle case where fetching setup status failed
     return <div className="flex justify-center items-center h-screen text-red-500">Error checking setup: {restaurantSetupStatus.error}. Please try again.</div>;
   }
 
@@ -65,3 +72,4 @@ const RestaurantSetupGuard = ({ children }: RestaurantSetupGuardProps) => {
 };
 
 export default RestaurantSetupGuard;
+

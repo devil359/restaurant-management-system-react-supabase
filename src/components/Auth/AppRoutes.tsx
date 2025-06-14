@@ -1,4 +1,3 @@
-
 import { Route, Routes, Navigate } from "react-router-dom";
 import Index from "@/pages/Index";
 import Orders from "@/pages/Orders";
@@ -20,9 +19,9 @@ import Expenses from "@/pages/Expenses";
 import Housekeeping from "@/pages/Housekeeping";
 import NotFound from "@/pages/NotFound";
 import Auth from "@/pages/Auth";
-import RestaurantDetailsPage from "@/pages/Setup/RestaurantDetailsPage"; // New import
-import { ProtectedRoute } from "./RouteGuards"; // Assuming ProtectedRoute handles general auth
-import RestaurantSetupGuard from "./RestaurantSetupGuard"; // New import
+import RestaurantDetailsPage from "@/pages/Setup/RestaurantDetailsPage";
+import { ProtectedRoute } from "./ProtectedRoute";
+import RestaurantSetupGuard from "./RestaurantSetupGuard";
 
 /**
  * App routes with authentication and setup guard
