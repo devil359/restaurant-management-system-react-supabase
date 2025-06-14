@@ -22,45 +22,35 @@ import NotFound from "@/pages/NotFound";
 import Auth from "@/pages/Auth";
 import Reports from "@/pages/Reports";
 import RestaurantDetailsPage from "@/pages/Setup/RestaurantDetailsPage";
-import ProtectedRoute from "./ProtectedRoute"; // Still needed for the setup route
-import GuardedRouteElement from "./GuardedRouteElement"; // New import
 
 /**
- * App routes with authentication and setup guard
+ * App routes without authentication guards - for debugging
  */
 export const AppRoutes = () => (
   <Routes>
     <Route path="/auth" element={<Auth />} />
-    <Route 
-      path="/setup/restaurant-details" 
-      element={
-        <ProtectedRoute> {/* Setup page itself only needs ProtectedRoute, not RestaurantSetupGuard */}
-          <RestaurantDetailsPage />
-        </ProtectedRoute>
-      } 
-    />
+    <Route path="/setup/restaurant-details" element={<RestaurantDetailsPage />} />
 
-    {/* Protected routes that require setup to be complete, now using GuardedRouteElement */}
-    <Route path="/" element={<GuardedRouteElement component={<Index />} />} />
-    <Route path="/orders" element={<GuardedRouteElement component={<Orders />} />} />
-    <Route path="/rooms" element={<GuardedRouteElement component={<Rooms />} />} />
-    <Route path="/staff" element={<GuardedRouteElement component={<Staff />} />} />
-    <Route path="/menu" element={<GuardedRouteElement component={<Menu />} />} />
-    <Route path="/tables" element={<GuardedRouteElement component={<Tables />} />} />
-    <Route path="/reservations" element={<GuardedRouteElement component={<Reservations />} />} />
-    <Route path="/customers" element={<GuardedRouteElement component={<Customers />} />} />
-    <Route path="/crm" element={<GuardedRouteElement component={<CRM />} />} />
-    <Route path="/analytics" element={<GuardedRouteElement component={<Analytics />} />} />
-    <Route path="/reports" element={<GuardedRouteElement component={<Reports />} />} />
-    <Route path="/settings" element={<GuardedRouteElement component={<Settings />} />} />
-    <Route path="/kitchen" element={<GuardedRouteElement component={<KitchenDisplay />} />} />
-    <Route path="/ai" element={<GuardedRouteElement component={<AI />} />} />
-    <Route path="/business-dashboard" element={<GuardedRouteElement component={<BusinessDashboard />} />} />
-    <Route path="/inventory" element={<GuardedRouteElement component={<Inventory />} />} />
-    <Route path="/suppliers" element={<GuardedRouteElement component={<Suppliers />} />} />
-    <Route path="/expenses" element={<GuardedRouteElement component={<Expenses />} />} />
-    <Route path="/housekeeping" element={<GuardedRouteElement component={<Housekeeping />} />} />
-    {/* Add other main routes here, wrapped similarly */}
+    {/* All routes now accessible without authentication */}
+    <Route path="/" element={<Index />} />
+    <Route path="/orders" element={<Orders />} />
+    <Route path="/rooms" element={<Rooms />} />
+    <Route path="/staff" element={<Staff />} />
+    <Route path="/menu" element={<Menu />} />
+    <Route path="/tables" element={<Tables />} />
+    <Route path="/reservations" element={<Reservations />} />
+    <Route path="/customers" element={<Customers />} />
+    <Route path="/crm" element={<CRM />} />
+    <Route path="/analytics" element={<Analytics />} />
+    <Route path="/reports" element={<Reports />} />
+    <Route path="/settings" element={<Settings />} />
+    <Route path="/kitchen" element={<KitchenDisplay />} />
+    <Route path="/ai" element={<AI />} />
+    <Route path="/business-dashboard" element={<BusinessDashboard />} />
+    <Route path="/inventory" element={<Inventory />} />
+    <Route path="/suppliers" element={<Suppliers />} />
+    <Route path="/expenses" element={<Expenses />} />
+    <Route path="/housekeeping" element={<Housekeeping />} />
 
     <Route path="*" element={<NotFound />} />
   </Routes>

@@ -1,6 +1,5 @@
 
 import React from "react";
-import { useSimpleAuth } from "@/hooks/useSimpleAuth";
 import { PageHeader } from "@/components/Layout/PageHeader";
 import { StandardizedCard } from "@/components/ui/standardized-card";
 import { StandardizedButton } from "@/components/ui/standardized-button";
@@ -22,7 +21,6 @@ import Stats from "@/components/Dashboard/Stats";
 import WeeklySalesChart from "@/components/Dashboard/WeeklySalesChart";
 
 const Index = () => {
-  const { user } = useSimpleAuth();
   const navigate = useNavigate();
 
   const quickActions = [
@@ -59,7 +57,7 @@ const Index = () => {
   return (
     <div className="p-4 md:p-6 space-y-6 bg-gradient-to-br from-gray-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 min-h-screen">
       <PageHeader
-        title={`Welcome back${user?.email ? `, ${user.email.split('@')[0]}` : ''}!`}
+        title="Welcome to Restaurant Management Dashboard!"
         description="Here's an overview of your restaurant and hotel operations"
       />
 
@@ -79,7 +77,7 @@ const Index = () => {
           </div>
           <div className="bg-white dark:bg-gray-800 px-3 py-1 rounded-full">
             <span className="text-xs font-medium text-purple-600 dark:text-purple-400">
-              Active User
+              Demo Mode
             </span>
           </div>
         </div>
