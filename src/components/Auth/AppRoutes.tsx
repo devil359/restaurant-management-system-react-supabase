@@ -20,7 +20,7 @@ import Housekeeping from "@/pages/Housekeeping";
 import NotFound from "@/pages/NotFound";
 import Auth from "@/pages/Auth";
 import RestaurantDetailsPage from "@/pages/Setup/RestaurantDetailsPage";
-import { ProtectedRoute } from "./ProtectedRoute";
+import ProtectedRoute from "./ProtectedRoute";
 import RestaurantSetupGuard from "./RestaurantSetupGuard";
 
 /**
