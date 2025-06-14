@@ -25,80 +25,121 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log("AuthProvider: Effect triggered. Initial loading:", loading);
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
+        console.log(`AuthProvider: onAuthStateChange event: ${event}, session present: ${!!currentSession}`);
         setSessionState(currentSession);
-        if (currentSession?.user && currentSession.user.id) { // Ensure user and user.id exist
-          const userId = currentSession.user.id; // Use a variable for clarity and safety
+        try {
+          if (currentSession?.user && currentSession.user.id) {
+            const userId = currentSession.user.id;
+            const userEmail = currentSession.user.email; // Safe to use, will be undefined if not present
 
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', userId) // Use guarded userId
-            .single();
+            console.log(`AuthProvider: User session active. User ID: ${userId}`);
 
-          if (profile) {
-            setUser({
-              id: profile.id,
-              email: currentSession.user.email,
-              first_name: profile.first_name,
-              last_name: profile.last_name,
-              role: profile.role as UserRole,
-              restaurant_id: profile.restaurant_id,
-              avatar_url: profile.avatar_url,
-              phone: profile.phone,
-              is_active: profile.is_active ?? true,
-              created_at: profile.created_at,
-              updated_at: profile.updated_at
-            });
-          } else {
-            const { data: newProfileData, error: newProfileError } = await supabase
+            const { data: profile, error: profileError } = await supabase
               .from('profiles')
-              .insert({
-                id: userId, // Use guarded userId
-                email: currentSession.user.email,
-                role: 'staff', 
-                is_active: true
-              })
-              .select()
+              .select('*')
+              .eq('id', userId)
               .single();
 
-            if (newProfileError) {
-              console.error("Error creating profile:", newProfileError);
+            if (profileError) {
+              console.error(`AuthProvider: Error fetching profile for user ${userId}:`, profileError.message);
               setUser(null);
-            } else if (newProfileData) {
+            } else if (profile) {
+              console.log(`AuthProvider: Profile found for user ${userId}.`);
               setUser({
-                id: newProfileData.id,
-                email: currentSession.user.email,
-                role: newProfileData.role as UserRole,
-                restaurant_id: newProfileData.restaurant_id,
-                first_name: newProfileData.first_name,
-                last_name: newProfileData.last_name,
-                avatar_url: newProfileData.avatar_url,
-                phone: newProfileData.phone,
-                is_active: newProfileData.is_active ?? true,
-                created_at: newProfileData.created_at,
-                updated_at: newProfileData.updated_at
+                id: profile.id,
+                email: userEmail,
+                first_name: profile.first_name,
+                last_name: profile.last_name,
+                role: profile.role as UserRole,
+                restaurant_id: profile.restaurant_id,
+                avatar_url: profile.avatar_url,
+                phone: profile.phone,
+                is_active: profile.is_active ?? true,
+                created_at: profile.created_at,
+                updated_at: profile.updated_at
               });
+            } else {
+              console.log(`AuthProvider: Profile not found for user ${userId}. Creating new profile.`);
+              const { data: newProfileData, error: newProfileError } = await supabase
+                .from('profiles')
+                .insert({
+                  id: userId,
+                  email: userEmail, // email can be undefined, ensure 'profiles' table handles nullable email
+                  role: 'staff', // Default role
+                  is_active: true
+                })
+                .select()
+                .single();
+
+              if (newProfileError) {
+                console.error(`AuthProvider: Error creating profile for user ${userId}:`, newProfileError.message);
+                setUser(null);
+              } else if (newProfileData) {
+                console.log(`AuthProvider: New profile created for user ${userId}.`);
+                setUser({
+                  id: newProfileData.id,
+                  email: userEmail,
+                  role: newProfileData.role as UserRole,
+                  restaurant_id: newProfileData.restaurant_id,
+                  first_name: newProfileData.first_name,
+                  last_name: newProfileData.last_name,
+                  avatar_url: newProfileData.avatar_url,
+                  phone: newProfileData.phone,
+                  is_active: newProfileData.is_active ?? true,
+                  created_at: newProfileData.created_at,
+                  updated_at: newProfileData.updated_at
+                });
+              } else {
+                console.warn(`AuthProvider: Profile insert for ${userId} returned no data.`);
+                setUser(null);
+              }
             }
+          } else {
+            console.log("AuthProvider: No active session or user ID. Setting user to null.");
+            setUser(null);
           }
-        } else {
-          setUser(null); // No session, no user, or no user.id
+        } catch (error: any) {
+          console.error("AuthProvider: Unexpected error during auth state change processing:", error.message);
+          setUser(null);
+        } finally {
+          console.log("AuthProvider: Auth processing finished. Setting loading to false.");
+          setLoading(false);
         }
-        setLoading(false);
       }
     );
 
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
-      setSessionState(initialSession);
+      console.log(`AuthProvider: getSession() resolved. Initial session present: ${!!initialSession}`);
+      // setSessionState(initialSession); // Potentially redundant if onAuthStateChange fires immediately
       if (!initialSession) {
+        // If no initial session, onAuthStateChange (SIGNED_OUT) should handle setLoading(false).
+        // However, to be safe, especially if that event is missed or delayed:
+        console.log("AuthProvider: No initial session from getSession(). Ensuring loading is false.");
         setLoading(false);
+      } else {
+        // If there is an initial session, onAuthStateChange (SIGNED_IN) is expected to handle
+        // fetching profile and then setting loading to false.
+        // We set sessionState here to ensure it's available synchronously if needed.
+        if (!sessionState) { // Avoid redundant state update if onAuthStateChange was faster
+            setSessionState(initialSession);
+        }
       }
+    }).catch(error => {
+        console.error("AuthProvider: Error in getSession():", error.message);
+        setUser(null);
+        setSessionState(null);
+        setLoading(false); // Ensure loading is false on error
     });
 
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => {
+      console.log("AuthProvider: Unsubscribing from auth state changes.");
+      subscription.unsubscribe();
+    };
+  }, []); // Empty dependency array ensures this effect runs only once on mount and cleans up on unmount
 
   const hasPermission = (permission: Permission): boolean => {
     if (!user) return false;
@@ -116,9 +157,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const signOut = async (): Promise<void> => {
+    console.log("AuthProvider: Signing out.");
+    setLoading(true); // Optionally set loading true during sign out
     await supabase.auth.signOut();
     setUser(null);
     setSessionState(null);
+    // setLoading(false); // setLoading will be handled by onAuthStateChange (SIGNED_OUT)
   };
 
   const value: AuthContextType = {
