@@ -1,4 +1,3 @@
-
 import { 
   LayoutDashboard, 
   ShoppingCart, 
@@ -17,7 +16,8 @@ import {
   Home,
   MessageCircle,
   TrendingUp,
-  Award
+  Award,
+  Soup
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -34,6 +34,12 @@ const navigationItems = [
     href: "/orders",
     icon: ShoppingCart,
     component: "orders"
+  },
+  {
+    title: "Kitchen",
+    href: "/kitchen",
+    icon: Soup,
+    component: "kitchen"
   },
   {
     title: "Menu",

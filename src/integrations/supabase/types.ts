@@ -9,6 +9,454 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      booking_channels: {
+        Row: {
+          api_endpoint: string | null
+          api_key: string | null
+          api_secret: string | null
+          channel_name: string
+          channel_settings: Json | null
+          channel_type: string
+          commission_rate: number | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          last_sync: string | null
+          restaurant_id: string
+          sync_frequency_minutes: number | null
+          updated_at: string
+        }
+        Insert: {
+          api_endpoint?: string | null
+          api_key?: string | null
+          api_secret?: string | null
+          channel_name: string
+          channel_settings?: Json | null
+          channel_type: string
+          commission_rate?: number | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          last_sync?: string | null
+          restaurant_id: string
+          sync_frequency_minutes?: number | null
+          updated_at?: string
+        }
+        Update: {
+          api_endpoint?: string | null
+          api_key?: string | null
+          api_secret?: string | null
+          channel_name?: string
+          channel_settings?: Json | null
+          channel_type?: string
+          commission_rate?: number | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          last_sync?: string | null
+          restaurant_id?: string
+          sync_frequency_minutes?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      booking_sources: {
+        Row: {
+          booking_reference: string | null
+          channel_id: string | null
+          commission_amount: number | null
+          created_at: string
+          id: string
+          net_amount: number | null
+          reservation_id: string
+          restaurant_id: string
+          source_type: string
+        }
+        Insert: {
+          booking_reference?: string | null
+          channel_id?: string | null
+          commission_amount?: number | null
+          created_at?: string
+          id?: string
+          net_amount?: number | null
+          reservation_id: string
+          restaurant_id: string
+          source_type: string
+        }
+        Update: {
+          booking_reference?: string | null
+          channel_id?: string | null
+          commission_amount?: number | null
+          created_at?: string
+          id?: string
+          net_amount?: number | null
+          reservation_id?: string
+          restaurant_id?: string
+          source_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_sources_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "booking_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_sources_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      budget_line_items: {
+        Row: {
+          account_id: string
+          actual_amount: number | null
+          budget_id: string
+          budgeted_amount: number
+          created_at: string
+          id: string
+          period_end: string
+          period_start: string
+          updated_at: string
+          variance_amount: number | null
+          variance_percentage: number | null
+        }
+        Insert: {
+          account_id: string
+          actual_amount?: number | null
+          budget_id: string
+          budgeted_amount: number
+          created_at?: string
+          id?: string
+          period_end: string
+          period_start: string
+          updated_at?: string
+          variance_amount?: number | null
+          variance_percentage?: number | null
+        }
+        Update: {
+          account_id?: string
+          actual_amount?: number | null
+          budget_id?: string
+          budgeted_amount?: number
+          created_at?: string
+          id?: string
+          period_end?: string
+          period_start?: string
+          updated_at?: string
+          variance_amount?: number | null
+          variance_percentage?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budget_line_items_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budget_line_items_budget_id_fkey"
+            columns: ["budget_id"]
+            isOneToOne: false
+            referencedRelation: "budgets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      budgets: {
+        Row: {
+          budget_name: string
+          budget_type: string
+          budget_year: number
+          created_at: string
+          created_by: string | null
+          id: string
+          restaurant_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          budget_name: string
+          budget_type: string
+          budget_year: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          restaurant_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          budget_name?: string
+          budget_type?: string
+          budget_year?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          restaurant_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      channel_inventory: {
+        Row: {
+          available_rooms: number
+          channel_id: string
+          closed_to_arrival: boolean | null
+          closed_to_departure: boolean | null
+          created_at: string
+          date: string
+          id: string
+          last_updated: string | null
+          min_stay: number | null
+          price: number
+          rate_plan_id: string
+          restaurant_id: string
+          room_id: string
+          stop_sell: boolean | null
+        }
+        Insert: {
+          available_rooms?: number
+          channel_id: string
+          closed_to_arrival?: boolean | null
+          closed_to_departure?: boolean | null
+          created_at?: string
+          date: string
+          id?: string
+          last_updated?: string | null
+          min_stay?: number | null
+          price: number
+          rate_plan_id: string
+          restaurant_id: string
+          room_id: string
+          stop_sell?: boolean | null
+        }
+        Update: {
+          available_rooms?: number
+          channel_id?: string
+          closed_to_arrival?: boolean | null
+          closed_to_departure?: boolean | null
+          created_at?: string
+          date?: string
+          id?: string
+          last_updated?: string | null
+          min_stay?: number | null
+          price?: number
+          rate_plan_id?: string
+          restaurant_id?: string
+          room_id?: string
+          stop_sell?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_inventory_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "booking_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_inventory_rate_plan_id_fkey"
+            columns: ["rate_plan_id"]
+            isOneToOne: false
+            referencedRelation: "rate_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_inventory_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chart_of_accounts: {
+        Row: {
+          account_code: string
+          account_name: string
+          account_subtype: string | null
+          account_type: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          parent_account_id: string | null
+          restaurant_id: string
+          updated_at: string
+        }
+        Insert: {
+          account_code: string
+          account_name: string
+          account_subtype?: string | null
+          account_type: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          parent_account_id?: string | null
+          restaurant_id: string
+          updated_at?: string
+        }
+        Update: {
+          account_code?: string
+          account_name?: string
+          account_subtype?: string | null
+          account_type?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          parent_account_id?: string | null
+          restaurant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chart_of_accounts_parent_account_id_fkey"
+            columns: ["parent_account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      check_ins: {
+        Row: {
+          actual_check_out: string | null
+          additional_charges: Json | null
+          check_in_method: string
+          check_in_time: string
+          created_at: string
+          created_by: string | null
+          expected_check_out: string
+          guest_profile_id: string
+          id: string
+          key_cards_issued: number | null
+          reservation_id: string
+          restaurant_id: string
+          room_id: string
+          room_rate: number
+          security_deposit: number | null
+          special_requests: string | null
+          staff_notes: string | null
+          status: string
+          total_guests: number
+          updated_at: string
+        }
+        Insert: {
+          actual_check_out?: string | null
+          additional_charges?: Json | null
+          check_in_method?: string
+          check_in_time?: string
+          created_at?: string
+          created_by?: string | null
+          expected_check_out: string
+          guest_profile_id: string
+          id?: string
+          key_cards_issued?: number | null
+          reservation_id: string
+          restaurant_id: string
+          room_id: string
+          room_rate: number
+          security_deposit?: number | null
+          special_requests?: string | null
+          staff_notes?: string | null
+          status?: string
+          total_guests?: number
+          updated_at?: string
+        }
+        Update: {
+          actual_check_out?: string | null
+          additional_charges?: Json | null
+          check_in_method?: string
+          check_in_time?: string
+          created_at?: string
+          created_by?: string | null
+          expected_check_out?: string
+          guest_profile_id?: string
+          id?: string
+          key_cards_issued?: number | null
+          reservation_id?: string
+          restaurant_id?: string
+          room_id?: string
+          room_rate?: number
+          security_deposit?: number | null
+          special_requests?: string | null
+          staff_notes?: string | null
+          status?: string
+          total_guests?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "check_ins_guest_profile_id_fkey"
+            columns: ["guest_profile_id"]
+            isOneToOne: false
+            referencedRelation: "guest_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "check_ins_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "check_ins_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      competitor_pricing: {
+        Row: {
+          competitor_name: string
+          competitor_url: string | null
+          created_at: string
+          currency: string | null
+          date: string
+          id: string
+          last_scraped: string | null
+          price: number
+          restaurant_id: string
+          room_type: string | null
+        }
+        Insert: {
+          competitor_name: string
+          competitor_url?: string | null
+          created_at?: string
+          currency?: string | null
+          date: string
+          id?: string
+          last_scraped?: string | null
+          price: number
+          restaurant_id: string
+          room_type?: string | null
+        }
+        Update: {
+          competitor_name?: string
+          competitor_url?: string | null
+          created_at?: string
+          currency?: string | null
+          date?: string
+          id?: string
+          last_scraped?: string | null
+          price?: number
+          restaurant_id?: string
+          room_type?: string | null
+        }
+        Relationships: []
+      }
       customer_activities: {
         Row: {
           activity_type: string
@@ -212,6 +660,53 @@ export type Database = {
           },
         ]
       }
+      demand_forecast: {
+        Row: {
+          confidence_score: number | null
+          created_at: string
+          demand_level: string | null
+          factors: Json | null
+          forecast_date: string
+          id: string
+          predicted_adr: number | null
+          predicted_occupancy: number | null
+          restaurant_id: string
+          room_id: string
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string
+          demand_level?: string | null
+          factors?: Json | null
+          forecast_date: string
+          id?: string
+          predicted_adr?: number | null
+          predicted_occupancy?: number | null
+          restaurant_id: string
+          room_id: string
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string
+          demand_level?: string | null
+          factors?: Json | null
+          forecast_date?: string
+          id?: string
+          predicted_adr?: number | null
+          predicted_occupancy?: number | null
+          restaurant_id?: string
+          room_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demand_forecast_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expense_categories: {
         Row: {
           budget_limit: number | null
@@ -304,6 +799,77 @@ export type Database = {
           vendor_name?: string | null
         }
         Relationships: []
+      }
+      financial_reports: {
+        Row: {
+          generated_at: string
+          generated_by: string | null
+          id: string
+          report_data: Json
+          report_period_end: string
+          report_period_start: string
+          report_type: string
+          restaurant_id: string
+        }
+        Insert: {
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          report_data: Json
+          report_period_end: string
+          report_period_start: string
+          report_type: string
+          restaurant_id: string
+        }
+        Update: {
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          report_data?: Json
+          report_period_end?: string
+          report_period_start?: string
+          report_type?: string
+          restaurant_id?: string
+        }
+        Relationships: []
+      }
+      guest_documents: {
+        Row: {
+          document_number: string | null
+          document_type: string
+          document_url: string
+          expiry_date: string | null
+          guest_profile_id: string
+          id: string
+          uploaded_at: string
+        }
+        Insert: {
+          document_number?: string | null
+          document_type: string
+          document_url: string
+          expiry_date?: string | null
+          guest_profile_id: string
+          id?: string
+          uploaded_at?: string
+        }
+        Update: {
+          document_number?: string | null
+          document_type?: string
+          document_url?: string
+          expiry_date?: string | null
+          guest_profile_id?: string
+          id?: string
+          uploaded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guest_documents_guest_profile_id_fkey"
+            columns: ["guest_profile_id"]
+            isOneToOne: false
+            referencedRelation: "guest_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       guest_feedback: {
         Row: {
@@ -456,6 +1022,75 @@ export type Database = {
           },
         ]
       }
+      guest_profiles: {
+        Row: {
+          address: Json | null
+          blacklisted: boolean | null
+          created_at: string
+          date_of_birth: string | null
+          emergency_contact: Json | null
+          guest_email: string | null
+          guest_name: string
+          guest_phone: string | null
+          id: string
+          id_number: string | null
+          id_type: string | null
+          last_stay: string | null
+          nationality: string | null
+          notes: string | null
+          preferences: Json | null
+          restaurant_id: string
+          total_spent: number | null
+          total_stays: number | null
+          updated_at: string
+          vip_status: boolean | null
+        }
+        Insert: {
+          address?: Json | null
+          blacklisted?: boolean | null
+          created_at?: string
+          date_of_birth?: string | null
+          emergency_contact?: Json | null
+          guest_email?: string | null
+          guest_name: string
+          guest_phone?: string | null
+          id?: string
+          id_number?: string | null
+          id_type?: string | null
+          last_stay?: string | null
+          nationality?: string | null
+          notes?: string | null
+          preferences?: Json | null
+          restaurant_id: string
+          total_spent?: number | null
+          total_stays?: number | null
+          updated_at?: string
+          vip_status?: boolean | null
+        }
+        Update: {
+          address?: Json | null
+          blacklisted?: boolean | null
+          created_at?: string
+          date_of_birth?: string | null
+          emergency_contact?: Json | null
+          guest_email?: string | null
+          guest_name?: string
+          guest_phone?: string | null
+          id?: string
+          id_number?: string | null
+          id_type?: string | null
+          last_stay?: string | null
+          nationality?: string | null
+          notes?: string | null
+          preferences?: Json | null
+          restaurant_id?: string
+          total_spent?: number | null
+          total_stays?: number | null
+          updated_at?: string
+          vip_status?: boolean | null
+        }
+        Relationships: []
+      }
       inventory_alerts: {
         Row: {
           acknowledged_at: string | null
@@ -593,6 +1228,203 @@ export type Database = {
             columns: ["inventory_item_id"]
             isOneToOne: false
             referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_line_items: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          invoice_id: string
+          quantity: number
+          tax_rate: number | null
+          total_price: number
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          invoice_id: string
+          quantity?: number
+          tax_rate?: number | null
+          total_price: number
+          unit_price: number
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          invoice_id?: string
+          quantity?: number
+          tax_rate?: number | null
+          total_price?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_line_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoices: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          customer_address: string | null
+          customer_email: string | null
+          customer_name: string
+          customer_phone: string | null
+          discount_amount: number
+          due_date: string
+          id: string
+          invoice_date: string
+          invoice_number: string
+          notes: string | null
+          paid_amount: number
+          payment_terms: string | null
+          restaurant_id: string
+          status: string
+          subtotal: number
+          tax_amount: number
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          customer_address?: string | null
+          customer_email?: string | null
+          customer_name: string
+          customer_phone?: string | null
+          discount_amount?: number
+          due_date: string
+          id?: string
+          invoice_date: string
+          invoice_number: string
+          notes?: string | null
+          paid_amount?: number
+          payment_terms?: string | null
+          restaurant_id: string
+          status?: string
+          subtotal?: number
+          tax_amount?: number
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          customer_address?: string | null
+          customer_email?: string | null
+          customer_name?: string
+          customer_phone?: string | null
+          discount_amount?: number
+          due_date?: string
+          id?: string
+          invoice_date?: string
+          invoice_number?: string
+          notes?: string | null
+          paid_amount?: number
+          payment_terms?: string | null
+          restaurant_id?: string
+          status?: string
+          subtotal?: number
+          tax_amount?: number
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      journal_entries: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string
+          entry_date: string
+          entry_number: string
+          id: string
+          reference_id: string | null
+          reference_type: string | null
+          restaurant_id: string
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description: string
+          entry_date: string
+          entry_number: string
+          id?: string
+          reference_id?: string | null
+          reference_type?: string | null
+          restaurant_id: string
+          total_amount: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          entry_date?: string
+          entry_number?: string
+          id?: string
+          reference_id?: string | null
+          reference_type?: string | null
+          restaurant_id?: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      journal_entry_lines: {
+        Row: {
+          account_id: string
+          created_at: string
+          credit_amount: number | null
+          debit_amount: number | null
+          description: string | null
+          id: string
+          journal_entry_id: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          credit_amount?: number | null
+          debit_amount?: number | null
+          description?: string | null
+          id?: string
+          journal_entry_id: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          credit_amount?: number | null
+          debit_amount?: number | null
+          description?: string | null
+          id?: string
+          journal_entry_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_entry_lines_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_entry_lines_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
             referencedColumns: ["id"]
           },
         ]
@@ -1063,6 +1895,170 @@ export type Database = {
           },
         ]
       }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          id: string
+          invoice_id: string | null
+          notes: string | null
+          payment_date: string
+          payment_method: string
+          payment_number: string
+          reference_number: string | null
+          restaurant_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_id?: string | null
+          notes?: string | null
+          payment_date: string
+          payment_method: string
+          payment_number: string
+          reference_number?: string | null
+          restaurant_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_id?: string | null
+          notes?: string | null
+          payment_date?: string
+          payment_method?: string
+          payment_number?: string
+          reference_number?: string | null
+          restaurant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      price_history: {
+        Row: {
+          change_reason: string | null
+          changed_by: string | null
+          created_at: string
+          date: string
+          id: string
+          new_price: number
+          old_price: number | null
+          rate_plan_id: string | null
+          restaurant_id: string
+          room_id: string
+        }
+        Insert: {
+          change_reason?: string | null
+          changed_by?: string | null
+          created_at?: string
+          date: string
+          id?: string
+          new_price: number
+          old_price?: number | null
+          rate_plan_id?: string | null
+          restaurant_id: string
+          room_id: string
+        }
+        Update: {
+          change_reason?: string | null
+          changed_by?: string | null
+          created_at?: string
+          date?: string
+          id?: string
+          new_price?: number
+          old_price?: number | null
+          rate_plan_id?: string | null
+          restaurant_id?: string
+          room_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "price_history_rate_plan_id_fkey"
+            columns: ["rate_plan_id"]
+            isOneToOne: false
+            referencedRelation: "rate_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "price_history_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pricing_rules: {
+        Row: {
+          adjustment_type: string
+          adjustment_value: number
+          created_at: string
+          days_of_week: Json | null
+          id: string
+          is_active: boolean | null
+          max_price: number | null
+          min_price: number | null
+          priority: number | null
+          restaurant_id: string
+          rule_name: string
+          rule_type: string
+          trigger_condition: Json
+          updated_at: string
+          valid_from: string | null
+          valid_to: string | null
+        }
+        Insert: {
+          adjustment_type: string
+          adjustment_value: number
+          created_at?: string
+          days_of_week?: Json | null
+          id?: string
+          is_active?: boolean | null
+          max_price?: number | null
+          min_price?: number | null
+          priority?: number | null
+          restaurant_id: string
+          rule_name: string
+          rule_type: string
+          trigger_condition: Json
+          updated_at?: string
+          valid_from?: string | null
+          valid_to?: string | null
+        }
+        Update: {
+          adjustment_type?: string
+          adjustment_value?: number
+          created_at?: string
+          days_of_week?: Json | null
+          id?: string
+          is_active?: boolean | null
+          max_price?: number | null
+          min_price?: number | null
+          priority?: number | null
+          restaurant_id?: string
+          rule_name?: string
+          rule_type?: string
+          trigger_condition?: Json
+          updated_at?: string
+          valid_from?: string | null
+          valid_to?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -1267,6 +2263,63 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      rate_plans: {
+        Row: {
+          advance_booking_days: number | null
+          base_rate: number
+          blackout_dates: Json | null
+          cancellation_policy: Json | null
+          created_at: string
+          currency: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          is_refundable: boolean | null
+          max_stay_nights: number | null
+          min_stay_nights: number | null
+          name: string
+          plan_type: string
+          restaurant_id: string
+          updated_at: string
+        }
+        Insert: {
+          advance_booking_days?: number | null
+          base_rate: number
+          blackout_dates?: Json | null
+          cancellation_policy?: Json | null
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_refundable?: boolean | null
+          max_stay_nights?: number | null
+          min_stay_nights?: number | null
+          name: string
+          plan_type: string
+          restaurant_id: string
+          updated_at?: string
+        }
+        Update: {
+          advance_booking_days?: number | null
+          base_rate?: number
+          blackout_dates?: Json | null
+          cancellation_policy?: Json | null
+          created_at?: string
+          currency?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_refundable?: boolean | null
+          max_stay_nights?: number | null
+          min_stay_nights?: number | null
+          name?: string
+          plan_type?: string
+          restaurant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       reservations: {
         Row: {
@@ -1485,6 +2538,54 @@ export type Database = {
           id?: string
           name?: string
           phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      revenue_metrics: {
+        Row: {
+          adr: number | null
+          created_at: string
+          date: string
+          f_and_b_revenue: number | null
+          id: string
+          occupancy_rate: number | null
+          occupied_rooms: number | null
+          restaurant_id: string
+          revpar: number | null
+          room_revenue: number | null
+          total_revenue: number | null
+          total_rooms: number | null
+          updated_at: string
+        }
+        Insert: {
+          adr?: number | null
+          created_at?: string
+          date: string
+          f_and_b_revenue?: number | null
+          id?: string
+          occupancy_rate?: number | null
+          occupied_rooms?: number | null
+          restaurant_id: string
+          revpar?: number | null
+          room_revenue?: number | null
+          total_revenue?: number | null
+          total_rooms?: number | null
+          updated_at?: string
+        }
+        Update: {
+          adr?: number | null
+          created_at?: string
+          date?: string
+          f_and_b_revenue?: number | null
+          id?: string
+          occupancy_rate?: number | null
+          occupied_rooms?: number | null
+          restaurant_id?: string
+          revpar?: number | null
+          room_revenue?: number | null
+          total_revenue?: number | null
+          total_rooms?: number | null
           updated_at?: string
         }
         Relationships: []
@@ -2620,6 +3721,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      tax_configurations: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          restaurant_id: string
+          tax_name: string
+          tax_rate: number
+          tax_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          restaurant_id: string
+          tax_name: string
+          tax_rate: number
+          tax_type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          restaurant_id?: string
+          tax_name?: string
+          tax_rate?: number
+          tax_type?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
     }
     Views: {
