@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/use-toast";
 import { Loader2, Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import { CardContent, CardFooter } from "@/components/ui/card";
 
@@ -20,56 +20,41 @@ const AuthForm: React.FC<AuthFormProps> = ({ authMode, setAuthMode }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   const handleAuth = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
-    if (!email || !password) {
-      toast({
-        title: "Error",
-        description: "Please fill in all fields",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setLoading(true);
 
     try {
       if (authMode === "signin") {
-        console.log("AuthForm: Attempting sign in for:", email);
+        console.log("AuthForm: Attempting sign in");
         const { data, error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
+          email,
           password,
         });
 
         if (error) {
-          console.error("AuthForm: Sign in error:", error.message);
-          toast({
-            title: "Sign in failed",
-            description: error.message,
-            variant: "destructive",
-          });
-          return;
+          console.error("AuthForm: Sign in error:", error);
+          throw error;
         }
         
         if (data?.session) {
-          console.log("AuthForm: Sign in successful");
+          console.log("AuthForm: Sign in successful, session:", !!data.session);
           toast({
             title: "Welcome back!",
             description: "You have been successfully signed in.",
+            className: "bg-green-50 border-green-200 text-green-800",
           });
           
-          // Navigate to dashboard
+          // Small delay to ensure auth state is updated
           setTimeout(() => {
             navigate("/");
-          }, 500);
+          }, 100);
         }
       } else {
-        console.log("AuthForm: Attempting sign up for:", email);
+        console.log("AuthForm: Attempting sign up");
         const { data, error } = await supabase.auth.signUp({
-          email: email.trim(),
+          email,
           password,
           options: {
             emailRedirectTo: `${window.location.origin}/`,
@@ -77,13 +62,8 @@ const AuthForm: React.FC<AuthFormProps> = ({ authMode, setAuthMode }) => {
         });
 
         if (error) {
-          console.error("AuthForm: Sign up error:", error.message);
-          toast({
-            title: "Sign up failed",
-            description: error.message,
-            variant: "destructive",
-          });
-          return;
+          console.error("AuthForm: Sign up error:", error);
+          throw error;
         }
 
         if (data?.user?.identities?.length === 0) {
@@ -96,23 +76,17 @@ const AuthForm: React.FC<AuthFormProps> = ({ authMode, setAuthMode }) => {
         } else {
           console.log("AuthForm: Sign up successful");
           toast({
-            title: "Account created!",
-            description: "Please check your email to confirm your registration, or continue if email confirmation is disabled.",
+            title: "Account created successfully!",
+            description: "Please check your email to confirm your registration.",
+            className: "bg-green-50 border-green-200 text-green-800",
           });
-          
-          // If user is immediately confirmed, navigate to dashboard
-          if (data?.session) {
-            setTimeout(() => {
-              navigate("/");
-            }, 1000);
-          }
         }
       }
     } catch (error: any) {
-      console.error("AuthForm: Unexpected error:", error);
+      console.error("AuthForm: Auth error:", error);
       toast({
         title: "Authentication error",
-        description: "An unexpected error occurred. Please try again.",
+        description: error.message || "An error occurred during authentication",
         variant: "destructive",
       });
     } finally {
@@ -154,7 +128,6 @@ const AuthForm: React.FC<AuthFormProps> = ({ authMode, setAuthMode }) => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              minLength={6}
               className="pl-10 pr-10 h-12 bg-white/50 dark:bg-slate-700/50 border-gray-200 dark:border-slate-600 focus:border-brand-deep-blue focus:ring-brand-deep-blue transition-all duration-200"
             />
             <button

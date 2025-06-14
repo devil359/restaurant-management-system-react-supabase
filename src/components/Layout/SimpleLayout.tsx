@@ -10,14 +10,9 @@ interface SimpleLayoutProps {
 export const SimpleLayout = ({ children }: SimpleLayoutProps) => {
   return (
     <SidebarProvider>
-      <div className="flex h-screen w-full relative">
+      <div className="flex h-screen w-full">
         <Sidebar />
-        <main
-          className="flex-1 overflow-auto transition-all"
-          style={{
-            paddingLeft: "var(--sidebar-width, 7rem)",
-          }}
-        >
+        <main className="flex-1 overflow-auto" style={{ paddingLeft: '7rem' }}>
           <div className="p-4">
             {children}
           </div>
