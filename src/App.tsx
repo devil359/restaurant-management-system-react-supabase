@@ -7,7 +7,7 @@ import "./App.css";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { ErrorBoundary } from "./components/ui/error-boundary";
 import { AuthProvider } from "@/hooks/useAuth";
-import { ModernLayout } from "./components/Layout/ModernLayout";
+import { SimpleLayout } from "./components/Layout/SimpleLayout";
 import { AppRoutes } from "./components/Auth/AppRoutes";
 
 // Create a client
@@ -22,7 +22,7 @@ const queryClient = new QueryClient({
 });
 
 function App() {
-  console.log("App: Rendering modern application");
+  console.log("App: Rendering application");
   
   return (
     <QueryClientProvider client={queryClient}>
@@ -30,10 +30,10 @@ function App() {
         <ErrorBoundary>
           <AuthProvider>
             <Router>
-              <div className="h-screen w-full overflow-hidden bg-gradient-to-br from-gray-50 via-white to-purple-50/30 dark:from-gray-900 dark:via-gray-800 dark:to-purple-900/30">
-                <ModernLayout>
+              <div className="h-screen w-full overflow-hidden bg-gray-100 dark:bg-gray-900">
+                <SimpleLayout>
                   <AppRoutes />
-                </ModernLayout>
+                </SimpleLayout>
                 <Toaster />
               </div>
             </Router>
