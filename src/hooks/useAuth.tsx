@@ -22,10 +22,14 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [sessionState, setSessionState] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Start with loading true
 
   useEffect(() => {
-    console.log("AuthProvider: Effect triggered. Initial loading:", loading);
+    // Explicitly set loading to true when the effect runs or re-runs.
+    // This handles cases where AuthProvider might re-mount.
+    setLoading(true);
+    console.log("AuthProvider: Effect triggered. Initial loading state forced to true.");
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
         console.log(`AuthProvider: onAuthStateChange event: ${event}, session present: ${!!currentSession}`);
@@ -33,7 +37,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         try {
           if (currentSession?.user && currentSession.user.id) {
             const userId = currentSession.user.id;
-            const userEmail = currentSession.user.email; // Safe to use, will be undefined if not present
+            const userEmail = currentSession.user.email;
 
             console.log(`AuthProvider: User session active. User ID: ${userId}`);
 
@@ -67,8 +71,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 .from('profiles')
                 .insert({
                   id: userId,
-                  email: userEmail, // email can be undefined, ensure 'profiles' table handles nullable email
-                  role: 'staff', // Default role
+                  email: userEmail,
+                  role: 'staff', 
                   is_active: true
                 })
                 .select()
@@ -105,34 +109,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           console.error("AuthProvider: Unexpected error during auth state change processing:", error.message);
           setUser(null);
         } finally {
-          console.log("AuthProvider: Auth processing finished. Setting loading to false.");
-          setLoading(false);
+          console.log("AuthProvider: Auth processing finished (onAuthStateChange). Setting loading to false.");
+          setLoading(false); // This is now the SOLE authority for setting loading to false.
         }
       }
     );
 
-    // Check for existing session
+    // Check for existing session. This helps populate sessionState early if onAuthStateChange is delayed,
+    // but it should NOT control the main 'loading' state.
     supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
       console.log(`AuthProvider: getSession() resolved. Initial session present: ${!!initialSession}`);
-      // setSessionState(initialSession); // Potentially redundant if onAuthStateChange fires immediately
-      if (!initialSession) {
-        // If no initial session, onAuthStateChange (SIGNED_OUT) should handle setLoading(false).
-        // However, to be safe, especially if that event is missed or delayed:
-        console.log("AuthProvider: No initial session from getSession(). Ensuring loading is false.");
-        setLoading(false);
-      } else {
-        // If there is an initial session, onAuthStateChange (SIGNED_IN) is expected to handle
-        // fetching profile and then setting loading to false.
-        // We set sessionState here to ensure it's available synchronously if needed.
-        if (!sessionState) { // Avoid redundant state update if onAuthStateChange was faster
+      if (initialSession && !sessionState) { // Only set if onAuthStateChange hasn't already set it.
             setSessionState(initialSession);
-        }
       }
+      // DO NOT set loading to false here. onAuthStateChange's finally block handles this.
     }).catch(error => {
-        console.error("AuthProvider: Error in getSession():", error.message);
-        setUser(null);
-        setSessionState(null);
-        setLoading(false); // Ensure loading is false on error
+        console.error("AuthProvider: Error in getSession() during initial check:", error.message);
+        // setUser(null); // onAuthStateChange will handle this.
+        // setSessionState(null); // onAuthStateChange will handle this.
+        // DO NOT set loading to false here. onAuthStateChange's finally block handles this.
     });
 
     return () => {
@@ -158,11 +153,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signOut = async (): Promise<void> => {
     console.log("AuthProvider: Signing out.");
-    setLoading(true); // Optionally set loading true during sign out
+    setLoading(true); 
     await supabase.auth.signOut();
-    setUser(null);
-    setSessionState(null);
-    // setLoading(false); // setLoading will be handled by onAuthStateChange (SIGNED_OUT)
+    // setUser(null); // Handled by onAuthStateChange
+    // setSessionState(null); // Handled by onAuthStateChange
   };
 
   const value: AuthContextType = {
