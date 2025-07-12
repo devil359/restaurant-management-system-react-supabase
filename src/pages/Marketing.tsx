@@ -1,140 +1,149 @@
 
 import React, { useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import LoyaltyManager from "@/components/Marketing/LoyaltyManager";
+import { useAuth } from "@/hooks/useAuth";
+import { PageHeader } from "@/components/Layout/PageHeader";
 import { StandardizedCard } from "@/components/ui/standardized-card";
-import { Star, Mail, Share2, MessageCircle, Users, Gift } from "lucide-react";
+import { StandardizedButton } from "@/components/ui/standardized-button";
+import { useMarketingData } from "@/hooks/useMarketingData";
+import CampaignsList from "@/components/Marketing/CampaignsList";
+import CreateCampaignDialog from "@/components/Marketing/CreateCampaignDialog";
+import CustomerSegments from "@/components/Marketing/CustomerSegments";
+import MarketingAnalytics from "@/components/Marketing/MarketingAnalytics";
+import { 
+  Plus, 
+  Users, 
+  Mail, 
+  MessageSquare, 
+  TrendingUp,
+  Target,
+  DollarSign,
+  Calendar
+} from "lucide-react";
 
 const Marketing = () => {
+  const { user } = useAuth();
+  const { campaigns, customers, analytics, isLoading } = useMarketingData();
+  const [openCreateDialog, setOpenCreateDialog] = useState(false);
+  const [activeTab, setActiveTab] = useState('campaigns');
+
+  const tabs = [
+    { id: 'campaigns', label: 'Campaigns', icon: Target },
+    { id: 'segments', label: 'Customer Segments', icon: Users },
+    { id: 'analytics', label: 'Analytics', icon: TrendingUp },
+  ];
+
+  if (isLoading) {
+    return (
+      <div className="p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="container mx-auto py-4 md:py-8 px-4 md:px-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-          Marketing & Loyalty Programs
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Drive customer engagement and loyalty through targeted campaigns
-        </p>
+    <div className="p-4 md:p-6 space-y-6 bg-gradient-to-br from-gray-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 min-h-screen">
+      <PageHeader
+        title="Marketing Center"
+        description="Create campaigns, analyze customer data, and drive business growth"
+      />
+
+      {/* Marketing Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <StandardizedCard className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Active Campaigns</p>
+              <p className="text-2xl font-bold text-blue-600">
+                {campaigns.filter(c => c.status === 'active').length}
+              </p>
+            </div>
+            <Target className="h-8 w-8 text-blue-500" />
+          </div>
+        </StandardizedCard>
+        
+        <StandardizedCard className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Total Customers</p>
+              <p className="text-2xl font-bold text-green-600">{customers.length}</p>
+            </div>
+            <Users className="h-8 w-8 text-green-500" />
+          </div>
+        </StandardizedCard>
+        
+        <StandardizedCard className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Messages Sent</p>
+              <p className="text-2xl font-bold text-purple-600">{analytics.messagesSent}</p>
+            </div>
+            <MessageSquare className="h-8 w-8 text-purple-500" />
+          </div>
+        </StandardizedCard>
+        
+        <StandardizedCard className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Revenue Impact</p>
+              <p className="text-2xl font-bold text-orange-600">₹{analytics.revenueImpact}</p>
+            </div>
+            <DollarSign className="h-8 w-8 text-orange-500" />
+          </div>
+        </StandardizedCard>
       </div>
 
-      <Tabs defaultValue="loyalty" className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="loyalty" className="flex items-center gap-2">
-            <Star className="h-4 w-4" />
-            Loyalty Program
-          </TabsTrigger>
-          <TabsTrigger value="email" className="flex items-center gap-2">
-            <Mail className="h-4 w-4" />
-            Email Marketing
-          </TabsTrigger>
-          <TabsTrigger value="social" className="flex items-center gap-2">
-            <Share2 className="h-4 w-4" />
-            Social Media
-          </TabsTrigger>
-          <TabsTrigger value="reviews" className="flex items-center gap-2">
-            <MessageCircle className="h-4 w-4" />
-            Review Management
-          </TabsTrigger>
-          <TabsTrigger value="referrals" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Referral Program
-          </TabsTrigger>
-          <TabsTrigger value="campaigns" className="flex items-center gap-2">
-            <Gift className="h-4 w-4" />
-            Campaigns
-          </TabsTrigger>
-        </TabsList>
+      {/* Tabs */}
+      <div className="flex space-x-1 bg-white dark:bg-gray-800 p-1 rounded-lg border">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all ${
+                activeTab === tab.id
+                  ? 'bg-purple-600 text-white'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
 
-        <TabsContent value="loyalty" className="mt-6">
-          <LoyaltyManager />
-        </TabsContent>
+      {/* Tab Content */}
+      {activeTab === 'campaigns' && (
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-semibold">Marketing Campaigns</h2>
+            <StandardizedButton
+              onClick={() => setOpenCreateDialog(true)}
+              className="flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Create Campaign
+            </StandardizedButton>
+          </div>
+          <CampaignsList campaigns={campaigns} />
+        </div>
+      )}
 
-        <TabsContent value="email" className="mt-6">
-          <StandardizedCard className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Email Marketing Automation</h3>
-            <p className="text-gray-600">
-              Automated email marketing features:
-            </p>
-            <ul className="mt-4 space-y-2 text-sm text-gray-600">
-              <li>• Welcome email sequences for new customers</li>
-              <li>• Birthday and anniversary promotions</li>
-              <li>• Re-engagement campaigns for inactive customers</li>
-              <li>• Post-visit feedback requests</li>
-              <li>• Seasonal promotion announcements</li>
-              <li>• Loyalty milestone celebrations</li>
-              <li>• Abandoned reservation reminders</li>
-            </ul>
-          </StandardizedCard>
-        </TabsContent>
+      {activeTab === 'segments' && (
+        <CustomerSegments customers={customers} />
+      )}
 
-        <TabsContent value="social" className="mt-6">
-          <StandardizedCard className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Social Media Integration</h3>
-            <p className="text-gray-600">
-              Social media management tools:
-            </p>
-            <ul className="mt-4 space-y-2 text-sm text-gray-600">
-              <li>• Automated posting of daily specials and events</li>
-              <li>• Social media contest management</li>
-              <li>• User-generated content campaigns</li>
-              <li>• Instagram and Facebook integration</li>
-              <li>• Social media analytics and reporting</li>
-              <li>• Influencer collaboration tracking</li>
-            </ul>
-          </StandardizedCard>
-        </TabsContent>
+      {activeTab === 'analytics' && (
+        <MarketingAnalytics analytics={analytics} />
+      )}
 
-        <TabsContent value="reviews" className="mt-6">
-          <StandardizedCard className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Review Management</h3>
-            <p className="text-gray-600">
-              Comprehensive review monitoring and management:
-            </p>
-            <ul className="mt-4 space-y-2 text-sm text-gray-600">
-              <li>• Google Business and TripAdvisor integration</li>
-              <li>• Automated review request campaigns</li>
-              <li>• Review response templates and automation</li>
-              <li>• Sentiment analysis and alert system</li>
-              <li>• Review performance tracking</li>
-              <li>• Competitive review monitoring</li>
-            </ul>
-          </StandardizedCard>
-        </TabsContent>
-
-        <TabsContent value="referrals" className="mt-6">
-          <StandardizedCard className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Referral Programs</h3>
-            <p className="text-gray-600">
-              Word-of-mouth marketing amplification:
-            </p>
-            <ul className="mt-4 space-y-2 text-sm text-gray-600">
-              <li>• Customizable referral reward structures</li>
-              <li>• Digital referral links and codes</li>
-              <li>• Social sharing incentives</li>
-              <li>• Referral tracking and attribution</li>
-              <li>• Automated reward distribution</li>
-              <li>• Referral performance analytics</li>
-            </ul>
-          </StandardizedCard>
-        </TabsContent>
-
-        <TabsContent value="campaigns" className="mt-6">
-          <StandardizedCard className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Marketing Campaigns</h3>
-            <p className="text-gray-600">
-              Advanced campaign management features:
-            </p>
-            <ul className="mt-4 space-y-2 text-sm text-gray-600">
-              <li>• Multi-channel campaign orchestration</li>
-              <li>• A/B testing for promotional content</li>
-              <li>• Customer segmentation and targeting</li>
-              <li>• Campaign performance analytics</li>
-              <li>• ROI tracking and optimization</li>
-              <li>• Automated campaign triggers based on behavior</li>
-            </ul>
-          </StandardizedCard>
-        </TabsContent>
-      </Tabs>
+      <CreateCampaignDialog
+        open={openCreateDialog}
+        onOpenChange={setOpenCreateDialog}
+      />
     </div>
   );
 };

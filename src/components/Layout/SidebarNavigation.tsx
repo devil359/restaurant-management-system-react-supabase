@@ -1,179 +1,72 @@
-import { 
-  LayoutDashboard, 
-  ShoppingCart, 
-  Menu, 
-  BarChart3, 
-  Package, 
-  Truck, 
-  Building2, 
-  Users,
-  Calendar,
-  UserCheck,
-  Star,
-  CreditCard,
-  Sparkles,
-  Settings,
-  Home,
-  MessageCircle,
-  TrendingUp,
-  Award,
-  Soup
-} from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
-import { cn } from "@/lib/utils";
 
-const navigationItems = [
-  {
-    title: "Dashboard",
-    href: "/",
-    icon: LayoutDashboard,
-    component: "dashboard"
-  },
-  {
-    title: "Orders",
-    href: "/orders",
-    icon: ShoppingCart,
-    component: "orders"
-  },
-  {
-    title: "Kitchen",
-    href: "/kitchen",
-    icon: Soup,
-    component: "kitchen"
-  },
-  {
-    title: "Menu",
-    href: "/menu",
-    icon: Menu,
-    component: "menu"
-  },
-  {
-    title: "Analytics",
-    href: "/analytics",
-    icon: BarChart3,
-    component: "analytics"
-  },
-  {
-    title: "Inventory",
-    href: "/inventory",
-    icon: Package,
-    component: "inventory"
-  },
-  {
-    title: "Suppliers",
-    href: "/suppliers",
-    icon: Truck,
-    component: "suppliers"
-  },
-  {
-    title: "Rooms",
-    href: "/rooms",
-    icon: Building2,
-    component: "rooms"
-  },
-  {
-    title: "Tables",
-    href: "/tables",
-    icon: Home,
-    component: "tables"
-  },
-  {
-    title: "Reservations",
-    href: "/reservations",
-    icon: Calendar,
-    component: "reservations"
-  },
-  {
-    title: "Staff",
-    href: "/staff",
-    icon: Users,
-    component: "staff"
-  },
-  {
-    title: "CRM",
-    href: "/crm",
-    icon: UserCheck,
-    component: "crm"
-  },
-  {
-    title: "Customers",
-    href: "/customers",
-    icon: Star,
-    component: "customers"
-  },
-  {
-    title: "Expenses",
-    href: "/expenses",
-    icon: CreditCard,
-    component: "expenses"
-  },
-  {
-    title: "Housekeeping",
-    href: "/housekeeping",
-    icon: Sparkles,
-    component: "housekeeping"
-  },
-  {
-    title: "Marketing",
-    href: "/marketing",
-    icon: Award,
-    component: "marketing"
-  },
-  {
-    title: "Reports",
-    href: "/reports",
-    icon: TrendingUp,
-    component: "reports"
-  },
-  {
-    title: "AI Assistant",
-    href: "/ai",
-    icon: MessageCircle,
-    component: "ai"
-  },
-  {
-    title: "Settings",
-    href: "/settings",
-    icon: Settings,
-    component: "settings"
-  },
-];
+import React from "react";
+import { useLocation, Link } from "react-router-dom";
+import { cn } from "@/lib/utils";
+import {
+  LayoutDashboard,
+  UtensilsCrossed,
+  BookOpen,
+  Users,
+  Package,
+  Calendar,
+  TrendingUp,
+  Settings,
+  DollarSign,
+  Truck,
+  MessageSquare,
+  Sparkles,
+  Bed,
+  Globe,
+  ChefHat,
+} from "lucide-react";
 
 interface SidebarNavigationProps {
-  allowedComponents: string[];
+  className?: string;
+  allowedComponents?: string[];
 }
 
-const SidebarNavigation = ({ allowedComponents }: SidebarNavigationProps) => {
+const SidebarNavigation = ({ allowedComponents = [] }: SidebarNavigationProps) => {
   const location = useLocation();
-
-  // Filter navigation items based on allowed components
-  const filteredItems = navigationItems.filter(item => 
-    allowedComponents.length === 0 || allowedComponents.includes(item.component)
-  );
+  
+  const navigationItems = [
+    { icon: LayoutDashboard, label: "Dashboard", path: "/" },
+    { icon: UtensilsCrossed, label: "Orders", path: "/orders" },
+    { icon: ChefHat, label: "Kitchen", path: "/kitchen" },
+    { icon: BookOpen, label: "Menu", path: "/menu" },
+    { icon: Users, label: "Staff", path: "/staff" },
+    { icon: Package, label: "Inventory", path: "/inventory" },
+    { icon: Calendar, label: "Tables", path: "/tables" },
+    { icon: Bed, label: "Rooms", path: "/rooms" },
+    { icon: Calendar, label: "Reservations", path: "/reservations" },
+    { icon: Users, label: "Customers", path: "/customers" },
+    { icon: Globe, label: "Channel Management", path: "/channel-management" },
+    { icon: TrendingUp, label: "Analytics", path: "/analytics" },
+    { icon: DollarSign, label: "Expenses", path: "/expenses" },
+    { icon: Truck, label: "Suppliers", path: "/suppliers" },
+    { icon: MessageSquare, label: "CRM", path: "/crm" },
+    { icon: Sparkles, label: "AI Assistant", path: "/ai" },
+    { icon: Sparkles, label: "Housekeeping", path: "/housekeeping" },
+    { icon: Settings, label: "Settings", path: "/settings" },
+  ];
 
   return (
-    <nav className="space-y-1">
-      {filteredItems.map((item) => {
-        const isActive = location.pathname === item.href;
-        const Icon = item.icon;
-        
-        return (
-          <Link
-            key={item.href}
-            to={item.href}
-            className={cn(
-              "flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors",
-              isActive
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground hover:bg-accent"
-            )}
-          >
-            <Icon className="mr-3 h-4 w-4" />
-            {item.title}
-          </Link>
-        );
-      })}
-    </nav>
+    <div className="flex flex-col space-y-1">
+      {navigationItems.map((item) => (
+        <Link
+          key={item.label}
+          to={item.path}
+          className={cn(
+            "group flex items-center space-x-2 rounded-md p-2 text-sm font-medium hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-gray-50",
+            location.pathname === item.path
+              ? "bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-50"
+              : "text-gray-500 dark:text-gray-400"
+          )}
+        >
+          <item.icon className="h-4 w-4" />
+          <span>{item.label}</span>
+        </Link>
+      ))}
+    </div>
   );
 };
 

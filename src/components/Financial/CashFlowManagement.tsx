@@ -1,179 +1,241 @@
 
-import React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Calendar,
-  Download,
-  Plus
-} from "lucide-react";
+import { useFinancialData } from "@/hooks/useFinancialData";
+import { TrendingUp, TrendingDown, DollarSign, Clock, AlertTriangle } from "lucide-react";
+import { format } from "date-fns";
 
-interface CashFlowManagementProps {
-  dateRange?: any;
-}
+export const CashFlowManagement = () => {
+  const { data: financialData, isLoading } = useFinancialData();
 
-const CashFlowManagement: React.FC<CashFlowManagementProps> = ({ dateRange }) => {
-  // Mock cash flow data
-  const cashFlowData = {
-    openingBalance: 50000,
-    closingBalance: 67500,
-    totalInflow: 125000,
-    totalOutflow: 107500,
-    netCashFlow: 17500
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+    }).format(amount);
   };
 
-  const cashFlowItems = [
-    {
-      id: 1,
-      date: "2024-01-20",
-      description: "Food Sales - Daily Revenue",
-      type: "inflow",
-      amount: 15000,
-      category: "Revenue"
-    },
-    {
-      id: 2,
-      date: "2024-01-20",
-      description: "Room Booking Payment",
-      type: "inflow",
-      amount: 8500,
-      category: "Revenue"
-    },
-    {
-      id: 3,
-      date: "2024-01-20",
-      description: "Supplier Payment - Fresh Produce",
-      type: "outflow",
-      amount: 5000,
-      category: "Inventory"
-    },
-    {
-      id: 4,
-      date: "2024-01-20",
-      description: "Staff Salaries",
-      type: "outflow",
-      amount: 12000,
-      category: "Payroll"
-    },
-    {
-      id: 5,
-      date: "2024-01-19",
-      description: "Utility Bills",
-      type: "outflow",
-      amount: 3500,
-      category: "Operating Expenses"
-    }
-  ];
+  const getOverdueInvoices = () => {
+    if (!financialData?.invoices) return [];
+    const today = new Date();
+    return financialData.invoices.filter(invoice => 
+      new Date(invoice.due_date) < today && 
+      invoice.status !== 'paid' && 
+      invoice.status !== 'cancelled'
+    );
+  };
+
+  const getTotalReceivables = () => {
+    if (!financialData?.invoices) return 0;
+    return financialData.invoices
+      .filter(invoice => invoice.status !== 'paid' && invoice.status !== 'cancelled')
+      .reduce((sum, invoice) => sum + (invoice.total_amount - invoice.paid_amount), 0);
+  };
+
+  const getRecentPayments = () => {
+    if (!financialData?.payments) return [];
+    return financialData.payments.slice(0, 5);
+  };
+
+  if (isLoading) {
+    return <div>Loading cash flow data...</div>;
+  }
+
+  const overdueInvoices = getOverdueInvoices();
+  const totalReceivables = getTotalReceivables();
+  const recentPayments = getRecentPayments();
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Cash Flow Management</h2>
-        <div className="flex space-x-2">
-          <Button variant="outline">
-            <Calendar className="w-4 h-4 mr-2" />
-            This Month
-          </Button>
-          <Button>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Transaction
-          </Button>
+        <div>
+          <h2 className="text-2xl font-bold">Cash Flow Management</h2>
+          <p className="text-muted-foreground">Monitor your cash inflows and outflows</p>
         </div>
+        <Button>Generate Cash Flow Report</Button>
       </div>
 
-      {/* Cash Flow Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      {/* Cash Flow Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
-          <CardContent className="p-4">
-            <div className="text-center">
-              <div className="text-sm text-gray-600">Opening Balance</div>
-              <div className="text-xl font-bold">₹{cashFlowData.openingBalance.toLocaleString()}</div>
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Receivables</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(totalReceivables)}</div>
+            <p className="text-xs text-muted-foreground">
+              From {financialData?.invoices?.filter(i => i.status !== 'paid').length || 0} unpaid invoices
+            </p>
           </CardContent>
         </Card>
-        
+
         <Card>
-          <CardContent className="p-4">
-            <div className="text-center">
-              <div className="text-sm text-gray-600">Total Inflow</div>
-              <div className="text-xl font-bold text-green-600 flex items-center justify-center">
-                <TrendingUp className="w-4 h-4 mr-1" />
-                ₹{cashFlowData.totalInflow.toLocaleString()}
-              </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Overdue Amount</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-red-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">
+              {formatCurrency(
+                overdueInvoices.reduce((sum, invoice) => 
+                  sum + (invoice.total_amount - invoice.paid_amount), 0
+                )
+              )}
             </div>
+            <p className="text-xs text-muted-foreground">
+              From {overdueInvoices.length} overdue invoices
+            </p>
           </CardContent>
         </Card>
-        
+
         <Card>
-          <CardContent className="p-4">
-            <div className="text-center">
-              <div className="text-sm text-gray-600">Total Outflow</div>
-              <div className="text-xl font-bold text-red-600 flex items-center justify-center">
-                <TrendingDown className="w-4 h-4 mr-1" />
-                ₹{cashFlowData.totalOutflow.toLocaleString()}
-              </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">This Month Payments</CardTitle>
+            <TrendingUp className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              {formatCurrency(
+                recentPayments.reduce((sum, payment) => sum + payment.amount, 0)
+              )}
             </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-center">
-              <div className="text-sm text-gray-600">Net Cash Flow</div>
-              <div className={`text-xl font-bold ${cashFlowData.netCashFlow > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                ₹{cashFlowData.netCashFlow.toLocaleString()}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-center">
-              <div className="text-sm text-gray-600">Closing Balance</div>
-              <div className="text-xl font-bold">₹{cashFlowData.closingBalance.toLocaleString()}</div>
-            </div>
+            <p className="text-xs text-muted-foreground">
+              From {recentPayments.length} payments received
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Recent Transactions */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Recent Transactions</CardTitle>
-          <Button variant="outline">
-            <Download className="w-4 h-4 mr-2" />
-            Export
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {cashFlowItems.map((item) => (
-              <div key={item.id} className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <div className={`w-3 h-3 rounded-full ${item.type === 'inflow' ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                  <div>
-                    <div className="font-medium">{item.description}</div>
-                    <div className="text-sm text-gray-600">{item.date}</div>
-                  </div>
-                </div>
+      <Tabs defaultValue="receivables" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="receivables">Receivables</TabsTrigger>
+          <TabsTrigger value="payments">Recent Payments</TabsTrigger>
+          <TabsTrigger value="forecast">Cash Forecast</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="receivables" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Outstanding Receivables</CardTitle>
+              <CardDescription>
+                Invoices pending payment and overdue amounts
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {financialData?.invoices
+                  ?.filter(invoice => invoice.status !== 'paid' && invoice.status !== 'cancelled')
+                  .map((invoice) => {
+                    const isOverdue = new Date(invoice.due_date) < new Date();
+                    const remainingAmount = invoice.total_amount - invoice.paid_amount;
+                    
+                    return (
+                      <div
+                        key={invoice.id}
+                        className="flex items-center justify-between p-4 border rounded-lg"
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{invoice.invoice_number}</span>
+                            <Badge 
+                              variant={isOverdue ? "destructive" : "secondary"}
+                            >
+                              {isOverdue ? "Overdue" : invoice.status}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {invoice.customer_name} • Due: {format(new Date(invoice.due_date), "MMM dd, yyyy")}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-semibold">
+                            {formatCurrency(remainingAmount)}
+                          </div>
+                          {invoice.paid_amount > 0 && (
+                            <div className="text-xs text-muted-foreground">
+                              Paid: {formatCurrency(invoice.paid_amount)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 
-                <div className="flex items-center space-x-3">
-                  <Badge variant="outline">{item.category}</Badge>
-                  <div className={`font-bold ${item.type === 'inflow' ? 'text-green-600' : 'text-red-600'}`}>
-                    {item.type === 'inflow' ? '+' : '-'}₹{item.amount.toLocaleString()}
+                {(!financialData?.invoices || financialData.invoices.length === 0) && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No outstanding receivables
                   </div>
-                </div>
+                )}
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="payments" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Payments</CardTitle>
+              <CardDescription>
+                Latest payments received from customers
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {recentPayments.map((payment) => (
+                  <div
+                    key={payment.id}
+                    className="flex items-center justify-between p-4 border rounded-lg"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{payment.payment_number}</span>
+                        <Badge variant="outline">{payment.payment_method}</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {format(new Date(payment.payment_date), "MMM dd, yyyy")}
+                        {payment.reference_number && ` • Ref: ${payment.reference_number}`}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-semibold text-green-600">
+                        {formatCurrency(payment.amount)}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                
+                {recentPayments.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No recent payments
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="forecast" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Cash Flow Forecast</CardTitle>
+              <CardDescription>
+                Projected cash inflows and outflows for the next 30 days
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8 text-muted-foreground">
+                Cash flow forecasting feature coming soon...
+                <br />
+                This will show projected income from pending invoices and scheduled expenses.
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
-
-export default CashFlowManagement;

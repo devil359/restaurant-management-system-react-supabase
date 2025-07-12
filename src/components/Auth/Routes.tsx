@@ -1,51 +1,39 @@
-
-import { Routes, Route } from "react-router-dom";
-import Index from "@/pages/Index";
-import Orders from "@/pages/Orders";
-import Menu from "@/pages/Menu";
-import Analytics from "@/pages/Analytics";
-import Inventory from "@/pages/Inventory";
-import Suppliers from "@/pages/Suppliers";
-import Rooms from "@/pages/Rooms";
-import Tables from "@/pages/Tables";
-import Staff from "@/pages/Staff";
-import CRM from "@/pages/CRM";
-import Customers from "@/pages/Customers";
-import Expenses from "@/pages/Expenses";
-import Settings from "@/pages/Settings";
-import AI from "@/pages/AI";
-import Housekeeping from "@/pages/Housekeeping";
-import Reservations from "@/pages/Reservations";
-import Marketing from "@/pages/Marketing";
-import Reports from "@/pages/Reports";
-import NotFound from "@/pages/NotFound";
+import React from "react";
+import { Routes as RouterRoutes, Route } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { AppRoutes } from "./AppRoutes";
 import Auth from "@/pages/Auth";
+import NotFound from "@/pages/NotFound";
 
-const AppRoutes = () => {
+const Routes = () => {
+  const { user, loading } = useAuth();
+
+  console.log("Routes: Loading:", loading, "User:", user ? "authenticated" : "not authenticated");
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    console.log("Routes: No user, showing auth");
+    return (
+      <RouterRoutes>
+        <Route path="*" element={<Auth />} />
+      </RouterRoutes>
+    );
+  }
+
+  console.log("Routes: User authenticated, showing app routes");
   return (
-    <Routes>
-      <Route path="/auth" element={<Auth />} />
-      <Route path="/" element={<Index />} />
-      <Route path="/orders" element={<Orders />} />
-      <Route path="/menu" element={<Menu />} />
-      <Route path="/analytics" element={<Analytics />} />
-      <Route path="/inventory" element={<Inventory />} />
-      <Route path="/suppliers" element={<Suppliers />} />
-      <Route path="/rooms" element={<Rooms />} />
-      <Route path="/tables" element={<Tables />} />
-      <Route path="/reservations" element={<Reservations />} />
-      <Route path="/staff" element={<Staff />} />
-      <Route path="/crm" element={<CRM />} />
-      <Route path="/customers" element={<Customers />} />
-      <Route path="/expenses" element={<Expenses />} />
-      <Route path="/housekeeping" element={<Housekeeping />} />
-      <Route path="/marketing" element={<Marketing />} />
-      <Route path="/reports" element={<Reports />} />
-      <Route path="/settings" element={<Settings />} />
-      <Route path="/ai" element={<AI />} />
+    <RouterRoutes>
+      <Route path="/*" element={<AppRoutes />} />
       <Route path="*" element={<NotFound />} />
-    </Routes>
+    </RouterRoutes>
   );
 };
 
-export default AppRoutes;
+export default Routes;
