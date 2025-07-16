@@ -3,13 +3,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { LogOut, User, Building, Clock, Shield, CreditCard, Loader2, Mail, Phone, MapPin, CalendarClock, CheckCircle2, Sparkles, Star } from "lucide-react";
+import { LogOut, User, Building, Clock, Shield, CreditCard, Loader2, Mail, Phone, MapPin, CalendarClock, CheckCircle2, Sparkles, Star, Smartphone } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
+import PaymentSettingsTab from "@/components/Settings/PaymentSettingsTab";
 
 const Settings = () => {
   const { toast } = useToast();
@@ -146,7 +147,7 @@ const Settings = () => {
       <div className="max-w-7xl mx-auto">
         <Tabs defaultValue="account" className="w-full">
           <div className="bg-white/60 backdrop-blur-lg border border-white/30 rounded-2xl p-2 mb-8 shadow-lg">
-            <TabsList className="w-full bg-transparent grid grid-cols-3 gap-2">
+            <TabsList className="w-full bg-transparent grid grid-cols-4 gap-2">
               <TabsTrigger 
                 value="account" 
                 className="flex items-center gap-3 data-[state=active]:bg-white data-[state=active]:shadow-lg rounded-xl py-4 px-6 transition-all duration-300"
@@ -167,6 +168,13 @@ const Settings = () => {
               >
                 <CreditCard className="h-5 w-5" />
                 <span className="font-semibold">Subscription</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="payments" 
+                className="flex items-center gap-3 data-[state=active]:bg-white data-[state=active]:shadow-lg rounded-xl py-4 px-6 transition-all duration-300"
+              >
+                <Smartphone className="h-5 w-5" />
+                <span className="font-semibold">Payments</span>
               </TabsTrigger>
             </TabsList>
           </div>
@@ -439,6 +447,10 @@ const Settings = () => {
                 </div>
               </CardFooter>
             </Card>
+          </TabsContent>
+          
+          <TabsContent value="payments">
+            <PaymentSettingsTab />
           </TabsContent>
         </Tabs>
       </div>

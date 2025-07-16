@@ -518,6 +518,7 @@ const RoomCheckoutPage: React.FC<RoomCheckoutPageProps> = ({
         invoiceNumber={invoiceNumber}
         restaurantName={restaurantName}
         restaurantPhone={restaurantPhone || ''}
+        restaurantId={room.restaurant_id}
       />
     </div>
   );

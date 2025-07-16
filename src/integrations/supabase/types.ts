@@ -1900,6 +1900,44 @@ export type Database = {
           },
         ]
       }
+      payment_settings: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean | null
+          restaurant_id: string
+          updated_at: string
+          upi_id: string
+          upi_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          restaurant_id: string
+          updated_at?: string
+          upi_id: string
+          upi_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          restaurant_id?: string
+          updated_at?: string
+          upi_id?: string
+          upi_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_settings_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
@@ -2544,6 +2582,7 @@ export type Database = {
           owner_name: string | null
           owner_phone: string | null
           pan_number: string | null
+          payment_gateway_enabled: boolean | null
           phone: string | null
           rating: number | null
           registration_number: string | null
@@ -2551,6 +2590,7 @@ export type Database = {
           social_media: Json | null
           total_reviews: number | null
           updated_at: string
+          upi_id: string | null
           verification_status: string | null
           website: string | null
         }
@@ -2580,6 +2620,7 @@ export type Database = {
           owner_name?: string | null
           owner_phone?: string | null
           pan_number?: string | null
+          payment_gateway_enabled?: boolean | null
           phone?: string | null
           rating?: number | null
           registration_number?: string | null
@@ -2587,6 +2628,7 @@ export type Database = {
           social_media?: Json | null
           total_reviews?: number | null
           updated_at?: string
+          upi_id?: string | null
           verification_status?: string | null
           website?: string | null
         }
@@ -2616,6 +2658,7 @@ export type Database = {
           owner_name?: string | null
           owner_phone?: string | null
           pan_number?: string | null
+          payment_gateway_enabled?: boolean | null
           phone?: string | null
           rating?: number | null
           registration_number?: string | null
@@ -2623,6 +2666,7 @@ export type Database = {
           social_media?: Json | null
           total_reviews?: number | null
           updated_at?: string
+          upi_id?: string | null
           verification_status?: string | null
           website?: string | null
         }

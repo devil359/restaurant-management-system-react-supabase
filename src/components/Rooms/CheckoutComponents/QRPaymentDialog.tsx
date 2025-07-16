@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
+import QRCode from 'qrcode';
 import { 
   QrCode, 
   CreditCard, 
@@ -25,6 +28,7 @@ interface QRPaymentDialogProps {
   invoiceNumber: string;
   restaurantName: string;
   restaurantPhone?: string;
+  restaurantId: string;
 }
 
 const QRPaymentDialog: React.FC<QRPaymentDialogProps> = ({
@@ -36,24 +40,60 @@ const QRPaymentDialog: React.FC<QRPaymentDialogProps> = ({
   roomName,
   invoiceNumber,
   restaurantName,
-  restaurantPhone
+  restaurantPhone,
+  restaurantId
 }) => {
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'processing' | 'completed' | 'failed'>('pending');
   const [timeLeft, setTimeLeft] = useState(300); // 5 minutes
   const [qrData, setQrData] = useState('');
+  const [qrCodeUrl, setQrCodeUrl] = useState('');
   const { toast } = useToast();
 
-  // Generate UPI payment URL
+  // Fetch payment settings
+  const { data: paymentSettings } = useQuery({
+    queryKey: ['payment-settings', restaurantId],
+    enabled: !!restaurantId && open,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('payment_settings')
+        .select('*')
+        .eq('restaurant_id', restaurantId)
+        .eq('is_active', true)
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+      return data;
+    },
+  });
+
+  // Generate UPI payment URL and QR code
   useEffect(() => {
-    if (open) {
-      // Example UPI payment URL - replace with your actual merchant UPI ID
-      const upiId = 'merchant@upi'; // Replace with actual UPI ID
-      const paymentUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(restaurantName)}&am=${amount}&cu=INR&tn=${encodeURIComponent(`Room bill payment - ${invoiceNumber}`)}&mc=5411`;
+    if (open && paymentSettings?.upi_id) {
+      const upiId = paymentSettings.upi_id;
+      const payeeName = paymentSettings.upi_name || restaurantName;
+      const paymentUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR&tn=${encodeURIComponent(`Room bill payment - ${invoiceNumber}`)}&mc=5411`;
+      
       setQrData(paymentUrl);
       setPaymentStatus('pending');
       setTimeLeft(300);
+
+      // Generate QR code
+      QRCode.toDataURL(paymentUrl, {
+        width: 256,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF',
+        },
+      })
+        .then((url) => {
+          setQrCodeUrl(url);
+        })
+        .catch((err) => {
+          console.error('Error generating QR code:', err);
+        });
     }
-  }, [open, amount, restaurantName, invoiceNumber]);
+  }, [open, amount, restaurantName, invoiceNumber, paymentSettings]);
 
   // Timer countdown
   useEffect(() => {
@@ -88,7 +128,8 @@ const QRPaymentDialog: React.FC<QRPaymentDialogProps> = ({
   };
 
   const copyUPIId = () => {
-    navigator.clipboard.writeText('merchant@upi'); // Replace with actual UPI ID
+    const upiId = paymentSettings?.upi_id || 'merchant@upi';
+    navigator.clipboard.writeText(upiId);
     toast({
       title: "UPI ID Copied",
       description: "UPI ID has been copied to clipboard",
@@ -104,15 +145,24 @@ const QRPaymentDialog: React.FC<QRPaymentDialogProps> = ({
   };
 
   const renderQRCode = () => {
-    // For production, use a proper QR code library like qrcode.js
-    // This is a placeholder - in production, generate actual QR code
-    return (
-      <div className="w-48 h-48 bg-white border-4 border-gray-300 rounded-lg flex items-center justify-center mx-auto mb-4">
-        <div className="text-center">
-          <QrCode className="h-20 w-20 text-gray-600 mx-auto mb-2" />
-          <p className="text-xs text-gray-500">QR Code</p>
-          <p className="text-xs text-gray-400 mt-1">Scan to Pay</p>
+    if (!qrCodeUrl) {
+      return (
+        <div className="w-48 h-48 bg-white border-4 border-gray-300 rounded-lg flex items-center justify-center mx-auto mb-4">
+          <div className="text-center">
+            <QrCode className="h-20 w-20 text-gray-600 mx-auto mb-2" />
+            <p className="text-xs text-gray-500">Generating QR Code...</p>
+          </div>
         </div>
+      );
+    }
+
+    return (
+      <div className="w-48 h-48 bg-white border-4 border-gray-300 rounded-lg flex items-center justify-center mx-auto mb-4 p-2">
+        <img 
+          src={qrCodeUrl} 
+          alt="UPI Payment QR Code" 
+          className="w-full h-full object-contain"
+        />
       </div>
     );
   };
@@ -134,6 +184,29 @@ const QRPaymentDialog: React.FC<QRPaymentDialogProps> = ({
       default: return <QrCode className="h-5 w-5 text-orange-600" />;
     }
   };
+
+  if (!paymentSettings?.upi_id) {
+    return (
+      <Dialog open={open} onOpenChange={onClose}>
+        <DialogContent className="max-w-md mx-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <Wallet className="h-6 w-6 text-red-600" />
+              UPI Payment Not Available
+            </DialogTitle>
+          </DialogHeader>
+          <div className="text-center py-6">
+            <p className="text-gray-600 mb-4">
+              UPI payment is not configured for this restaurant. Please contact the manager to set up UPI payment settings.
+            </p>
+            <Button onClick={onClose} className="w-full">
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -211,7 +284,9 @@ const QRPaymentDialog: React.FC<QRPaymentDialogProps> = ({
               <div className="text-left">
                 <p className="text-sm font-medium mb-2">Or pay manually using UPI ID:</p>
                 <div className="flex items-center gap-2 p-2 bg-gray-100 dark:bg-gray-700 rounded border">
-                  <span className="text-sm font-mono flex-1">merchant@upi</span>
+                  <span className="text-sm font-mono flex-1">
+                    {paymentSettings?.upi_id || 'merchant@upi'}
+                  </span>
                   <Button
                     size="sm"
                     variant="ghost"
@@ -221,6 +296,9 @@ const QRPaymentDialog: React.FC<QRPaymentDialogProps> = ({
                     <Copy className="h-3 w-3" />
                   </Button>
                 </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Amount: ₹{amount.toFixed(2)} • Note: {invoiceNumber}
+                </p>
               </div>
             </div>
           )}
