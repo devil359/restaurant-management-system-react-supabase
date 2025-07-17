@@ -41,11 +41,17 @@ const MenuItemsGrid = ({ selectedCategory, onSelectItem }: MenuItemsGridProps) =
         throw new Error("No restaurant found for user");
       }
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('menu_items')
         .select('*')
-        .eq('restaurant_id', profile.restaurant_id)
-        .eq('category', selectedCategory);
+        .eq('restaurant_id', profile.restaurant_id);
+
+      // If category is "All", don't filter by category
+      if (selectedCategory !== "All") {
+        query = query.eq('category', selectedCategory);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       return data as MenuItem[];
