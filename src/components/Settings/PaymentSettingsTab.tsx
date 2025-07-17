@@ -12,7 +12,7 @@ import { Loader2, CreditCard, Smartphone, Save, Check } from "lucide-react";
 
 const PaymentSettingsTab = () => {
   const { toast } = useToast();
-  const restaurantId = useRestaurantId();
+  const { restaurantId } = useRestaurantId();
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
