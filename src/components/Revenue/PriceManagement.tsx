@@ -6,9 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useChannelManagement } from "@/hooks/useChannelManagement";
 import { useRooms } from "@/hooks/useRooms";
-import { DollarSign, TrendingUp, TrendingDown, Percent, Bed, Eye } from "lucide-react";
+import { DollarSign, TrendingUp, TrendingDown, Percent, Bed, Eye, ExternalLink } from "lucide-react";
 
 interface PriceManagementProps {
   channels: any[];
@@ -33,6 +34,8 @@ const PriceManagement = ({ channels }: PriceManagementProps) => {
   const [roomPrices, setRoomPrices] = useState<RoomPrice[]>(() => 
     rooms.map(room => ({ roomId: room.id, price: room.price || 5000 }))
   );
+  const [selectedRoom, setSelectedRoom] = useState<any>(null);
+  const [showPriceModal, setShowPriceModal] = useState(false);
 
   React.useEffect(() => {
     if (rooms.length > 0) {
@@ -90,6 +93,11 @@ const PriceManagement = ({ channels }: PriceManagementProps) => {
         ? prev.filter(id => id !== channelId)
         : [...prev, channelId]
     );
+  };
+
+  const openPriceModal = (room: any) => {
+    setSelectedRoom(room);
+    setShowPriceModal(true);
   };
 
   if (roomsLoading) {
@@ -212,7 +220,7 @@ const PriceManagement = ({ channels }: PriceManagementProps) => {
                   {rooms.map((room) => {
                     const roomPrice = roomPrices.find(rp => rp.roomId === room.id)?.price || room.price || 5000;
                     return (
-                      <Card key={room.id} className="p-4">
+                      <Card key={room.id} className="p-4 hover:shadow-md transition-shadow">
                         <div className="flex items-center gap-2 mb-3">
                           <Bed className="w-4 h-4 text-primary" />
                           <h4 className="font-medium">{room.name}</h4>
@@ -231,15 +239,34 @@ const PriceManagement = ({ channels }: PriceManagementProps) => {
                             />
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            <div className="font-medium mb-1">Channel Prices Preview:</div>
+                            <div className="font-medium mb-1 flex items-center justify-between">
+                              <span>Channel Prices Preview:</span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 px-2 text-xs"
+                                onClick={() => openPriceModal(room)}
+                              >
+                                <Eye className="w-3 h-3 mr-1" />
+                                View All
+                              </Button>
+                            </div>
                             {channels.slice(0, 2).map(channel => (
                               <div key={channel.id} className="flex justify-between">
-                                <span>{channel.channel_name}:</span>
-                                <span>₹{calculateChannelPrice(channel, roomPrice).toLocaleString()}</span>
+                                <span className="truncate">{channel.channel_name}:</span>
+                                <span className="font-mono">₹{calculateChannelPrice(channel, roomPrice).toLocaleString()}</span>
                               </div>
                             ))}
                             {channels.length > 2 && (
-                              <div className="text-center mt-1">+{channels.length - 2} more channels</div>
+                              <Button
+                                variant="link"
+                                size="sm"
+                                className="h-4 p-0 text-xs text-muted-foreground hover:text-primary"
+                                onClick={() => openPriceModal(room)}
+                              >
+                                +{channels.length - 2} more channels
+                                <ExternalLink className="w-3 h-3 ml-1" />
+                              </Button>
                             )}
                           </div>
                         </div>
@@ -325,6 +352,109 @@ const PriceManagement = ({ channels }: PriceManagementProps) => {
               </div>
             </CardContent>
           </Card>
+
+          {/* Price Modal for Individual Room */}
+          <Dialog open={showPriceModal} onOpenChange={setShowPriceModal}>
+            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Bed className="w-5 h-5" />
+                  {selectedRoom?.name} - Channel Pricing Details
+                  <Badge variant="outline" className="ml-2">
+                    {selectedRoom?.capacity} guests
+                  </Badge>
+                </DialogTitle>
+              </DialogHeader>
+              
+              {selectedRoom && (
+                <div className="space-y-4">
+                  <div className="bg-muted/30 p-4 rounded-lg">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Base Price:</span>
+                        <span className="font-mono font-semibold ml-2">
+                          ₹{(roomPrices.find(rp => rp.roomId === selectedRoom.id)?.price || selectedRoom.price || 5000).toLocaleString()}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Room Status:</span>
+                        <Badge variant={selectedRoom.status === 'available' ? 'default' : 'secondary'} className="ml-2">
+                          {selectedRoom.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {channels.map((channel) => {
+                      const basePrice = roomPrices.find(rp => rp.roomId === selectedRoom.id)?.price || selectedRoom.price || 5000;
+                      const finalPrice = calculateChannelPrice(channel, basePrice);
+                      const markup = finalPrice - basePrice;
+                      const markupPercentage = ((markup / basePrice) * 100).toFixed(1);
+                      
+                      return (
+                        <Card key={channel.id} className="p-4">
+                          <div className="flex justify-between items-start mb-3">
+                            <div>
+                              <h4 className="font-medium">{channel.channel_name}</h4>
+                              <Badge 
+                                variant={channel.is_active ? 'default' : 'secondary'} 
+                                className="text-xs mt-1"
+                              >
+                                {channel.channel_type.toUpperCase()}
+                              </Badge>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-mono font-bold text-lg">
+                                ₹{finalPrice.toLocaleString()}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                Final Price
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Base Price:</span>
+                              <span className="font-mono">₹{basePrice.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Commission:</span>
+                              <span className="font-mono">{channel.commission_rate}%</span>
+                            </div>
+                            {adjustmentValue > 0 && (
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Adjustment:</span>
+                                <span className="font-mono">
+                                  {adjustmentType === 'percentage' ? `+${adjustmentValue}%` : `+₹${adjustmentValue}`}
+                                </span>
+                              </div>
+                            )}
+                            <div className="flex justify-between border-t pt-2">
+                              <span className="text-muted-foreground">Total Markup:</span>
+                              <span className="font-mono text-green-600">
+                                +₹{markup} ({markupPercentage}%)
+                              </span>
+                            </div>
+                          </div>
+                          
+                          <div className="mt-3 pt-3 border-t">
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="text-muted-foreground">Channel Status:</span>
+                              <Badge variant={channel.is_active ? 'default' : 'destructive'} className="text-xs">
+                                {channel.is_active ? 'Active' : 'Inactive'}
+                              </Badge>
+                            </div>
+                          </div>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
         </CardContent>
       </Card>
     </div>
