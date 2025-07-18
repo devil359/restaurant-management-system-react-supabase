@@ -13,6 +13,7 @@ import BookingConsolidation from "./BookingConsolidation";
 import AddChannelDialog from "./AddChannelDialog";
 import EditChannelDialog from "./EditChannelDialog";
 import PriceManagement from "./PriceManagement";
+import AdvancedIntegration from "./AdvancedIntegration";
 
 const ChannelManagementDashboard = () => {
   const { bookingChannels, updateChannel, isLoadingChannels, syncChannels, bulkUpdatePrices } = useChannelManagement();
@@ -99,9 +100,9 @@ const ChannelManagementDashboard = () => {
       <Tabs value={activeView} onValueChange={setActiveView} className="w-full">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">Channel Overview</TabsTrigger>
-          <TabsTrigger value="prices">Price Management</TabsTrigger>
-          <TabsTrigger value="integration">Advanced Integration</TabsTrigger>
-          <TabsTrigger value="bookings">Booking Consolidation</TabsTrigger>
+          <TabsTrigger value="pricing">Price Management</TabsTrigger>
+          <TabsTrigger value="advanced">Advanced Integration</TabsTrigger>
+          <TabsTrigger value="consolidation">Booking Consolidation</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
@@ -205,15 +206,15 @@ const ChannelManagementDashboard = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="prices">
+        <TabsContent value="pricing">
           <PriceManagement channels={bookingChannels} />
         </TabsContent>
 
-        <TabsContent value="integration">
-          <ChannelIntegrationManager />
+        <TabsContent value="advanced">
+          <AdvancedIntegration channels={bookingChannels} />
         </TabsContent>
 
-        <TabsContent value="bookings">
+        <TabsContent value="consolidation">
           <BookingConsolidation />
         </TabsContent>
       </Tabs>

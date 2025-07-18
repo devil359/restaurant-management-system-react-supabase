@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { useChannelManagement } from "@/hooks/useChannelManagement";
 import { useRooms } from "@/hooks/useRooms";
 import { DollarSign, TrendingUp, TrendingDown, Percent, Bed, Eye, ExternalLink } from "lucide-react";
@@ -364,6 +364,9 @@ const PriceManagement = ({ channels }: PriceManagementProps) => {
                     {selectedRoom?.capacity} guests
                   </Badge>
                 </DialogTitle>
+                <DialogDescription>
+                  View detailed pricing breakdown across all channels for this room, including base prices, commissions, and final rates.
+                </DialogDescription>
               </DialogHeader>
               
               {selectedRoom && (
