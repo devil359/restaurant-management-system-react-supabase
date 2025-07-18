@@ -238,6 +238,7 @@ const StaffDialog: React.FC<StaffDialogProps> = ({
             <div className="p-3 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-2xl">
               {isEditMode ? <User className="h-6 w-6 text-white" /> : <UserPlus className="h-6 w-6 text-white" />}
             </div>
+
             <div>
               <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
                 {isEditMode ? `Edit ${staff?.first_name} ${staff?.last_name}` : "Add New Staff Member"}

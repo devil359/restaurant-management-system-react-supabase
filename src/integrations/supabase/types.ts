@@ -1859,6 +1859,48 @@ export type Database = {
         }
         Relationships: []
       }
+      operational_costs: {
+        Row: {
+          amount: number
+          cost_date: string | null
+          cost_type: string
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          is_recurring: boolean | null
+          recurring_frequency: string | null
+          restaurant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          cost_date?: string | null
+          cost_type: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_recurring?: boolean | null
+          recurring_frequency?: string | null
+          restaurant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          cost_date?: string | null
+          cost_type?: string
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_recurring?: boolean | null
+          recurring_frequency?: string | null
+          restaurant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           created_at: string
@@ -3234,7 +3276,9 @@ export type Database = {
           email: string | null
           emergency_contact_name: string | null
           emergency_contact_phone: string | null
+          employment_type: string | null
           first_name: string
+          hire_date: string | null
           id: string
           last_name: string
           phone: string | null
@@ -3242,6 +3286,8 @@ export type Database = {
           position: string | null
           restaurant_id: string
           role_ids: string[] | null
+          salary: number | null
+          salary_type: string | null
           Shift: string | null
           start_date: string | null
           status: string | null
@@ -3253,7 +3299,9 @@ export type Database = {
           email?: string | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
+          employment_type?: string | null
           first_name: string
+          hire_date?: string | null
           id?: string
           last_name: string
           phone?: string | null
@@ -3261,6 +3309,8 @@ export type Database = {
           position?: string | null
           restaurant_id: string
           role_ids?: string[] | null
+          salary?: number | null
+          salary_type?: string | null
           Shift?: string | null
           start_date?: string | null
           status?: string | null
@@ -3272,7 +3322,9 @@ export type Database = {
           email?: string | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
+          employment_type?: string | null
           first_name?: string
+          hire_date?: string | null
           id?: string
           last_name?: string
           phone?: string | null
@@ -3280,6 +3332,8 @@ export type Database = {
           position?: string | null
           restaurant_id?: string
           role_ids?: string[] | null
+          salary?: number | null
+          salary_type?: string | null
           Shift?: string | null
           start_date?: string | null
           status?: string | null
