@@ -56,6 +56,39 @@ export type Database = {
         }
         Relationships: []
       }
+      backup_settings: {
+        Row: {
+          auto_backup_enabled: boolean
+          backup_frequency: string
+          backup_location: string
+          created_at: string
+          id: string
+          restaurant_id: string
+          retention_days: number
+          updated_at: string
+        }
+        Insert: {
+          auto_backup_enabled?: boolean
+          backup_frequency?: string
+          backup_location?: string
+          created_at?: string
+          id?: string
+          restaurant_id: string
+          retention_days?: number
+          updated_at?: string
+        }
+        Update: {
+          auto_backup_enabled?: boolean
+          backup_frequency?: string
+          backup_location?: string
+          created_at?: string
+          id?: string
+          restaurant_id?: string
+          retention_days?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       backups: {
         Row: {
           backup_type: string
