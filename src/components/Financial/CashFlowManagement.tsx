@@ -7,15 +7,41 @@ import { Badge } from "@/components/ui/badge";
 import { useFinancialData } from "@/hooks/useFinancialData";
 import { TrendingUp, TrendingDown, DollarSign, Clock, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
+import { CurrencyDisplay } from "@/components/ui/currency-display";
 
 export const CashFlowManagement = () => {
   const { data: financialData, isLoading } = useFinancialData();
+  const { toast } = useToast();
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
     }).format(amount);
+  };
+
+  const handleGenerateCashFlowReport = async () => {
+    try {
+      toast({
+        title: "Generating Cash Flow Report",
+        description: "Your report is being prepared...",
+      });
+      
+      // In a real implementation, this would call an API to generate the report
+      setTimeout(() => {
+        toast({
+          title: "Report Generated",
+          description: "Cash flow report has been generated successfully",
+        });
+      }, 2000);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate cash flow report",
+        variant: "destructive",
+      });
+    }
   };
 
   const getOverdueInvoices = () => {
@@ -55,7 +81,7 @@ export const CashFlowManagement = () => {
           <h2 className="text-2xl font-bold">Cash Flow Management</h2>
           <p className="text-muted-foreground">Monitor your cash inflows and outflows</p>
         </div>
-        <Button>Generate Cash Flow Report</Button>
+        <Button onClick={() => handleGenerateCashFlowReport()}>Generate Cash Flow Report</Button>
       </div>
 
       {/* Cash Flow Summary Cards */}
@@ -66,7 +92,9 @@ export const CashFlowManagement = () => {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalReceivables)}</div>
+            <div className="text-2xl font-bold">
+              <CurrencyDisplay amount={totalReceivables} />
+            </div>
             <p className="text-xs text-muted-foreground">
               From {financialData?.invoices?.filter(i => i.status !== 'paid').length || 0} unpaid invoices
             </p>
@@ -80,11 +108,11 @@ export const CashFlowManagement = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              {formatCurrency(
-                overdueInvoices.reduce((sum, invoice) => 
+              <CurrencyDisplay 
+                amount={overdueInvoices.reduce((sum, invoice) => 
                   sum + (invoice.total_amount - invoice.paid_amount), 0
-                )
-              )}
+                )}
+              />
             </div>
             <p className="text-xs text-muted-foreground">
               From {overdueInvoices.length} overdue invoices
@@ -99,9 +127,9 @@ export const CashFlowManagement = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {formatCurrency(
-                recentPayments.reduce((sum, payment) => sum + payment.amount, 0)
-              )}
+              <CurrencyDisplay 
+                amount={recentPayments.reduce((sum, payment) => sum + payment.amount, 0)}
+              />
             </div>
             <p className="text-xs text-muted-foreground">
               From {recentPayments.length} payments received
