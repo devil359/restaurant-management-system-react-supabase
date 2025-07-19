@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
 import PaymentSettingsTab from "@/components/Settings/PaymentSettingsTab";
+import { SystemConfigurationTab } from "@/components/Settings/SystemConfigurationTab";
+import { AuditLogTab } from "@/components/Settings/AuditLogTab";
 
 const Settings = () => {
   const { toast } = useToast();
@@ -147,7 +149,7 @@ const Settings = () => {
       <div className="max-w-7xl mx-auto">
         <Tabs defaultValue="account" className="w-full">
           <div className="bg-white/60 backdrop-blur-lg border border-white/30 rounded-2xl p-2 mb-8 shadow-lg">
-            <TabsList className="w-full bg-transparent grid grid-cols-4 gap-2">
+            <TabsList className="w-full bg-transparent grid grid-cols-6 gap-2">
               <TabsTrigger 
                 value="account" 
                 className="flex items-center gap-3 data-[state=active]:bg-white data-[state=active]:shadow-lg rounded-xl py-4 px-6 transition-all duration-300"
@@ -175,6 +177,20 @@ const Settings = () => {
               >
                 <Smartphone className="h-5 w-5" />
                 <span className="font-semibold">Payments</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="system" 
+                className="flex items-center gap-3 data-[state=active]:bg-white data-[state=active]:shadow-lg rounded-xl py-4 px-6 transition-all duration-300"
+              >
+                <Shield className="h-5 w-5" />
+                <span className="font-semibold">System</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="audit" 
+                className="flex items-center gap-3 data-[state=active]:bg-white data-[state=active]:shadow-lg rounded-xl py-4 px-6 transition-all duration-300"
+              >
+                <Clock className="h-5 w-5" />
+                <span className="font-semibold">Audit</span>
               </TabsTrigger>
             </TabsList>
           </div>
@@ -553,6 +569,14 @@ const Settings = () => {
           
           <TabsContent value="payments">
             <PaymentSettingsTab />
+          </TabsContent>
+          
+          <TabsContent value="system">
+            <SystemConfigurationTab />
+          </TabsContent>
+          
+          <TabsContent value="audit">
+            <AuditLogTab />
           </TabsContent>
         </Tabs>
       </div>

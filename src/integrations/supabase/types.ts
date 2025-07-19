@@ -14,6 +14,84 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          ip_address: unknown | null
+          new_values: Json | null
+          old_values: Json | null
+          record_id: string | null
+          restaurant_id: string
+          table_name: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          ip_address?: unknown | null
+          new_values?: Json | null
+          old_values?: Json | null
+          record_id?: string | null
+          restaurant_id: string
+          table_name?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          ip_address?: unknown | null
+          new_values?: Json | null
+          old_values?: Json | null
+          record_id?: string | null
+          restaurant_id?: string
+          table_name?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      backups: {
+        Row: {
+          backup_type: string
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          file_path: string | null
+          file_size: number | null
+          id: string
+          restaurant_id: string
+          status: string | null
+        }
+        Insert: {
+          backup_type: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          id?: string
+          restaurant_id: string
+          status?: string | null
+        }
+        Update: {
+          backup_type?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          id?: string
+          restaurant_id?: string
+          status?: string | null
+        }
+        Relationships: []
+      }
       booking_channels: {
         Row: {
           api_endpoint: string | null
@@ -459,6 +537,39 @@ export type Database = {
           price?: number
           restaurant_id?: string
           room_type?: string | null
+        }
+        Relationships: []
+      }
+      currencies: {
+        Row: {
+          code: string
+          commonly_used_in: string | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          name: string
+          symbol: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          commonly_used_in?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          symbol: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          commonly_used_in?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          symbol?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1942,6 +2053,39 @@ export type Database = {
           },
         ]
       }
+      payment_methods: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean | null
+          name: string
+          processing_fee_percentage: number | null
+          restaurant_id: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          processing_fee_percentage?: number | null
+          restaurant_id: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          processing_fee_percentage?: number | null
+          restaurant_id?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       payment_settings: {
         Row: {
           created_at: string
@@ -2508,6 +2652,45 @@ export type Database = {
         }
         Relationships: []
       }
+      restaurant_settings: {
+        Row: {
+          backup_frequency: string | null
+          created_at: string
+          currency_id: string | null
+          date_format: string | null
+          id: string
+          restaurant_id: string
+          settings: Json | null
+          time_format: string | null
+          timezone: string | null
+          updated_at: string
+        }
+        Insert: {
+          backup_frequency?: string | null
+          created_at?: string
+          currency_id?: string | null
+          date_format?: string | null
+          id?: string
+          restaurant_id: string
+          settings?: Json | null
+          time_format?: string | null
+          timezone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          backup_frequency?: string | null
+          created_at?: string
+          currency_id?: string | null
+          date_format?: string | null
+          id?: string
+          restaurant_id?: string
+          settings?: Json | null
+          time_format?: string | null
+          timezone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       restaurant_subscriptions: {
         Row: {
           cancel_at_period_end: boolean | null
@@ -2808,6 +2991,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      room_amenities_config: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          restaurant_id: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          restaurant_id: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          restaurant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       room_amenity_inventory: {
         Row: {
@@ -3268,6 +3487,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      shift_types: {
+        Row: {
+          created_at: string
+          end_time: string
+          id: string
+          is_active: boolean | null
+          name: string
+          restaurant_id: string
+          start_time: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          end_time: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          restaurant_id: string
+          start_time: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          end_time?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          restaurant_id?: string
+          start_time?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       staff: {
         Row: {

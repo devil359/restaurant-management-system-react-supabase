@@ -1,5 +1,5 @@
 import React from 'react';
-import { formatIndianCurrency } from "@/utils/formatters";
+import { useCurrency } from '@/hooks/useCurrency';
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
@@ -14,7 +14,13 @@ export const CurrencyDisplay: React.FC<CurrencyDisplayProps> = ({
   className,
   showTooltip = true 
 }) => {
-  const { formatted, actual } = formatIndianCurrency(amount);
+  const { formatCurrency } = useCurrency();
+  
+  if (!amount && amount !== 0) {
+    return <span className={className}>-</span>;
+  }
+  
+  const formatted = formatCurrency(amount);
   
   if (!showTooltip) {
     return <span className={className}>{formatted}</span>;
@@ -28,7 +34,7 @@ export const CurrencyDisplay: React.FC<CurrencyDisplayProps> = ({
         </span>
       </TooltipTrigger>
       <TooltipContent>
-        <p>Exact amount: {actual}</p>
+        <p>Exact amount: {formatted}</p>
       </TooltipContent>
     </Tooltip>
   );
