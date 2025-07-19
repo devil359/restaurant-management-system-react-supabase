@@ -28,13 +28,58 @@ export const CashFlowManagement = () => {
         description: "Your report is being prepared...",
       });
       
-      // In a real implementation, this would call an API to generate the report
-      setTimeout(() => {
+      if (!financialData?.restaurantId) {
         toast({
-          title: "Report Generated",
-          description: "Cash flow report has been generated successfully",
+          title: "Error",
+          description: "Restaurant information not found",
+          variant: "destructive",
         });
-      }, 2000);
+        return;
+      }
+
+      // Generate CSV content
+      const csvContent = [
+        ['Date', 'Type', 'Description', 'Amount', 'Status'],
+        ...overdueInvoices.map(invoice => [
+          format(new Date(invoice.due_date), "yyyy-MM-dd"),
+          'Receivable (Overdue)',
+          `Invoice ${invoice.invoice_number} - ${invoice.customer_name}`,
+          (invoice.total_amount - invoice.paid_amount).toString(),
+          invoice.status
+        ]),
+        ...financialData.invoices
+          .filter(invoice => invoice.status !== 'paid' && invoice.status !== 'cancelled' && !overdueInvoices.find(o => o.id === invoice.id))
+          .map(invoice => [
+            format(new Date(invoice.due_date), "yyyy-MM-dd"),
+            'Receivable',
+            `Invoice ${invoice.invoice_number} - ${invoice.customer_name}`,
+            (invoice.total_amount - invoice.paid_amount).toString(),
+            invoice.status
+          ]),
+        ...recentPayments.map(payment => [
+          format(new Date(payment.payment_date), "yyyy-MM-dd"),
+          'Payment Received',
+          `Payment ${payment.payment_number}`,
+          payment.amount.toString(),
+          'Completed'
+        ])
+      ].map(row => row.join(',')).join('\n');
+
+      // Create and download file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `cash-flow-report-${format(new Date(), 'yyyy-MM-dd')}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast({
+        title: "Report Generated",
+        description: "Cash flow report has been downloaded successfully",
+      });
     } catch (error) {
       toast({
         title: "Error",

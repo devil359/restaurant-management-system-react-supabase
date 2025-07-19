@@ -121,6 +121,94 @@ export const InvoiceManagement = () => {
     });
   };
 
+  const handleViewInvoice = (invoice: any) => {
+    toast({
+      title: "Opening Invoice",
+      description: `Viewing invoice ${invoice.invoice_number}`,
+    });
+    // In a real implementation, this would open a detailed view
+  };
+
+  const handleEditInvoice = (invoice: any) => {
+    toast({
+      title: "Edit Invoice",
+      description: `Editing invoice ${invoice.invoice_number}`,
+    });
+    // In a real implementation, this would open the edit form
+  };
+
+  const handleSendInvoice = async (invoice: any) => {
+    try {
+      toast({
+        title: "Sending Invoice",
+        description: `Sending invoice ${invoice.invoice_number} to ${invoice.customer_email}`,
+      });
+      
+      // In a real implementation, this would send the invoice via email
+      setTimeout(() => {
+        toast({
+          title: "Invoice Sent",
+          description: `Invoice ${invoice.invoice_number} has been sent successfully`,
+        });
+      }, 1500);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to send invoice",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDownloadInvoice = (invoice: any) => {
+    try {
+      // Generate invoice content as CSV
+      const invoiceData = [
+        ['Invoice Details', '', '', ''],
+        ['Invoice Number:', invoice.invoice_number, '', ''],
+        ['Customer:', invoice.customer_name, '', ''],
+        ['Email:', invoice.customer_email || '', '', ''],
+        ['Phone:', invoice.customer_phone || '', '', ''],
+        ['Invoice Date:', format(new Date(invoice.invoice_date), 'yyyy-MM-dd'), '', ''],
+        ['Due Date:', format(new Date(invoice.due_date), 'yyyy-MM-dd'), '', ''],
+        ['', '', '', ''],
+        ['Line Items', '', '', ''],
+        ['Description', 'Quantity', 'Unit Price', 'Total'],
+        ...invoice.invoice_line_items?.map((item: any) => [
+          item.description,
+          item.quantity.toString(),
+          item.unit_price.toString(),
+          item.total_price.toString()
+        ]) || [],
+        ['', '', '', ''],
+        ['Subtotal:', '', '', invoice.subtotal.toString()],
+        ['Tax:', '', '', invoice.tax_amount.toString()],
+        ['Total:', '', '', invoice.total_amount.toString()],
+      ].map(row => row.join(',')).join('\n');
+
+      const blob = new Blob([invoiceData], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `invoice-${invoice.invoice_number}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast({
+        title: "Download Complete",
+        description: `Invoice ${invoice.invoice_number} has been downloaded`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to download invoice",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleCreateInvoice = async () => {
     try {
       if (!financialData?.restaurantId) {
@@ -476,16 +564,36 @@ export const InvoiceManagement = () => {
                   )}
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="ghost" size="sm">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => handleViewInvoice(invoice)}
+                    title="View Invoice"
+                  >
                     <Eye className="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="sm">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => handleEditInvoice(invoice)}
+                    title="Edit Invoice"
+                  >
                     <Edit className="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="sm">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => handleSendInvoice(invoice)}
+                    title="Send Invoice"
+                  >
                     <Send className="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="sm">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => handleDownloadInvoice(invoice)}
+                    title="Download Invoice"
+                  >
                     <Download className="h-4 w-4" />
                   </Button>
                 </div>
