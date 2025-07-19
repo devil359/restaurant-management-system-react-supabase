@@ -22,7 +22,7 @@ interface AuditLog {
 }
 
 export function AuditLogTab() {
-  const restaurantId = useRestaurantId();
+  const { restaurantId } = useRestaurantId();
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');

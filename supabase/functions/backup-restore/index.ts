@@ -19,6 +19,8 @@ serve(async (req) => {
     )
 
     const { action, restaurant_id } = await req.json()
+    
+    console.log('Action:', action, 'Restaurant ID:', restaurant_id)
 
     if (action === 'backup') {
       console.log(`Creating backup for restaurant: ${restaurant_id}`)

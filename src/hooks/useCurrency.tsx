@@ -10,7 +10,7 @@ interface Currency {
 }
 
 export function useCurrency() {
-  const restaurantId = useRestaurantId();
+  const { restaurantId } = useRestaurantId();
   const [currency, setCurrency] = useState<Currency | null>(null);
   const [loading, setLoading] = useState(true);
 

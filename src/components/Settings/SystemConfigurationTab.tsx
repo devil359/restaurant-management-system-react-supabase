@@ -36,7 +36,7 @@ interface PaymentMethod {
 
 export function SystemConfigurationTab() {
   const { toast } = useToast();
-  const restaurantId = useRestaurantId();
+  const { restaurantId } = useRestaurantId();
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [shiftTypes, setShiftTypes] = useState<ShiftType[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
