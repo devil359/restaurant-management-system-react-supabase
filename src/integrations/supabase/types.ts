@@ -4374,6 +4374,10 @@ export type Database = {
           estimated_total: number
         }[]
       }
+      user_has_role_or_permission: {
+        Args: { required_roles: string[]; required_permissions?: string[] }
+        Returns: boolean
+      }
     }
     Enums: {
       subscription_interval: "monthly" | "quarterly" | "half_yearly" | "yearly"
