@@ -213,6 +213,32 @@ const StaffDialog: React.FC<StaffDialogProps> = ({
       });
       return;
     }
+
+    // Validate phone number if provided
+    if (phone) {
+      const phoneRegex = /^\d{10}$/;
+      if (!phoneRegex.test(phone.replace(/\D/g, ''))) {
+        toast({
+          title: "Invalid phone number",
+          description: "Phone number must be exactly 10 digits.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    // Validate email if provided
+    if (email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        toast({
+          title: "Invalid email",
+          description: "Please enter a valid email address.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
     
     const staffData = {
       first_name: firstName,
@@ -371,9 +397,17 @@ const StaffDialog: React.FC<StaffDialogProps> = ({
                 <Label htmlFor="phone" className="text-sm font-medium text-gray-700">Phone</Label>
                 <Input
                   id="phone"
+                  type="tel"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '');
+                    if (value.length <= 10) {
+                      setPhone(value);
+                    }
+                  }}
                   className="mt-1 bg-white/80 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 transition-all duration-200"
+                  placeholder="10-digit phone number"
+                  maxLength={10}
                 />
               </div>
             </div>

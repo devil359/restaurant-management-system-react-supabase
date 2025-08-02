@@ -93,6 +93,14 @@ const MaintenanceRequestDialog: React.FC<MaintenanceRequestDialogProps> = ({
 
   const saveMutation = useMutation({
     mutationFn: async (data: any) => {
+      if (!restaurantId) {
+        throw new Error('Restaurant ID is required');
+      }
+
+      if (!data.room_id || !data.title || !data.description || !data.request_type) {
+        throw new Error('Please fill in all required fields');
+      }
+
       const payload = {
         ...data,
         restaurant_id: restaurantId,
@@ -131,6 +139,43 @@ const MaintenanceRequestDialog: React.FC<MaintenanceRequestDialogProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!formData.room_id) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please select a room",
+      });
+      return;
+    }
+    
+    if (!formData.title.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please enter a title",
+      });
+      return;
+    }
+    
+    if (!formData.description.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please enter a description",
+      });
+      return;
+    }
+    
+    if (!formData.request_type) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please select a request type",
+      });
+      return;
+    }
+    
     saveMutation.mutate(formData);
   };
 
@@ -149,6 +194,7 @@ const MaintenanceRequestDialog: React.FC<MaintenanceRequestDialogProps> = ({
             <Select
               value={formData.room_id}
               onValueChange={(value) => setFormData(prev => ({ ...prev, room_id: value }))}
+              required
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select room" />
@@ -188,6 +234,7 @@ const MaintenanceRequestDialog: React.FC<MaintenanceRequestDialogProps> = ({
             <Select
               value={formData.request_type}
               onValueChange={(value) => setFormData(prev => ({ ...prev, request_type: value }))}
+              required
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select type" />

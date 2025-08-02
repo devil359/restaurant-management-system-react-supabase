@@ -87,6 +87,14 @@ const CleaningScheduleDialog: React.FC<CleaningScheduleDialogProps> = ({
 
   const saveMutation = useMutation({
     mutationFn: async (data: any) => {
+      if (!restaurantId) {
+        throw new Error('Restaurant ID is required');
+      }
+
+      if (!data.room_id || !data.assigned_staff_id || !data.scheduled_date || !data.scheduled_time) {
+        throw new Error('Please fill in all required fields');
+      }
+
       const payload = {
         ...data,
         restaurant_id: restaurantId
@@ -124,6 +132,25 @@ const CleaningScheduleDialog: React.FC<CleaningScheduleDialogProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!formData.room_id) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please select a room",
+      });
+      return;
+    }
+    
+    if (!formData.assigned_staff_id) {
+      toast({
+        variant: "destructive",
+        title: "Error", 
+        description: "Please select staff member",
+      });
+      return;
+    }
+    
     saveMutation.mutate(formData);
   };
 
@@ -142,6 +169,7 @@ const CleaningScheduleDialog: React.FC<CleaningScheduleDialogProps> = ({
             <Select
               value={formData.room_id}
               onValueChange={(value) => setFormData(prev => ({ ...prev, room_id: value }))}
+              required
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select room" />
@@ -161,6 +189,7 @@ const CleaningScheduleDialog: React.FC<CleaningScheduleDialogProps> = ({
             <Select
               value={formData.assigned_staff_id}
               onValueChange={(value) => setFormData(prev => ({ ...prev, assigned_staff_id: value }))}
+              required
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select staff member" />
