@@ -122,10 +122,11 @@ const CleaningScheduleDialog: React.FC<CleaningScheduleDialogProps> = ({
       onClose();
     },
     onError: (error) => {
+      console.error('Cleaning schedule save error:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to save schedule",
+        description: error.message || "Failed to save schedule",
       });
     },
   });

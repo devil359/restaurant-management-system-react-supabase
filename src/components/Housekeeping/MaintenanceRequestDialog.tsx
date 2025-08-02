@@ -101,10 +101,16 @@ const MaintenanceRequestDialog: React.FC<MaintenanceRequestDialogProps> = ({
         throw new Error('Please fill in all required fields');
       }
 
+      // Get current user for reported_by field
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
       const payload = {
         ...data,
         restaurant_id: restaurantId,
-        estimated_cost: data.estimated_cost ? parseFloat(data.estimated_cost) : null
+        estimated_cost: data.estimated_cost ? parseFloat(data.estimated_cost) : null,
+        reported_by: user.id, // Add the current user as the reporter
+        status: 'pending' // Default status
       };
 
       if (request) {
@@ -129,10 +135,11 @@ const MaintenanceRequestDialog: React.FC<MaintenanceRequestDialogProps> = ({
       onClose();
     },
     onError: (error) => {
+      console.error('Maintenance request save error:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to save request",
+        description: error.message || "Failed to save request",
       });
     },
   });
