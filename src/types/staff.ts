@@ -19,6 +19,14 @@ export interface StaffMember {
   role_ids?: string[];
   salary?: number;
   salary_type?: string;
+  documents?: Document[];
+}
+
+export interface Document {
+  type: string;
+  number: string;
+  file_url: string;
+  custom_name?: string;
 }
 
 export interface StaffRole {
