@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { UserCheck, Calendar, FileText, Clock, Settings, Upload } from "lucide-react";
 import type { StaffMember, StaffShift, StaffLeaveBalance, StaffTimeClockEntry, StaffRole, StaffLeaveRequest } from "@/types/staff";
-import DocumentUpload from "./DocumentUpload";
+import MultipleDocumentUpload from "./MultipleDocumentUpload";
 
 // Import the individual tab components
 import { ProfileTab } from "./ProfileComponents/ProfileTab";
@@ -369,7 +369,7 @@ const StaffDetail: React.FC<StaffDetailProps> = ({
             </TabsContent>
 
             <TabsContent value="documents" className="mt-0">
-              <DocumentUpload 
+              <MultipleDocumentUpload 
                 staffId={staffId} 
                 restaurantId={restaurantId || ""}
                 documents={documents}
