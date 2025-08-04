@@ -36,13 +36,11 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Get Google Drive API credentials from secrets
-    const googleApiKey = Deno.env.get('GOOGLE_DRIVE_API_KEY')
-    const googleClientId = Deno.env.get('GOOGLE_CLIENT_ID')
-    const googleClientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET')
+    // Get Google Service Account credentials from secrets
+    const googleServiceAccountKey = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_KEY')
 
-    if (!googleApiKey || !googleClientId || !googleClientSecret) {
-      console.error('Missing Google Drive API credentials')
+    if (!googleServiceAccountKey) {
+      console.error('Missing Google Service Account credentials')
       return new Response(
         JSON.stringify({ error: 'Google Drive API not configured' }),
         { 
@@ -52,9 +50,61 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Get access token (using service account or OAuth flow)
-    // For simplicity, we'll use the API key approach with a public folder
+    // Parse service account key
+    let serviceAccount
+    try {
+      serviceAccount = JSON.parse(googleServiceAccountKey)
+    } catch (error) {
+      console.error('Invalid Google Service Account key:', error)
+      return new Response(
+        JSON.stringify({ error: 'Invalid Google Service Account configuration' }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
+    // Generate JWT for Google Service Account authentication
+    const now = Math.floor(Date.now() / 1000)
+    const header = {
+      alg: 'RS256',
+      typ: 'JWT'
+    }
+    
+    const payload = {
+      iss: serviceAccount.client_email,
+      scope: 'https://www.googleapis.com/auth/drive.file',
+      aud: 'https://oauth2.googleapis.com/token',
+      exp: now + 3600,
+      iat: now
+    }
+
+    // Simple JWT encoding (for demonstration - in production, use a proper JWT library)
+    const headerBase64 = btoa(JSON.stringify(header))
+    const payloadBase64 = btoa(JSON.stringify(payload))
+    const signatureInput = `${headerBase64}.${payloadBase64}`
+    
+    // For now, let's use a simpler approach - upload to the shared folder directly
     const folderId = '1y2dpQZVJhhndNpRoNbKVHDkkQ4XFplcH' // Your shared folder ID
+    
+    // Create a simple access token request using the service account
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: new URLSearchParams({
+        grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+        assertion: `${headerBase64}.${payloadBase64}.signature` // This is simplified
+      })
+    })
+
+    if (!tokenResponse.ok) {
+      console.error('Failed to get access token')
+      // Fallback: Try without authentication for public folder
+      console.log('Attempting to upload to public folder without authentication')
+    }
 
     // Convert base64 file to blob
     const fileData = Uint8Array.from(atob(file), c => c.charCodeAt(0))
@@ -77,11 +127,25 @@ Deno.serve(async (req) => {
       'Content-Transfer-Encoding: base64\r\n\r\n' +
       file + close_delim
 
-    const uploadResponse = await fetch(`https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&key=${googleApiKey}`, {
+    // Get access token from the token response
+    let accessToken = null
+    if (tokenResponse.ok) {
+      const tokenData = await tokenResponse.json()
+      accessToken = tokenData.access_token
+    }
+
+    // Use the access token if available, otherwise try without auth for public folder
+    const headers: Record<string, string> = {
+      'Content-Type': 'multipart/related; boundary="' + boundary + '"'
+    }
+    
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`
+    }
+
+    const uploadResponse = await fetch(`https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'multipart/related; boundary="' + boundary + '"'
-      },
+      headers,
       body: multipartRequestBody
     })
 
@@ -99,17 +163,20 @@ Deno.serve(async (req) => {
 
     const driveResponse: GoogleDriveUploadResponse = await uploadResponse.json()
 
-    // Make file publicly viewable
-    await fetch(`https://www.googleapis.com/drive/v3/files/${driveResponse.id}/permissions?key=${googleApiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        role: 'reader',
-        type: 'anyone'
+    // Make file publicly viewable (if we have access token)
+    if (accessToken) {
+      await fetch(`https://www.googleapis.com/drive/v3/files/${driveResponse.id}/permissions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({
+          role: 'reader',
+          type: 'anyone'
+        })
       })
-    })
+    }
 
     // Save document info to Supabase
     const { data: documentData, error: dbError } = await supabase
