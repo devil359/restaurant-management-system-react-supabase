@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
 
     // Get access token (using service account or OAuth flow)
     // For simplicity, we'll use the API key approach with a public folder
-    const folderId = '1xqYNJ073HM_7dNEVCH8jIKP_FFPo14FQ' // Your shared folder ID
+    const folderId = '1y2dpQZVJhhndNpRoNbKVHDkkQ4XFplcH' // Your shared folder ID
 
     // Convert base64 file to blob
     const fileData = Uint8Array.from(atob(file), c => c.charCodeAt(0))
