@@ -20,6 +20,7 @@ import AdvancedChannelSync from "./AdvancedChannelSync";
 import MetaSearchIntegration from "./MetaSearchIntegration";
 import EnhancedRateManagement from "./EnhancedRateManagement";
 import PoolInventoryManagement from "./PoolInventoryManagement";
+import RoomSpecificRateManager from "./RoomSpecificRateManager";
 
 const ChannelManagementDashboard = () => {
   const { bookingChannels, updateChannel, isLoadingChannels, syncChannels, bulkUpdatePrices } = useChannelManagement();
@@ -104,10 +105,11 @@ const ChannelManagementDashboard = () => {
       </div>
 
       <Tabs value={activeView} onValueChange={setActiveView} className="w-full">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="metasearch">Meta Search</TabsTrigger>
           <TabsTrigger value="rates">Rate Management</TabsTrigger>
+          <TabsTrigger value="room-rates">Room Pricing</TabsTrigger>
           <TabsTrigger value="pool-inventory">Pool Inventory</TabsTrigger>
           <TabsTrigger value="dynamic">Dynamic Pricing</TabsTrigger>
           <TabsTrigger value="sync">Advanced Sync</TabsTrigger>
@@ -221,6 +223,10 @@ const ChannelManagementDashboard = () => {
 
         <TabsContent value="rates">
           <EnhancedRateManagement />
+        </TabsContent>
+
+        <TabsContent value="room-rates">
+          <RoomSpecificRateManager />
         </TabsContent>
 
         <TabsContent value="pool-inventory">
