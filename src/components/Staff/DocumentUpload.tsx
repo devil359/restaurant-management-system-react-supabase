@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, X, Eye, Trash2, Plus } from "lucide-react";
+import { Upload, X, Eye, Trash2, Plus, Download } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
@@ -163,6 +163,35 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ documents, onDocumentsC
     }
   };
 
+  const handleDownloadDocument = (doc: Document) => {
+    try {
+      // Create a download link
+      const link = document.createElement('a');
+      link.href = doc.file_url;
+      
+      // Generate filename
+      const docLabel = getDocumentLabel(doc);
+      const extension = doc.file_url.includes('data:application/pdf') ? '.pdf' : '.jpg';
+      link.download = `${docLabel}_${doc.number}${extension}`;
+      
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast({
+        title: "Download started",
+        description: `${docLabel} download has started.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Download failed",
+        description: "Failed to download the document.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const getDocumentStatus = (docType: string) => {
     const hasDoc = documents.find(doc => doc.type === docType);
     const docInfo = DOCUMENT_TYPES.find(type => type.value === docType);
@@ -274,6 +303,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ documents, onDocumentsC
                           variant="outline"
                           size="sm"
                           onClick={() => setPreviewDocument(doc)}
+                          title="View document"
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -304,7 +334,17 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ documents, onDocumentsC
                     <Button
                       variant="outline"
                       size="sm"
+                      onClick={() => handleDownloadDocument(doc)}
+                      title="Download document"
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => handleRemoveDocument(index)}
+                      title="Delete document"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
