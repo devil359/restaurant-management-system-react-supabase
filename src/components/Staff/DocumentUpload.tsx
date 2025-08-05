@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Upload, X, Eye, Trash2, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useToast } from "@/components/ui/use-toast";
 
 interface Document {
   type: string;
@@ -18,6 +21,7 @@ interface Document {
 interface DocumentUploadProps {
   documents: Document[];
   onDocumentsChange: (documents: Document[]) => void;
+  staffId?: string; // Made optional for backward compatibility
 }
 
 const DOCUMENT_TYPES = [
@@ -33,13 +37,41 @@ const DOCUMENT_TYPES = [
   { value: "other", label: "Other", required: false },
 ];
 
-const DocumentUpload: React.FC<DocumentUploadProps> = ({ documents, onDocumentsChange }) => {
+const DocumentUpload: React.FC<DocumentUploadProps> = ({ documents, onDocumentsChange, staffId }) => {
   const [selectedType, setSelectedType] = useState<string>("");
   const [documentNumber, setDocumentNumber] = useState("");
   const [customName, setCustomName] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [previewDocument, setPreviewDocument] = useState<Document | null>(null);
+  const { toast } = useToast();
+
+  // Mutation to update staff documents in database
+  const updateDocumentsMutation = useMutation({
+    mutationFn: async (updatedDocuments: Document[]) => {
+      if (!staffId) return; // Skip database update if no staffId provided
+      
+      const { error } = await supabase
+        .from("staff")
+        .update({ documents: updatedDocuments })
+        .eq("id", staffId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Documents updated",
+        description: "Staff documents have been updated successfully.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: `Failed to update documents: ${(error as Error).message}`,
+        variant: "destructive",
+      });
+    },
+  });
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -98,6 +130,11 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ documents, onDocumentsC
 
       const updatedDocuments = [...documents, newDocument];
       onDocumentsChange(updatedDocuments);
+      
+      // Update database if staffId is provided
+      if (staffId) {
+        updateDocumentsMutation.mutate(updatedDocuments);
+      }
 
       // Reset form
       setSelectedType("");
@@ -119,6 +156,11 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ documents, onDocumentsC
   const handleRemoveDocument = (index: number) => {
     const updatedDocuments = documents.filter((_, i) => i !== index);
     onDocumentsChange(updatedDocuments);
+    
+    // Update database if staffId is provided
+    if (staffId) {
+      updateDocumentsMutation.mutate(updatedDocuments);
+    }
   };
 
   const getDocumentStatus = (docType: string) => {
