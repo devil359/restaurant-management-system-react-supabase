@@ -20,12 +20,16 @@ export const useAccessControl = (): AccessControl => {
   useEffect(() => {
     const loadAllowedComponents = async () => {
       if (!user?.restaurant_id) {
+        console.log('AccessControl: No restaurant_id found');
+        setAllowedComponents([]);
         setLoading(false);
         return;
       }
 
       try {
+        console.log('AccessControl: Fetching components for restaurant:', user.restaurant_id);
         const components = await fetchAllowedComponents(user.restaurant_id);
+        console.log('AccessControl: Allowed components:', components);
         setAllowedComponents(components);
       } catch (error) {
         console.error('Error loading allowed components:', error);
@@ -41,8 +45,19 @@ export const useAccessControl = (): AccessControl => {
   const hasAccess = (component: string): boolean => {
     if (!user) return false;
     
+    // If still loading, deny access to prevent showing restricted content
+    if (loading) return false;
+    
+    // If no allowed components loaded, deny access (subscription issue)
+    if (allowedComponents.length === 0) {
+      console.log('AccessControl: No allowed components, denying access to:', component);
+      return false;
+    }
+    
     // Check if the component is in the allowed list from subscription
-    return allowedComponents.includes(component);
+    const hasComponentAccess = allowedComponents.includes(component);
+    console.log(`AccessControl: Checking ${component}: ${hasComponentAccess}`);
+    return hasComponentAccess;
   };
 
   return {
