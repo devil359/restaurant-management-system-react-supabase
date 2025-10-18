@@ -198,12 +198,12 @@ export const rolePermissions: RolePermissions = {
   ],
   viewer: [
     'dashboard.view',
-    'orders.view',
-    'menu.view',
-    'inventory.view',
-    'customers.view',
-    'rooms.view',
-    'reservations.view'
+    // 'orders.view',
+    // 'menu.view',
+    // 'inventory.view',
+    // 'customers.view',
+    // 'rooms.view',
+    // 'reservations.view'
   ]
 };
 
@@ -228,4 +228,22 @@ export interface AuthContextType {
   hasAnyPermission: (permissions: Permission[]) => boolean;
   isRole: (role: UserRole) => boolean;
   signOut: () => Promise<void>;
+}
+
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  components: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RestaurantSubscription {
+  id: string;
+  restaurant_id: string;
+  subscription_plan_id: string;
+  status: 'active' | 'inactive' | 'cancelled';
+  subscription_plans: SubscriptionPlan;
+  created_at: string;
+  updated_at: string;
 }
