@@ -18,6 +18,8 @@ import {
   Bed,
   Globe,
   ChefHat,
+  Zap,
+  Utensils,
 } from "lucide-react";
 
 interface SidebarNavigationProps {
@@ -30,9 +32,12 @@ const SidebarNavigation = ({ allowedComponents = [] }: SidebarNavigationProps) =
   
   const navigationItems = [
     { icon: LayoutDashboard, label: "Dashboard", path: "/" },
+    { icon: UtensilsCrossed, label: "POS", path: "/pos" },
     { icon: UtensilsCrossed, label: "Orders", path: "/orders" },
+    { icon: Zap, label: "QSR POS", path: "/qsr-pos" },
     { icon: ChefHat, label: "Kitchen", path: "/kitchen" },
     { icon: BookOpen, label: "Menu", path: "/menu" },
+    { icon: Utensils, label: "Recipes & Costing", path: "/recipes" },
     { icon: Users, label: "Staff", path: "/staff" },
     { icon: Package, label: "Inventory", path: "/inventory" },
     { icon: Calendar, label: "Tables", path: "/tables" },

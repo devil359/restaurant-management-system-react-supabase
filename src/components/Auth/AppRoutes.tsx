@@ -3,6 +3,8 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { ImprovedSidebarNavigation } from "@/components/Layout/ImprovedSidebarNavigation";
 import Index from "@/pages/Index";
 import Orders from "@/pages/Orders";
+import POS from "@/pages/POS";
+import QSRPos from "@/pages/QSRPos";
 import Menu from "@/pages/Menu";
 import Staff from "@/pages/Staff";
 import Analytics from "@/pages/Analytics";
@@ -22,6 +24,7 @@ import Kitchen from "@/pages/Kitchen";
 import Financial from "@/pages/Financial";
 import Security from "@/pages/Security";
 import UserManagement from "@/pages/UserManagement";
+import RecipeManagement from "@/pages/RecipeManagement";
 import { PermissionGuard } from "./PermissionGuard";
 
 /**
@@ -45,9 +48,24 @@ export const AppRoutes = () => {
               <Orders />
             </PermissionGuard>
           } />
+          <Route path="/pos" element={
+            <PermissionGuard permission="orders.view">
+              <POS />
+            </PermissionGuard>
+          } />
+          <Route path="/qsr-pos" element={
+            <PermissionGuard permission="orders.view">
+              <QSRPos />
+            </PermissionGuard>
+          } />
           <Route path="/menu" element={
             <PermissionGuard permission="menu.view">
               <Menu />
+            </PermissionGuard>
+          } />
+          <Route path="/recipes" element={
+            <PermissionGuard permission="menu.view">
+              <RecipeManagement />
             </PermissionGuard>
           } />
           <Route path="/staff" element={

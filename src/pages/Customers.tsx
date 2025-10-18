@@ -9,6 +9,7 @@ import RealtimeCustomers from "@/components/CRM/RealtimeCustomers";
 import { Customer } from "@/types/customer";
 import { User, Users, TrendingUp, Heart } from "lucide-react";
 import { useCustomerData } from "@/hooks/useCustomerData";
+import { CurrencyDisplay } from "@/components/ui/currency-display";
 
 const Customers = () => {
   const { toast } = useToast();
@@ -133,6 +134,13 @@ const Customers = () => {
     }
   };
 
+  // Handle customer updates
+  const handleUpdateCustomer = (customer: Customer, updates: Partial<Customer>) => {
+    const updatedCustomer = { ...customer, ...updates };
+    setSelectedCustomer(updatedCustomer);
+    // The actual database update is handled by the LoyaltyManagement component
+  };
+
   const totalSpent = customers.reduce((sum, customer) => sum + customer.total_spent, 0);
   const averageOrderValue = customers.length > 0 ? totalSpent / customers.reduce((sum, customer) => sum + customer.visit_count, 0) || 0 : 0;
   const loyalCustomers = customers.filter(customer => customer.loyalty_tier === 'Diamond' || customer.loyalty_tier === 'Platinum').length;
@@ -179,7 +187,9 @@ const Customers = () => {
               </div>
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Total Revenue</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">₹{totalSpent.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  <CurrencyDisplay amount={totalSpent} className="text-2xl font-bold text-gray-900 dark:text-white" />
+                </p>
               </div>
             </div>
           </div>
@@ -191,7 +201,9 @@ const Customers = () => {
               </div>
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Avg Order Value</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">₹{averageOrderValue.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  <CurrencyDisplay amount={averageOrderValue} className="text-2xl font-bold text-gray-900 dark:text-white" />
+                </p>
               </div>
             </div>
           </div>
@@ -260,6 +272,7 @@ const Customers = () => {
                   onAddNote={handleAddNote}
                   onAddTag={handleAddTag}
                   onRemoveTag={handleRemoveTag}
+                  onUpdateCustomer={handleUpdateCustomer}
                 />
               )}
             </div>

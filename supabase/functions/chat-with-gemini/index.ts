@@ -51,6 +51,7 @@ serve(async (req) => {
           { data: revenueStats },
           { data: customerInsights },
           { data: recentOrders },
+          { data: qsrOrders },
           { data: menuItems },
           { data: inventoryItems },
           { data: rooms },
@@ -73,7 +74,7 @@ serve(async (req) => {
           supabase.from("daily_revenue_stats").select("*")
             .eq("restaurant_id", restaurantId)
             .order("date", { ascending: false })
-            .limit(30),
+            .limit(400),
           supabase.from("customer_insights").select("*")
             .eq("restaurant_id", restaurantId)
             .order("total_spent", { ascending: false })
@@ -82,6 +83,11 @@ serve(async (req) => {
             .eq("restaurant_id", restaurantId)
             .order("created_at", { ascending: false })
             .limit(50),
+          supabase.from("orders").select("*")
+            .eq("restaurant_id", restaurantId)
+            .eq("source", "qsr")
+            .order("created_at", { ascending: false })
+            .limit(100),
           supabase.from("menu_items").select("*")
             .eq("restaurant_id", restaurantId),
           supabase.from("inventory_items").select("*")
@@ -144,6 +150,7 @@ serve(async (req) => {
           revenueStats: revenueStats || [],
           customerInsights: customerInsights || [],
           recentOrders: recentOrders || [],
+          qsrOrders: qsrOrders || [],
           menuItems: menuItems || [],
           inventoryItems: inventoryItems || [],
           
@@ -171,7 +178,7 @@ serve(async (req) => {
           restaurantSubscriptions: restaurantSubscriptions || []
         };
         
-        console.log(`Successfully fetched restaurant data from all tables. Found ${revenueStats?.length || 0} revenue records, ${recentOrders?.length || 0} orders, ${inventoryItems?.length || 0} inventory items, ${rooms?.length || 0} rooms, ${staff?.length || 0} staff members, etc.`);
+        console.log(`Successfully fetched restaurant data from all tables. Found ${revenueStats?.length || 0} revenue records, ${recentOrders?.length || 0} orders, ${qsrOrders?.length || 0} QSR orders, ${inventoryItems?.length || 0} inventory items, ${rooms?.length || 0} rooms, ${staff?.length || 0} staff members, etc.`);
       } catch (error) {
         console.error("Error fetching restaurant data:", error);
       }
@@ -200,7 +207,7 @@ serve(async (req) => {
     let systemPrompt = "You are a restaurant assistant bot that provides SPECIFIC DATA-DRIVEN ANSWERS based on the restaurant's actual database records. You must ALWAYS analyze the provided restaurant data for insights rather than providing generic information. When asked about sales, inventory, customers, etc., respond with precise numbers and specifics from the data you have access to. DO NOT provide generic overviews that could apply to any restaurant.";
     
     if (restaurantData) {
-      systemPrompt += " You have direct access to the restaurant's database records. Analyze this specific data carefully and provide precise insights. Format your responses in a visually appealing way with proper spacing, bullet points, and sections where appropriate. Be sure to use actual numbers and metrics from the data provided.";
+      systemPrompt += " You have direct access to the restaurant's database records, including comprehensive QSR POS data. Analyze this specific data carefully and provide precise insights. Format your responses in a visually appealing way with proper spacing, bullet points, and sections where appropriate. Be sure to use actual numbers and metrics from the data provided. The context may show samples, but you can rely on the precomputed KEY METRICS SUMMARY (MTD, QTD, YTD, last 60/90 days) for full-period insights. For QSR analysis, you can examine order patterns, popular items, peak hours, average order values, order status distribution (paid/held), and revenue trends specific to QSR operations.";
       
       const hasNoData = 
         (!restaurantData.inventoryItems || restaurantData.inventoryItems.length === 0) &&
@@ -220,13 +227,65 @@ serve(async (req) => {
 
     let restaurantDataContext = "";
     if (restaurantData) {
-      restaurantDataContext = `Here is the restaurant's actual database records to inform your answers. When giving sales overviews or inventory analysis, ALWAYS use this specific data:
+      // Compute key metrics on the full available history to enable MTD/QTD/YTD queries
+      try {
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const startOfYear = new Date(now.getFullYear(), 0, 1);
+        const startOfQuarter = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+        const daysAgo = (n: number) => new Date(now.getTime() - n * 24 * 60 * 60 * 1000);
+        const revStats = (restaurantData.revenueStats || []);
+        const sumRange = (start: Date) => {
+          const filtered = revStats.filter((r: any) => {
+            const dt = new Date(r.date);
+            return dt >= start && dt <= now;
+          });
+          const totalRevenue = filtered.reduce((acc: number, r: any) => acc + (Number(r.total_revenue) || 0), 0);
+          const orderCount = filtered.reduce((acc: number, r: any) => acc + (Number(r.order_count) || 0), 0);
+          const averageOrderValue = orderCount > 0 ? totalRevenue / orderCount : 0;
+          return { days: filtered.length, totalRevenue, orderCount, averageOrderValue };
+        };
+        const metricsSummary = {
+          MTD: sumRange(startOfMonth),
+          QTD: sumRange(startOfQuarter),
+          YTD: sumRange(startOfYear),
+          last_60_days: sumRange(daysAgo(60)),
+          last_90_days: sumRange(daysAgo(90)),
+        } as const;
+
+        const metricsSummaryText = JSON.stringify(metricsSummary, null, 2);
+
+        // Calculate QSR-specific metrics
+        const qsrStats = restaurantData.qsrOrders || [];
+        const qsrPaidOrders = qsrStats.filter((o: any) => o.status === 'paid');
+        const qsrHeldOrders = qsrStats.filter((o: any) => o.status === 'held');
+        const qsrTotalRevenue = qsrPaidOrders.reduce((sum: number, o: any) => sum + (Number(o.total) || 0), 0);
+        const qsrAvgOrderValue = qsrPaidOrders.length > 0 ? qsrTotalRevenue / qsrPaidOrders.length : 0;
         
+        const qsrMetrics = {
+          totalOrders: qsrStats.length,
+          paidOrders: qsrPaidOrders.length,
+          heldOrders: qsrHeldOrders.length,
+          totalRevenue: qsrTotalRevenue,
+          averageOrderValue: qsrAvgOrderValue
+        };
+
+        restaurantDataContext = `Here is the restaurant's actual database records to inform your answers. When giving sales overviews or inventory analysis, ALWAYS use this specific data.
+
+KEY METRICS SUMMARY (computed on full available history):
+${metricsSummaryText}
+
+QSR POS METRICS (from ${qsrStats.length} QSR orders):
+${JSON.stringify(qsrMetrics, null, 2)}
+  
 INVENTORY ITEMS (${restaurantData.inventoryItems?.length || 0} items):
 ${JSON.stringify(restaurantData.inventoryItems.slice(0, 10), null, 2)}
 
-REVENUE STATS (last 10 days):
-${JSON.stringify(restaurantData.revenueStats.slice(0, 10), null, 2)}
+REVENUE STATS (latest 10 shown; total available: ${revStats.length} days):
+${JSON.stringify(revStats.slice(0, 10), null, 2)}
+
+RECENT QSR ORDERS (last 20):
+${JSON.stringify(qsrStats.slice(0, 20), null, 2)}
 
 RECENT ORDERS (last 10):
 ${JSON.stringify(restaurantData.recentOrders.slice(0, 10), null, 2)}
@@ -279,7 +338,10 @@ ${JSON.stringify(restaurantData.restaurantDetails, null, 2)}
 RESTAURANT SUBSCRIPTION:
 ${JSON.stringify(restaurantData.restaurantSubscriptions?.slice(0, 1), null, 2)}
 
-ALWAYS base your answers on this specific data. When asked for a sales overview, calculate totals, trends, and metrics from the REVENUE STATS and ORDERS data. When asked about inventory, analyze the actual INVENTORY ITEMS data. Your answers should NEVER be generic - they should directly reflect the numbers and patterns in this data.`;
+ALWAYS base your answers on this specific data. When asked for MTD, QTD, or YTD, use the KEY METRICS SUMMARY above. When asked for a sales overview, calculate totals, trends, and metrics from the full REVENUE STATS history. Your answers should NEVER be generic - they should directly reflect the numbers and patterns in this data.`;
+      } catch (e) {
+        console.error('Error computing metrics summary:', e);
+      }
     }
 
     if (messages.some(msg => 

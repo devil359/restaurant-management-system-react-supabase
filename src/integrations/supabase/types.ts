@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -124,6 +124,80 @@ export type Database = {
           status?: string | null
         }
         Relationships: []
+      }
+      batch_productions: {
+        Row: {
+          batch_size: number
+          completed_at: string | null
+          cost_per_unit: number | null
+          created_at: string
+          id: string
+          notes: string | null
+          produced_by: string | null
+          production_date: string
+          recipe_id: string
+          restaurant_id: string
+          started_at: string | null
+          status: string | null
+          total_cost: number | null
+          updated_at: string
+          waste_amount: number | null
+          waste_reason: string | null
+          yield_actual: number | null
+          yield_expected: number | null
+          yield_percentage: number | null
+        }
+        Insert: {
+          batch_size: number
+          completed_at?: string | null
+          cost_per_unit?: number | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          produced_by?: string | null
+          production_date?: string
+          recipe_id: string
+          restaurant_id: string
+          started_at?: string | null
+          status?: string | null
+          total_cost?: number | null
+          updated_at?: string
+          waste_amount?: number | null
+          waste_reason?: string | null
+          yield_actual?: number | null
+          yield_expected?: number | null
+          yield_percentage?: number | null
+        }
+        Update: {
+          batch_size?: number
+          completed_at?: string | null
+          cost_per_unit?: number | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          produced_by?: string | null
+          production_date?: string
+          recipe_id?: string
+          restaurant_id?: string
+          started_at?: string | null
+          status?: string | null
+          total_cost?: number | null
+          updated_at?: string
+          waste_amount?: number | null
+          waste_reason?: string | null
+          yield_actual?: number | null
+          yield_expected?: number | null
+          yield_percentage?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_productions_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       booking_channels: {
         Row: {
@@ -2052,6 +2126,7 @@ export type Database = {
           id: string
           items: string[]
           restaurant_id: string
+          source: string | null
           status: string
           total: number
           updated_at: string
@@ -2062,6 +2137,7 @@ export type Database = {
           id?: string
           items: string[]
           restaurant_id: string
+          source?: string | null
           status?: string
           total: number
           updated_at?: string
@@ -2072,6 +2148,7 @@ export type Database = {
           id?: string
           items?: string[]
           restaurant_id?: string
+          source?: string | null
           status?: string
           total?: number
           updated_at?: string
@@ -2579,6 +2656,182 @@ export type Database = {
           name?: string
           plan_type?: string
           restaurant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      recipe_ingredients: {
+        Row: {
+          cost_per_unit: number | null
+          created_at: string
+          id: string
+          inventory_item_id: string
+          notes: string | null
+          quantity: number
+          recipe_id: string
+          total_cost: number | null
+          unit: Database["public"]["Enums"]["unit_of_measure"]
+          updated_at: string
+        }
+        Insert: {
+          cost_per_unit?: number | null
+          created_at?: string
+          id?: string
+          inventory_item_id: string
+          notes?: string | null
+          quantity: number
+          recipe_id: string
+          total_cost?: number | null
+          unit: Database["public"]["Enums"]["unit_of_measure"]
+          updated_at?: string
+        }
+        Update: {
+          cost_per_unit?: number | null
+          created_at?: string
+          id?: string
+          inventory_item_id?: string
+          notes?: string | null
+          quantity?: number
+          recipe_id?: string
+          total_cost?: number | null
+          unit?: Database["public"]["Enums"]["unit_of_measure"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_ingredients_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_ingredients_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recipe_nutrition: {
+        Row: {
+          allergens: string[] | null
+          calories: number | null
+          carbs_g: number | null
+          created_at: string
+          dietary_tags: string[] | null
+          fat_g: number | null
+          fiber_g: number | null
+          id: string
+          protein_g: number | null
+          recipe_id: string
+          sodium_mg: number | null
+          updated_at: string
+        }
+        Insert: {
+          allergens?: string[] | null
+          calories?: number | null
+          carbs_g?: number | null
+          created_at?: string
+          dietary_tags?: string[] | null
+          fat_g?: number | null
+          fiber_g?: number | null
+          id?: string
+          protein_g?: number | null
+          recipe_id: string
+          sodium_mg?: number | null
+          updated_at?: string
+        }
+        Update: {
+          allergens?: string[] | null
+          calories?: number | null
+          carbs_g?: number | null
+          created_at?: string
+          dietary_tags?: string[] | null
+          fat_g?: number | null
+          fiber_g?: number | null
+          id?: string
+          protein_g?: number | null
+          recipe_id?: string
+          sodium_mg?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_nutrition_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: true
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recipes: {
+        Row: {
+          category: Database["public"]["Enums"]["recipe_category"]
+          cook_time_minutes: number | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          difficulty: string | null
+          food_cost_percentage: number | null
+          id: string
+          image_url: string | null
+          instructions: string | null
+          is_active: boolean | null
+          margin_percentage: number | null
+          name: string
+          prep_time_minutes: number | null
+          restaurant_id: string
+          selling_price: number | null
+          serving_size: number
+          serving_unit: string | null
+          total_cost: number | null
+          updated_at: string
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["recipe_category"]
+          cook_time_minutes?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          difficulty?: string | null
+          food_cost_percentage?: number | null
+          id?: string
+          image_url?: string | null
+          instructions?: string | null
+          is_active?: boolean | null
+          margin_percentage?: number | null
+          name: string
+          prep_time_minutes?: number | null
+          restaurant_id: string
+          selling_price?: number | null
+          serving_size?: number
+          serving_unit?: string | null
+          total_cost?: number | null
+          updated_at?: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["recipe_category"]
+          cook_time_minutes?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          difficulty?: string | null
+          food_cost_percentage?: number | null
+          id?: string
+          image_url?: string | null
+          instructions?: string | null
+          is_active?: boolean | null
+          margin_percentage?: number | null
+          name?: string
+          prep_time_minutes?: number | null
+          restaurant_id?: string
+          selling_price?: number | null
+          serving_size?: number
+          serving_unit?: string | null
+          total_cost?: number | null
           updated_at?: string
         }
         Relationships: []
@@ -4185,9 +4438,54 @@ export type Database = {
           },
         ]
       }
+      table_pacing: {
+        Row: {
+          actual_departure: string | null
+          created_at: string
+          expected_duration_minutes: number | null
+          id: string
+          notes: string | null
+          pacing_status: string | null
+          reservation_id: string | null
+          restaurant_id: string
+          seated_at: string
+          table_id: string
+          turn_time_minutes: number | null
+        }
+        Insert: {
+          actual_departure?: string | null
+          created_at?: string
+          expected_duration_minutes?: number | null
+          id?: string
+          notes?: string | null
+          pacing_status?: string | null
+          reservation_id?: string | null
+          restaurant_id: string
+          seated_at: string
+          table_id: string
+          turn_time_minutes?: number | null
+        }
+        Update: {
+          actual_departure?: string | null
+          created_at?: string
+          expected_duration_minutes?: number | null
+          id?: string
+          notes?: string | null
+          pacing_status?: string | null
+          reservation_id?: string | null
+          restaurant_id?: string
+          seated_at?: string
+          table_id?: string
+          turn_time_minutes?: number | null
+        }
+        Relationships: []
+      }
       table_reservations: {
         Row: {
           arrival_time: string | null
+          confirmation_method: string | null
+          confirmation_sent: boolean | null
+          confirmation_sent_at: string | null
           created_at: string
           customer_email: string | null
           customer_name: string
@@ -4197,6 +4495,8 @@ export type Database = {
           id: string
           notes: string | null
           party_size: number
+          reminder_sent: boolean | null
+          reminder_sent_at: string | null
           reservation_date: string
           reservation_time: string
           restaurant_id: string
@@ -4207,6 +4507,9 @@ export type Database = {
         }
         Insert: {
           arrival_time?: string | null
+          confirmation_method?: string | null
+          confirmation_sent?: boolean | null
+          confirmation_sent_at?: string | null
           created_at?: string
           customer_email?: string | null
           customer_name: string
@@ -4216,6 +4519,8 @@ export type Database = {
           id?: string
           notes?: string | null
           party_size: number
+          reminder_sent?: boolean | null
+          reminder_sent_at?: string | null
           reservation_date: string
           reservation_time: string
           restaurant_id: string
@@ -4226,6 +4531,9 @@ export type Database = {
         }
         Update: {
           arrival_time?: string | null
+          confirmation_method?: string | null
+          confirmation_sent?: boolean | null
+          confirmation_sent_at?: string | null
           created_at?: string
           customer_email?: string | null
           customer_name?: string
@@ -4235,6 +4543,8 @@ export type Database = {
           id?: string
           notes?: string | null
           party_size?: number
+          reminder_sent?: boolean | null
+          reminder_sent_at?: string | null
           reservation_date?: string
           reservation_time?: string
           restaurant_id?: string
@@ -4289,6 +4599,57 @@ export type Database = {
         }
         Relationships: []
       }
+      waitlist: {
+        Row: {
+          check_in_time: string
+          created_at: string
+          customer_email: string | null
+          customer_name: string
+          customer_phone: string | null
+          estimated_wait_time: number | null
+          id: string
+          notes: string | null
+          party_size: number
+          priority: number | null
+          restaurant_id: string
+          seated_time: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          check_in_time?: string
+          created_at?: string
+          customer_email?: string | null
+          customer_name: string
+          customer_phone?: string | null
+          estimated_wait_time?: number | null
+          id?: string
+          notes?: string | null
+          party_size: number
+          priority?: number | null
+          restaurant_id: string
+          seated_time?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          check_in_time?: string
+          created_at?: string
+          customer_email?: string | null
+          customer_name?: string
+          customer_phone?: string | null
+          estimated_wait_time?: number | null
+          id?: string
+          notes?: string | null
+          party_size?: number
+          priority?: number | null
+          restaurant_id?: string
+          seated_time?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       customer_insights: {
@@ -4315,10 +4676,10 @@ export type Database = {
     Functions: {
       add_customer_activity: {
         Args: {
-          customer_id_param: string
-          restaurant_id_param: string
           activity_type_param: string
+          customer_id_param: string
           description_param: string
+          restaurant_id_param: string
         }
         Returns: {
           activity_type: string
@@ -4331,10 +4692,10 @@ export type Database = {
       }
       add_customer_note: {
         Args: {
-          customer_id_param: string
-          restaurant_id_param: string
           content_param: string
           created_by_param: string
+          customer_id_param: string
+          restaurant_id_param: string
         }
         Returns: {
           content: string
@@ -4347,13 +4708,13 @@ export type Database = {
       }
       add_loyalty_transaction: {
         Args: {
-          customer_id_param: string
-          restaurant_id_param: string
-          transaction_type_param: string
-          points_param: number
-          source_param: string
-          notes_param: string
           created_by_param: string
+          customer_id_param: string
+          notes_param: string
+          points_param: number
+          restaurant_id_param: string
+          source_param: string
+          transaction_type_param: string
         }
         Returns: {
           created_at: string
@@ -4378,8 +4739,8 @@ export type Database = {
       }
       generate_time_slots_for_date: {
         Args: {
-          p_restaurant_id: string
           p_date: string
+          p_restaurant_id: string
           p_slot_duration_minutes?: number
         }
         Returns: {
@@ -4430,19 +4791,40 @@ export type Database = {
       suggest_purchase_orders: {
         Args: { restaurant_id_param: string }
         Returns: {
+          estimated_total: number
+          items_count: number
           supplier_id: string
           supplier_name: string
-          items_count: number
-          estimated_total: number
         }[]
       }
       user_has_role_or_permission: {
-        Args: { required_roles: string[]; required_permissions?: string[] }
+        Args: { required_permissions?: string[]; required_roles: string[] }
         Returns: boolean
       }
     }
     Enums: {
+      recipe_category:
+        | "appetizer"
+        | "main_course"
+        | "dessert"
+        | "beverage"
+        | "side_dish"
+        | "salad"
+        | "soup"
+        | "breakfast"
+        | "snack"
       subscription_interval: "monthly" | "quarterly" | "half_yearly" | "yearly"
+      unit_of_measure:
+        | "kg"
+        | "g"
+        | "mg"
+        | "l"
+        | "ml"
+        | "piece"
+        | "dozen"
+        | "cup"
+        | "tbsp"
+        | "tsp"
       user_role:
         | "admin"
         | "manager"
@@ -4578,7 +4960,30 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      recipe_category: [
+        "appetizer",
+        "main_course",
+        "dessert",
+        "beverage",
+        "side_dish",
+        "salad",
+        "soup",
+        "breakfast",
+        "snack",
+      ],
       subscription_interval: ["monthly", "quarterly", "half_yearly", "yearly"],
+      unit_of_measure: [
+        "kg",
+        "g",
+        "mg",
+        "l",
+        "ml",
+        "piece",
+        "dozen",
+        "cup",
+        "tbsp",
+        "tsp",
+      ],
       user_role: [
         "admin",
         "manager",
