@@ -2,6 +2,7 @@
 import React from "react";
 import { useLocation, Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useAccessControl } from "@/hooks/useAccessControl";
 import {
   LayoutDashboard,
   UtensilsCrossed,
@@ -29,6 +30,32 @@ interface SidebarNavigationProps {
 
 const SidebarNavigation = ({ allowedComponents = [] }: SidebarNavigationProps) => {
   const location = useLocation();
+  const { hasAccess, loading } = useAccessControl();
+  
+  // Map routes to component names
+  const routeToComponentMap: Record<string, string> = {
+    '/': 'dashboard',
+    '/pos': 'pos',
+    '/orders': 'orders',
+    '/qsr-pos': 'qsr-pos',
+    '/kitchen': 'kitchen',
+    '/menu': 'menu',
+    '/recipes': 'recipes',
+    '/staff': 'staff',
+    '/inventory': 'inventory',
+    '/tables': 'tables',
+    '/rooms': 'rooms',
+    '/reservations': 'reservations',
+    '/customers': 'customers',
+    '/channel-management': 'channel-management',
+    '/analytics': 'analytics',
+    '/expenses': 'expenses',
+    '/suppliers': 'suppliers',
+    '/crm': 'crm',
+    '/ai': 'ai',
+    '/housekeeping': 'housekeeping',
+    '/settings': 'settings',
+  };
   
   const navigationItems = [
     { icon: LayoutDashboard, label: "Dashboard", path: "/" },
@@ -54,9 +81,16 @@ const SidebarNavigation = ({ allowedComponents = [] }: SidebarNavigationProps) =
     { icon: Settings, label: "Settings", path: "/settings" },
   ];
 
+  if (loading) {
+    return <div className="text-sm text-muted-foreground">Loading navigation...</div>;
+  }
+
   return (
     <div className="flex flex-col space-y-1">
-      {navigationItems.map((item) => (
+      {navigationItems.filter(item => {
+        const componentName = routeToComponentMap[item.path];
+        return componentName ? hasAccess(componentName) : true;
+      }).map((item) => (
         <Link
           key={item.label}
           to={item.path}
