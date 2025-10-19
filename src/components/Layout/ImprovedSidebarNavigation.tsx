@@ -23,7 +23,8 @@ import {
   Shield,
   LogOut,
   Zap,
-  ChevronLeft
+  ChevronLeft,
+  Menu
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -280,13 +281,10 @@ export const ImprovedSidebarNavigation = ({
             variant="ghost"
             size="icon"
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-            className="text-white hover:bg-white/10 w-8 h-8"
+            className="text-white hover:bg-white/10 w-8 h-8 rounded-lg"
             title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
-            <ChevronLeft className={cn(
-              "h-4 w-4 transition-transform",
-              isSidebarCollapsed && "rotate-180"
-            )} />
+            <Menu className="h-5 w-5" />
           </Button>
         </div>
       </div>
