@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { Menu as MenuIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { Menu as MenuIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,7 +15,7 @@ import SidebarNavigation from "./SidebarNavigation";
 import { SidebarFooter } from "./SidebarFooter";
 
 const Sidebar = () => {
-  const { openMobile, setOpenMobile, open, setOpen } = useSidebar();
+  const { openMobile, setOpenMobile, open, setOpen, toggleSidebar } = useSidebar();
   const [staffName, setStaffName] = useState<string | null>(null);
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
   const [restaurantName, setRestaurantName] = useState<string | null>(null);
@@ -107,21 +107,18 @@ const Sidebar = () => {
   return (
     <>
       {mobileToggle}
-      <SidebarComponent className="bg-sidebar-purple">
+      <SidebarComponent className="bg-sidebar-purple" collapsible="icon">
         {/* Desktop Toggle Button at top */}
-        <div className="hidden lg:flex justify-end p-2 border-b border-white/10">
+        <div className="flex items-center justify-between p-2 border-b border-white/10">
           <Button
-            onClick={() => setOpen(!open)}
+            onClick={toggleSidebar}
             variant="ghost"
             size="icon"
             className="text-white hover:bg-white/10 h-8 w-8"
-            title={open ? "Collapse sidebar" : "Expand sidebar"}
+            title={open ? "Hide menu" : "Show menu"}
+            aria-label="Toggle sidebar"
           >
-            {open ? (
-              <ChevronLeft className="h-4 w-4" />
-            ) : (
-              <ChevronRight className="h-4 w-4" />
-            )}
+            <MenuIcon className="h-4 w-4" />
           </Button>
         </div>
         
