@@ -13,13 +13,13 @@ export const SimpleLayout = ({ children }: SimpleLayoutProps) => {
 
   return (
     <SidebarProvider>
-      <div className="flex h-screen w-full">
+      <div className="flex h-screen w-full overflow-hidden">
         <Sidebar />
         <main 
           className="flex-1 overflow-auto pb-20 lg:pb-0 w-full" 
           style={{ paddingLeft: isMobile ? '0' : '7rem' }}
         >
-          <div className="p-4 w-full max-w-full">
+          <div className="p-2 sm:p-4 md:p-6 w-full max-w-full overflow-x-hidden">
             {children}
           </div>
         </main>
