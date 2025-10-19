@@ -31,6 +31,8 @@ import { SidebarHeader } from "../Layout/SidebarHeader";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Menu as MenuIcon } from "lucide-react";
+import { BottomNav } from "../Layout/BottomNav";
+import { MobileNavigation } from "@/components/ui/mobile-navigation";
 
 /**
  * Main application routes for authenticated users
@@ -40,8 +42,9 @@ export const AppRoutes = () => {
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-100 dark:bg-gray-900">
+      {/* Sidebar - Hidden on mobile */}
       <div className={cn(
-        "bg-sidebar-purple transition-all duration-300 ease-in-out relative",
+        "bg-sidebar-purple transition-all duration-300 ease-in-out relative hidden md:block",
         isSidebarCollapsed ? "w-16" : "w-64"
       )}>
         {isSidebarCollapsed && (
@@ -59,7 +62,9 @@ export const AppRoutes = () => {
           setIsSidebarCollapsed={setIsSidebarCollapsed}
         />
       </div>
-      <div className="flex-1 overflow-y-auto">
+      
+      {/* Main Content - Add padding bottom for mobile navigation */}
+      <div className="flex-1 overflow-y-auto pb-16 md:pb-0">
         <Routes>
           <Route path="/" element={
             <PermissionGuard permission="dashboard.view">
@@ -183,6 +188,9 @@ export const AppRoutes = () => {
           } />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        
+        {/* Global Mobile Navigation */}
+        <MobileNavigation className="md:hidden" />
       </div>
     </div>
   );

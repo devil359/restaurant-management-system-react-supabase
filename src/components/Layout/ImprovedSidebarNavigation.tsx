@@ -274,15 +274,14 @@ export const ImprovedSidebarNavigation = ({
       {/* Header Section */}
       <div className="p-4 border-b border-white/10">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <span className="font-bold text-white text-lg">Restaurant Pro</span>
+          <div className="flex items-center space-x-3 truncate">
+            <span className="font-bold text-white text-lg truncate">Restaurant Pro</span>
           </div>
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-            className="text-white hover:bg-white/10 w-8 h-8 rounded-lg"
-            title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className="text-white hover:bg-white/10 w-8 h-8 rounded-lg shrink-0"
           >
             <Menu className="h-5 w-5" />
           </Button>
@@ -303,16 +302,16 @@ export const ImprovedSidebarNavigation = ({
                 {group.title !== "Dashboard" && (
                   <Button
                     variant="ghost"
-                    className="w-full justify-between px-2 py-1 h-8 text-white/80 hover:text-white hover:bg-white/10"
+                    className="w-full justify-between px-2 py-1 h-8 text-white/80 hover:text-white hover:bg-white/10 truncate"
                     onClick={() => toggleGroup(group.title)}
                   >
-                    <span className="text-xs font-medium uppercase tracking-wide">
+                    <span className="text-xs font-medium uppercase tracking-wide truncate">
                       {group.title}
                     </span>
                     {isExpanded ? (
-                      <ChevronDown className="h-3 w-3" />
+                      <ChevronDown className="h-3 w-3 shrink-0 ml-2" />
                     ) : (
-                      <ChevronRight className="h-3 w-3" />
+                      <ChevronRight className="h-3 w-3 shrink-0 ml-2" />
                     )}
                   </Button>
                 )}

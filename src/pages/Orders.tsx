@@ -1,9 +1,7 @@
-
 import { useState } from "react";
 import OrdersView from "@/components/Orders/OrdersView/OrdersView";
 import { StandardizedLayout } from "@/components/ui/standardized-layout";
 import { QuickActionsToolbar, commonQuickActions } from "@/components/ui/quick-actions-toolbar";
-import { MobileNavigation } from "@/components/ui/mobile-navigation";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import AddOrderForm from "@/components/Orders/AddOrderForm";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -92,7 +90,6 @@ const Orders = () => {
         </DialogContent>
       </Dialog>
       
-      <MobileNavigation />
     </div>
   );
 };
