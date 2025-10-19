@@ -1,6 +1,7 @@
-
+import React, { useState } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { ImprovedSidebarNavigation } from "@/components/Layout/ImprovedSidebarNavigation";
+import SimpleSidebar from "../Layout/SimpleSidebar";
 import Index from "@/pages/Index";
 import Orders from "@/pages/Orders";
 import POS from "@/pages/POS";
@@ -26,15 +27,37 @@ import Security from "@/pages/Security";
 import UserManagement from "@/pages/UserManagement";
 import RecipeManagement from "@/pages/RecipeManagement";
 import { PermissionGuard } from "./PermissionGuard";
+import { SidebarHeader } from "../Layout/SidebarHeader";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { ChevronRight } from "lucide-react";
 
 /**
  * Main application routes for authenticated users
  */
 export const AppRoutes = () => {
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
   return (
     <div className="flex h-screen overflow-hidden bg-gray-100 dark:bg-gray-900">
-      <div className="w-64 bg-sidebar-purple">
-        <ImprovedSidebarNavigation />
+      <div className={cn(
+        "bg-sidebar-purple transition-all duration-300 ease-in-out relative",
+        isSidebarCollapsed ? "w-12" : "w-64"
+      )}>
+        {isSidebarCollapsed && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsSidebarCollapsed(false)}
+            className="absolute top-4 right-2 text-white hover:bg-white/10 w-8 h-8"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        )}
+        <ImprovedSidebarNavigation 
+          isSidebarCollapsed={isSidebarCollapsed}
+          setIsSidebarCollapsed={setIsSidebarCollapsed}
+        />
       </div>
       <div className="flex-1 overflow-y-auto">
         <Routes>

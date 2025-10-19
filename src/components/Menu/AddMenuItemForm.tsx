@@ -355,7 +355,7 @@ const AddMenuItemForm = ({ onClose, onSuccess, editingItem }: AddMenuItemFormPro
         </DialogContent>
       </Dialog>
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white/95 backdrop-blur-xl border border-white/30 rounded-3xl shadow-2xl w-full max-w-2xl relative animate-fade-in overflow-y-auto max-h-[90vh]">
+      <div className="bg-white/95 backdrop-blur-xl border border-white/30 rounded-3xl shadow-2xl w-full max-w-2xl relative animate-fade-in overflow-y-auto max-h-[75vh]">
         {/* Modern Header */}
         <div className="bg-gradient-to-r from-emerald-500/20 via-teal-500/20 to-green-500/20 border-b border-white/20 p-6 rounded-t-3xl">
           <div className="flex items-center justify-between">

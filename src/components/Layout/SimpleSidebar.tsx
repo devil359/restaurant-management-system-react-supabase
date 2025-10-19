@@ -65,7 +65,7 @@ const SimpleSidebar = () => {
 
         {/* Navigation */}
         <div className="flex-1 overflow-y-auto py-4">
-          <ImprovedSidebarNavigation />
+          {/* <ImprovedSidebarNavigation /> */}
         </div>
 
         {/* Footer */}

@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { 
@@ -23,7 +22,8 @@ import {
   Globe,
   Shield,
   LogOut,
-  Zap
+  Zap,
+  ChevronLeft
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -213,7 +213,15 @@ const standaloneItems: NavigationItem[] = [
   }
 ];
 
-export const ImprovedSidebarNavigation = () => {
+interface ImprovedSidebarNavigationProps {
+  isSidebarCollapsed: boolean;
+  setIsSidebarCollapsed: (collapsed: boolean) => void;
+}
+
+export const ImprovedSidebarNavigation = ({ 
+  isSidebarCollapsed, 
+  setIsSidebarCollapsed 
+}: ImprovedSidebarNavigationProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, hasAnyPermission } = useAuth();
@@ -258,7 +266,31 @@ export const ImprovedSidebarNavigation = () => {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className={cn(
+      "flex flex-col h-full transition-all duration-300",
+      isSidebarCollapsed ? "opacity-0 invisible w-0" : "opacity-100 visible w-64"
+    )}>
+      {/* Header Section */}
+      <div className="p-4 border-b border-white/10">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <span className="font-bold text-white text-lg">Restaurant Pro</span>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            className="text-white hover:bg-white/10 w-8 h-8"
+            title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            <ChevronLeft className={cn(
+              "h-4 w-4 transition-transform",
+              isSidebarCollapsed && "rotate-180"
+            )} />
+          </Button>
+        </div>
+      </div>
+
       <ScrollArea className="flex-1 px-3">
         <nav className="space-y-2 py-2">
           {navigationGroups.map((group) => {
