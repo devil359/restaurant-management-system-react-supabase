@@ -15,9 +15,11 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import { supabase } from "@/integrations/supabase/client";
-import { X, Upload, Loader2, Image as ImageIcon, Sparkles, ChefHat } from "lucide-react";
+import { X, Upload, Loader2, Image as ImageIcon, Sparkles, ChefHat, Plus } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useCategories } from "@/hooks/useCategories";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 interface MenuItem {
   id: string;
@@ -55,6 +57,10 @@ const AddMenuItemForm = ({ onClose, onSuccess, editingItem }: AddMenuItemFormPro
   const [uploadedImageUrl, setUploadedImageUrl] = useState(editingItem?.image_url || "");
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showNewCategoryDialog, setShowNewCategoryDialog] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  
+  const { categories, addCategory, isAddingCategory } = useCategories();
 
   // Fetch user's restaurant_id from their profile
   const { data: userProfile } = useQuery({
@@ -258,9 +264,96 @@ const AddMenuItemForm = ({ onClose, onSuccess, editingItem }: AddMenuItemFormPro
     }
   };
 
-  const categories = ["Main Course", "Appetizers", "Desserts", "Beverages", "Non-Veg", "Vegetarian", "Restaurant Specials", "Other"];
+  const handleAddNewCategory = () => {
+    if (!newCategoryName.trim()) {
+      toast({
+        title: "Error",
+        description: "Category name cannot be empty",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (categories.some(c => c.toLowerCase() === newCategoryName.toLowerCase())) {
+      toast({
+        title: "Error",
+        description: "This category already exists",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    addCategory(newCategoryName, {
+      onSuccess: () => {
+        form.setValue('category', newCategoryName);
+        setShowNewCategoryDialog(false);
+        setNewCategoryName("");
+      },
+    });
+  };
 
   return (
+    <>
+      {/* New Category Dialog */}
+      <Dialog open={showNewCategoryDialog} onOpenChange={setShowNewCategoryDialog}>
+        <DialogContent className="bg-white/95 backdrop-blur-xl border border-white/30 rounded-2xl shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+              Create New Category
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="text-sm font-semibold text-gray-700 mb-2 block">
+                Category Name
+              </label>
+              <Input
+                placeholder="e.g., Toasts, Sandwiches, Rice Bowls"
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                className="bg-white/80 backdrop-blur-sm border-2 border-gray-200 rounded-xl focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddNewCategory();
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowNewCategoryDialog(false);
+                setNewCategoryName("");
+              }}
+              className="rounded-xl"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleAddNewCategory}
+              disabled={isAddingCategory}
+              className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl"
+            >
+              {isAddingCategory ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Category
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white/95 backdrop-blur-xl border border-white/30 rounded-3xl shadow-2xl w-full max-w-2xl relative animate-fade-in overflow-y-auto max-h-[90vh]">
         {/* Modern Header */}
@@ -340,24 +433,40 @@ const AddMenuItemForm = ({ onClose, onSuccess, editingItem }: AddMenuItemFormPro
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-gray-700 font-semibold">Category</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          value={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger className="bg-white/80 backdrop-blur-sm border-2 border-gray-200 rounded-xl focus:border-emerald-400 transition-all duration-200">
-                              <SelectValue placeholder="Select category" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent className="bg-white/95 backdrop-blur-xl border border-white/30 rounded-xl shadow-xl">
-                            {categories.map((category) => (
-                              <SelectItem key={category} value={category} className="rounded-lg">
-                                {category}
+                        <div className="space-y-2">
+                          <Select 
+                            onValueChange={(value) => {
+                              if (value === "__create_new__") {
+                                setShowNewCategoryDialog(true);
+                              } else {
+                                field.onChange(value);
+                              }
+                            }}
+                            value={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="bg-white/80 backdrop-blur-sm border-2 border-gray-200 rounded-xl focus:border-emerald-400 transition-all duration-200">
+                                <SelectValue placeholder="Select category" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="bg-white/95 backdrop-blur-xl border border-white/30 rounded-xl shadow-xl max-h-[300px]">
+                              {categories.map((category) => (
+                                <SelectItem key={category} value={category} className="rounded-lg">
+                                  {category}
+                                </SelectItem>
+                              ))}
+                              <SelectItem 
+                                value="__create_new__" 
+                                className="rounded-lg bg-emerald-50 text-emerald-700 font-semibold hover:bg-emerald-100"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <Plus className="h-4 w-4" />
+                                  Create New Category
+                                </div>
                               </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                            </SelectContent>
+                          </Select>
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -579,6 +688,7 @@ const AddMenuItemForm = ({ onClose, onSuccess, editingItem }: AddMenuItemFormPro
         </div>
       </div>
     </div>
+    </>
   );
 };
 
