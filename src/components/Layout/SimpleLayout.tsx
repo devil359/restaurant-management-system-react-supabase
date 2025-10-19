@@ -1,4 +1,3 @@
-
 import { ReactNode } from "react";
 import Sidebar from "./Sidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -15,12 +14,12 @@ export const SimpleLayout = ({ children }: SimpleLayoutProps) => {
   return (
     <SidebarProvider>
       <div className="flex h-screen w-full">
-        {!isMobile && <Sidebar />}
+        <Sidebar />
         <main 
-          className="flex-1 overflow-auto pb-20 lg:pb-0" 
+          className="flex-1 overflow-auto pb-20 lg:pb-0 w-full" 
           style={{ paddingLeft: isMobile ? '0' : '7rem' }}
         >
-          <div className="p-4">
+          <div className="p-4 w-full max-w-full">
             {children}
           </div>
         </main>
