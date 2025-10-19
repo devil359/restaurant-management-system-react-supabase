@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Form, FormField, FormItem, FormLabel, FormControl } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
+import PaymentMethodSelector from "../Shared/PaymentMethodSelector";
 
 interface OrderItem {
   name: string;
@@ -49,6 +50,8 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
   const [selectedPromotion, setSelectedPromotion] = useState<string>("");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+   const [paymentMethod, setPaymentMethod] = useState('cash');
+    const [showQRPayment, setShowQRPayment] = useState(false);
   
   // Fetch promotions
   useQuery({
@@ -92,7 +95,10 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
   const total = subtotal - discountAmount;
   const tax = total * 0.1; // 10% tax
   const grandTotal = total + tax;
-
+  const handleQRPayment = () => {
+    setShowQRPayment(true);
+    setPaymentMethod('qr');
+  };
   const handlePrintBill = async () => {
     try {
       const element = document.getElementById('bill-content');
@@ -427,7 +433,7 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
               
               <div>
                 <Label className="text-sm font-medium">Payment Method</Label>
-                <Select defaultValue="cash">
+                {/* <Select defaultValue="cash">
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Select payment method" />
                   </SelectTrigger>
@@ -436,7 +442,12 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
                     <SelectItem value="card">Card</SelectItem>
                     <SelectItem value="upi">UPI</SelectItem>
                   </SelectContent>
-                </Select>
+                </Select> */}
+                <PaymentMethodSelector
+            selectedMethod={paymentMethod}
+            onMethodChange={setPaymentMethod}
+            onQRPayment={handleQRPayment}
+          />
               </div>
             </div>
 

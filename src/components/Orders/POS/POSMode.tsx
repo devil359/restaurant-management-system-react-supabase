@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +10,8 @@ import CurrentOrder from "../CurrentOrder";
 import PaymentDialog from "./PaymentDialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { POSPayment } from "../Payment/POSPayment";
+import { OrderPayment } from "../Payment/OrderPayment";
 import type { OrderItem, TableData } from "@/types/orders";
 
 const POSMode = () => {
@@ -18,10 +19,11 @@ const POSMode = () => {
   const [tableNumber, setTableNumber] = useState("");
   const [orderType, setOrderType] = useState("Dine-In");
   const [currentOrderItems, setCurrentOrderItems] = useState<OrderItem[]>([]);
-  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
   const [showActiveOrders, setShowActiveOrders] = useState(true);
   const [recalledKitchenOrderId, setRecalledKitchenOrderId] = useState<string | null>(null);
   const [recalledSource, setRecalledSource] = useState<string | null>(null);
+  const [currentOrder, setCurrentOrder] = useState<any>(null);
   const { toast } = useToast();
 
   const { data: tables } = useQuery({
@@ -311,10 +313,26 @@ const POSMode = () => {
     }
   };
 
+  const handlePaymentClick = () => {
+    if (currentOrderItems.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "Empty Order",
+        description: "Cannot process payment for an empty order",
+      });
+      return;
+    }
+    setShowPayment(true);
+  };
+
   const handlePaymentSuccess = () => {
     handleSendToKitchen();
-    setShowPaymentDialog(false);
+    setShowPayment(false);
     setCurrentOrderItems([]);
+    toast({
+      title: "Payment Successful",
+      description: "Order has been processed and sent to kitchen",
+    });
   };
 
   return (
@@ -405,15 +423,16 @@ const POSMode = () => {
             onRemoveItem={handleRemoveItem}
             onHoldOrder={handleHoldOrder}
             onSendToKitchen={() => handleSendToKitchen()}
-            onProceedToPayment={() => setShowPaymentDialog(true)}
+            onProceedToPayment={handlePaymentClick}
             onClearOrder={handleClearOrder}
           />
         </div>
       </div>
 
-      <PaymentDialog 
-        isOpen={showPaymentDialog}
-        onClose={() => setShowPaymentDialog(false)}
+      {/* Payment Dialog */}
+      <POSPayment
+        isOpen={showPayment}
+        onClose={() => setShowPayment(false)}
         orderItems={currentOrderItems}
         onSuccess={handlePaymentSuccess}
       />
