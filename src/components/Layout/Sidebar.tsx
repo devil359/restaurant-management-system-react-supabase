@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { Menu as MenuIcon } from "lucide-react";
+import { Menu as MenuIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,7 +15,7 @@ import SidebarNavigation from "./SidebarNavigation";
 import { SidebarFooter } from "./SidebarFooter";
 
 const Sidebar = () => {
-  const { openMobile, setOpenMobile } = useSidebar();
+  const { openMobile, setOpenMobile, open, setOpen } = useSidebar();
   const [staffName, setStaffName] = useState<string | null>(null);
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
   const [restaurantName, setRestaurantName] = useState<string | null>(null);
@@ -108,6 +108,23 @@ const Sidebar = () => {
     <>
       {mobileToggle}
       <SidebarComponent className="bg-sidebar-purple">
+        {/* Desktop Toggle Button at top */}
+        <div className="hidden lg:flex justify-end p-2 border-b border-white/10">
+          <Button
+            onClick={() => setOpen(!open)}
+            variant="ghost"
+            size="icon"
+            className="text-white hover:bg-white/10 h-8 w-8"
+            title={open ? "Collapse sidebar" : "Expand sidebar"}
+          >
+            {open ? (
+              <ChevronLeft className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
+        
         <SidebarHeader restaurantName={restaurantName} />
         <SidebarNavigation allowedComponents={allowedComponents} />
         <SidebarFooter staffName={staffName} />
