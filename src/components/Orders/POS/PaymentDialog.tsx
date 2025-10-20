@@ -34,25 +34,37 @@ const PaymentDialog = ({ isOpen, onClose, orderItems, onSuccess }: PaymentDialog
   const [qrData, setQrData] = useState('');
   const [timeLeft, setTimeLeft] = useState(300); // 5 minutes
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
+  const [restaurantInfo, setRestaurantInfo] = useState<any>(null);
   
   const subtotal = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const tax = subtotal * 0.10; // 10% tax
   const total = subtotal + tax;
 
-  // Fetch restaurant ID
+  // Fetch restaurant ID and info
   useEffect(() => {
-    const fetchRestaurantId = async () => {
+    const fetchRestaurantData = async () => {
       const { data: profile } = await supabase
         .from("profiles")
         .select("restaurant_id")
         .eq("id", (await supabase.auth.getUser()).data.user?.id)
         .single();
       
-      setRestaurantId(profile?.restaurant_id || null);
+      if (profile?.restaurant_id) {
+        setRestaurantId(profile.restaurant_id);
+        
+        // Fetch restaurant details
+        const { data: restaurant } = await supabase
+          .from("restaurants")
+          .select("name, address, phone, gstin")
+          .eq("id", profile.restaurant_id)
+          .single();
+        
+        setRestaurantInfo(restaurant);
+      }
     };
     
     if (isOpen) {
-      fetchRestaurantId();
+      fetchRestaurantData();
     }
   }, [isOpen]);
 
@@ -127,36 +139,143 @@ const PaymentDialog = ({ isOpen, onClose, orderItems, onSuccess }: PaymentDialog
 
   const handlePrintBill = async () => {
     try {
-      const element = document.getElementById('payment-summary');
-      if (!element) return;
-
-      const canvas = await html2canvas(element);
       const pdf = new jsPDF();
+      const pageWidth = 210;
+      let yPos = 20;
+
+      // Restaurant Header
+      pdf.setFontSize(16);
+      pdf.setFont(undefined, 'bold');
+      pdf.text(restaurantInfo?.name || 'Restaurant', pageWidth / 2, yPos, { align: 'center' });
       
-      const imgWidth = 210;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      yPos += 7;
+      pdf.setFontSize(10);
+      pdf.setFont(undefined, 'normal');
       
-      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, imgWidth, imgHeight);
-      
-      // Add QR code to PDF if UPI payment and QR code exists
-      if (paymentMethod === 'upi' && qrCodeUrl) {
-        const qrSize = 50;
-        const qrX = (210 - qrSize) / 2; // Center horizontally
-        const qrY = imgHeight + 10; // Below the bill content
-        
-        pdf.addImage(qrCodeUrl, 'PNG', qrX, qrY, qrSize, qrSize);
-        
-        // Add text below QR code
-        pdf.setFontSize(10);
-        pdf.text('Scan to pay via UPI', 105, qrY + qrSize + 5, { align: 'center' });
-        
-        if (paymentSettings?.upi_id) {
-          pdf.setFontSize(8);
-          pdf.text(`UPI ID: ${paymentSettings.upi_id}`, 105, qrY + qrSize + 10, { align: 'center' });
-        }
+      if (restaurantInfo?.address) {
+        pdf.text(restaurantInfo.address, pageWidth / 2, yPos, { align: 'center' });
+        yPos += 5;
       }
       
-      pdf.save(`bill-${Date.now()}.pdf`);
+      if (restaurantInfo?.phone) {
+        pdf.text(`Phone: ${restaurantInfo.phone}`, pageWidth / 2, yPos, { align: 'center' });
+        yPos += 5;
+      }
+      
+      if (restaurantInfo?.gstin) {
+        pdf.text(`GSTIN: ${restaurantInfo.gstin}`, pageWidth / 2, yPos, { align: 'center' });
+        yPos += 5;
+      }
+
+      // Line separator
+      yPos += 5;
+      pdf.line(20, yPos, pageWidth - 20, yPos);
+      yPos += 10;
+
+      // Bill Info
+      pdf.setFontSize(12);
+      pdf.setFont(undefined, 'bold');
+      pdf.text('Tax Invoice', pageWidth / 2, yPos, { align: 'center' });
+      yPos += 8;
+
+      pdf.setFontSize(9);
+      pdf.setFont(undefined, 'normal');
+      const billNumber = `POS-${Date.now()}`;
+      const currentDate = new Date().toLocaleString('en-IN', { 
+        dateStyle: 'medium', 
+        timeStyle: 'short' 
+      });
+      
+      pdf.text(`Bill No: ${billNumber}`, 20, yPos);
+      pdf.text(`Date: ${currentDate}`, pageWidth - 20, yPos, { align: 'right' });
+      yPos += 7;
+
+      if (customerName) {
+        pdf.text(`Customer: ${customerName}`, 20, yPos);
+        yPos += 7;
+      }
+
+      // Line separator
+      yPos += 3;
+      pdf.line(20, yPos, pageWidth - 20, yPos);
+      yPos += 8;
+
+      // Items Header
+      pdf.setFont(undefined, 'bold');
+      pdf.text('Item', 20, yPos);
+      pdf.text('Qty', 130, yPos);
+      pdf.text('Price', 160, yPos);
+      pdf.text('Total', pageWidth - 20, yPos, { align: 'right' });
+      yPos += 5;
+      pdf.line(20, yPos, pageWidth - 20, yPos);
+      yPos += 7;
+
+      // Items
+      pdf.setFont(undefined, 'normal');
+      orderItems.forEach((item) => {
+        const itemTotal = item.price * item.quantity;
+        pdf.text(item.name, 20, yPos);
+        pdf.text(item.quantity.toString(), 130, yPos);
+        pdf.text(`₹${item.price.toFixed(2)}`, 160, yPos);
+        pdf.text(`₹${itemTotal.toFixed(2)}`, pageWidth - 20, yPos, { align: 'right' });
+        yPos += 6;
+      });
+
+      // Line separator
+      yPos += 3;
+      pdf.line(20, yPos, pageWidth - 20, yPos);
+      yPos += 7;
+
+      // Totals
+      pdf.text('Subtotal:', 130, yPos);
+      pdf.text(`₹${subtotal.toFixed(2)}`, pageWidth - 20, yPos, { align: 'right' });
+      yPos += 6;
+
+      pdf.text('Tax (10%):', 130, yPos);
+      pdf.text(`₹${tax.toFixed(2)}`, pageWidth - 20, yPos, { align: 'right' });
+      yPos += 8;
+
+      pdf.setFont(undefined, 'bold');
+      pdf.setFontSize(11);
+      pdf.text('Grand Total:', 130, yPos);
+      pdf.text(`₹${total.toFixed(2)}`, pageWidth - 20, yPos, { align: 'right' });
+      yPos += 10;
+
+      // Payment Method
+      pdf.setFont(undefined, 'normal');
+      pdf.setFontSize(9);
+      pdf.text(`Payment Method: ${paymentMethod.toUpperCase()}`, 20, yPos);
+      yPos += 10;
+
+      // QR Code for UPI
+      if (paymentMethod === 'upi' && qrCodeUrl && paymentSettings?.upi_id) {
+        yPos += 5;
+        const qrSize = 40;
+        const qrX = (pageWidth - qrSize) / 2;
+        
+        pdf.addImage(qrCodeUrl, 'PNG', qrX, yPos, qrSize, qrSize);
+        yPos += qrSize + 5;
+        
+        pdf.setFontSize(9);
+        pdf.text('Scan to pay via UPI', pageWidth / 2, yPos, { align: 'center' });
+        yPos += 5;
+        pdf.setFontSize(8);
+        pdf.text(`UPI ID: ${paymentSettings.upi_id}`, pageWidth / 2, yPos, { align: 'center' });
+        yPos += 8;
+      }
+
+      // Footer
+      yPos += 10;
+      pdf.line(20, yPos, pageWidth - 20, yPos);
+      yPos += 7;
+      pdf.setFontSize(10);
+      pdf.setFont(undefined, 'italic');
+      pdf.text('Thank you for your visit!', pageWidth / 2, yPos, { align: 'center' });
+      yPos += 5;
+      pdf.setFontSize(8);
+      pdf.text('Please visit again', pageWidth / 2, yPos, { align: 'center' });
+
+      pdf.save(`bill-${billNumber}.pdf`);
 
       toast({
         title: "Bill Printed",
@@ -355,7 +474,7 @@ const PaymentDialog = ({ isOpen, onClose, orderItems, onSuccess }: PaymentDialog
           </div>
 
           {/* QR Code Payment Section */}
-          {showQRPayment && paymentSettings?.upi_id && (
+          {paymentMethod === 'upi' && paymentSettings?.upi_id && (
             <Card className="p-4 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
               <div className="space-y-4">
                 {/* Timer */}
@@ -427,7 +546,7 @@ const PaymentDialog = ({ isOpen, onClose, orderItems, onSuccess }: PaymentDialog
             </Card>
           )}
 
-          {!paymentSettings?.upi_id && paymentMethod === 'upi' && (
+          {paymentMethod === 'upi' && !paymentSettings?.upi_id && (
             <Card className="p-4 bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800">
               <p className="text-sm text-yellow-800 dark:text-yellow-200">
                 UPI payment is not configured. Please contact the administrator to set up UPI payment settings.
