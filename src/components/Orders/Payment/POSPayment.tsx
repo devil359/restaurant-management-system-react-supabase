@@ -72,11 +72,11 @@ export const POSPayment = ({ isOpen, onClose, orderItems, onSuccess }: POSPaymen
           </Card>
 
           {/* Payment Method Selection */}
-          <PaymentMethodSelector
+          {/* <PaymentMethodSelector
             selectedMethod={paymentMethod}
             onMethodChange={setPaymentMethod}
             onQRPayment={handleQRPayment}
-          />
+          /> */}
 
           {/* Action Buttons */}
           <div className="flex justify-end gap-3 pt-4">

@@ -433,7 +433,7 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
               
               <div>
                 <Label className="text-sm font-medium">Payment Method</Label>
-                {/* <Select defaultValue="cash">
+                <Select defaultValue="cash">
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Select payment method" />
                   </SelectTrigger>
@@ -442,12 +442,12 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
                     <SelectItem value="card">Card</SelectItem>
                     <SelectItem value="upi">UPI</SelectItem>
                   </SelectContent>
-                </Select> */}
-                <PaymentMethodSelector
+                </Select>
+                {/* <PaymentMethodSelector
             selectedMethod={paymentMethod}
             onMethodChange={setPaymentMethod}
             onQRPayment={handleQRPayment}
-          />
+          /> */}
               </div>
             </div>
 

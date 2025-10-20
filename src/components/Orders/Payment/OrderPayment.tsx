@@ -73,10 +73,10 @@ export const OrderPayment: React.FC<OrderPaymentProps> = ({
           </div>
 
           {/* Payment Method Selection */}
-          <PaymentMethodSelector
+          {/* <PaymentMethodSelector
             selectedMethod={selectedMethod}
             onMethodChange={setSelectedMethod}
-          />
+          /> */}
 
           {/* Action Buttons */}
           <div className="flex justify-end gap-3 pt-4">
