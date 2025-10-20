@@ -11,9 +11,10 @@ interface OrderItemProps {
   order: Order;
   onStatusChange: (orderId: string, newStatus: string) => Promise<void>;
   onEdit?: () => void;
+  onDelete?: (orderId: string) => void;
 }
 
-const OrderItem: React.FC<OrderItemProps> = ({ order, onStatusChange, onEdit }) => {
+const OrderItem: React.FC<OrderItemProps> = ({ order, onStatusChange, onEdit, onDelete }) => {
   const formattedDate = formatDistanceToNow(new Date(order.created_at), {
     addSuffix: true,
   });
@@ -49,6 +50,7 @@ const OrderItem: React.FC<OrderItemProps> = ({ order, onStatusChange, onEdit }) 
               order={order}
               onStatusUpdate={onStatusChange}
               onEdit={onEdit ? () => onEdit() : undefined}
+              onDelete={onDelete}
             />
           </div>
         </div>

@@ -339,7 +339,7 @@ const ImprovedAddOrderForm = ({ onSuccess, onCancel, editingOrder }: ImprovedAdd
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Table Number</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select a table" />
@@ -347,7 +347,7 @@ const ImprovedAddOrderForm = ({ onSuccess, onCancel, editingOrder }: ImprovedAdd
                           </FormControl>
                           <SelectContent>
                             {tables?.map((table) => (
-                              <SelectItem key={table.id} value={table.name}>
+                              <SelectItem key={table.id} value={table.name || String(table.id)}>
                                 Table {table.name} (Capacity: {table.capacity})
                               </SelectItem>
                             ))}
@@ -430,14 +430,14 @@ const ImprovedAddOrderForm = ({ onSuccess, onCancel, editingOrder }: ImprovedAdd
                                 <FormControl>
                                   <Select
                                     onValueChange={field.onChange}
-                                    defaultValue={field.value}
+                                    value={field.value}
                                   >
                                     <SelectTrigger className="h-9">
                                       <SelectValue placeholder="Category" />
                                     </SelectTrigger>
                                     <SelectContent>
                                       {categories.map((category) => (
-                                        <SelectItem key={category} value={category}>
+                                        <SelectItem key={category} value={category || "other"}>
                                           {category}
                                         </SelectItem>
                                       ))}
@@ -465,7 +465,7 @@ const ImprovedAddOrderForm = ({ onSuccess, onCancel, editingOrder }: ImprovedAdd
                                       }
                                       field.onChange(value);
                                     }}
-                                    defaultValue={field.value}
+                                    value={field.value}
                                   >
                                     <SelectTrigger className="h-9">
                                       <SelectValue placeholder="Item" />
@@ -474,7 +474,7 @@ const ImprovedAddOrderForm = ({ onSuccess, onCancel, editingOrder }: ImprovedAdd
                                       {menuItems
                                         ?.filter(item => item.category === form.watch(`orderItems.${index}.category`))
                                         .map((item) => (
-                                          <SelectItem key={item.id} value={item.name}>
+                                          <SelectItem key={item.id} value={item.name || item.id}>
                                             <div className="flex justify-between items-center w-full">
                                               <span>{item.name}</span>
                                               <Badge variant="secondary" className="ml-2">
@@ -601,7 +601,7 @@ const ImprovedAddOrderForm = ({ onSuccess, onCancel, editingOrder }: ImprovedAdd
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Attendant</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select attendant" />
@@ -609,7 +609,7 @@ const ImprovedAddOrderForm = ({ onSuccess, onCancel, editingOrder }: ImprovedAdd
                         </FormControl>
                         <SelectContent>
                           {staffMembers?.map((staff) => (
-                            <SelectItem key={staff.id} value={staff.first_name}>
+                            <SelectItem key={staff.id} value={staff.first_name || staff.id}>
                               {staff.first_name} {staff.last_name}
                             </SelectItem>
                           ))}
