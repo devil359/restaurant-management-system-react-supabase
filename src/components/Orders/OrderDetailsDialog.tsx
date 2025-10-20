@@ -93,7 +93,7 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
   
   const discountAmount = (subtotal * discountPercent) / 100;
   const total = subtotal - discountAmount;
-  const tax = total * 0.1; // 10% tax
+  const tax = total * 0.08; // 8% tax
   const grandTotal = total + tax;
   const handleQRPayment = () => {
     setShowQRPayment(true);
@@ -377,7 +377,7 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
                   )}
                   
                   <div className="flex justify-between text-sm text-gray-500">
-                    <span>Tax (10%)</span>
+                    <span> Service Tax (8%) </span>
                     <span>₹{tax.toFixed(2)}</span>
                   </div>
                   
