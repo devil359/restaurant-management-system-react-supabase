@@ -116,7 +116,7 @@ export const SimpleSidebarNavigation = () => {
     '/ai': 'ai',
     '/settings': 'settings',
     '/pos': 'pos',
-    '/qsr-pos': 'qsr-pos',
+    // '/qsr-pos': 'qsr-pos',
     '/kitchen': 'kitchen',
     '/recipes': 'recipes',
   };

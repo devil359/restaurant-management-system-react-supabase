@@ -24,7 +24,8 @@ import {
   LogOut,
   Zap,
   ChevronLeft,
-  Menu
+  Menu,
+  BookOpen
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -77,19 +78,26 @@ const navigationGroups: NavigationGroup[] = [
         description: "View & manage orders",
         requiredPermissions: ["orders.view"]
       },
-      {
-        title: "QSR POS",
-        icon: Zap,
-        href: "/qsr-pos",
-        description: "Quick service restaurant POS",
-        requiredPermissions: ["orders.view"]
-      },
+      // {
+      //   title: "QSR POS",
+      //   icon: Zap,
+      //   href: "/qsr-pos",
+      //   description: "Quick service restaurant POS",
+      //   requiredPermissions: ["orders.view"]
+      // },
       {
         title: "Kitchen",
         icon: ChefHat,
         href: "/kitchen",
         description: "Kitchen display system",
         requiredPermissions: ["kitchen.view"]
+      },
+      {
+        title: "Recipes",
+        icon: BookOpen,
+        href: "/recipes",
+        description: "Recipe & costing management",
+        requiredPermissions: ["menu.view"]
       },
       {
         title: "Menu",

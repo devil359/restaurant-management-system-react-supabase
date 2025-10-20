@@ -81,11 +81,12 @@ export const AppRoutes = () => {
               <POS />
             </PermissionGuard>
           } />
-          <Route path="/qsr-pos" element={
+          {/* <Route path="/qsr-pos" element={
             <PermissionGuard permission="orders.view">
               <QSRPos />
             </PermissionGuard>
-          } />
+          } /> */}
+           
           <Route path="/menu" element={
             <PermissionGuard permission="menu.view">
               <Menu />

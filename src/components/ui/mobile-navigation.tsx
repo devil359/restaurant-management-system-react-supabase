@@ -34,7 +34,7 @@ const mobileNavItems: MobileNavItem[] = [
   { id: 'orders', label: 'Orders', path: '/orders', icon: ShoppingCart },
   { id: 'menu', label: 'Menu', path: '/menu', icon: UtensilsCrossed },
   { id: 'kitchen', label: 'Kitchen', path: '/kitchen', icon: ChefHat },
-  { id: 'qsr-pos', label: 'QSR POS', path: '/qsr-pos', icon: Zap },
+  // { id: 'qsr-pos', label: 'QSR POS', path: '/qsr-pos', icon: Zap },
   { id: 'tables', label: 'Tables', path: '/tables', icon: Menu },
   { id: 'reservations', label: 'Reservations', path: '/reservations', icon: Calendar },
   { id: 'inventory', label: 'Inventory', path: '/inventory', icon: Package },

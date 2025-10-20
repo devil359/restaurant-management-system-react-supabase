@@ -304,13 +304,13 @@ const OrdersView = ({
               Export
             </Button>
             
-            <Button 
+            {/* <Button 
               onClick={() => setShowAddForm(true)}
               className="bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-2"
             >
               <Plus className="h-4 w-4" />
               New Order
-            </Button>
+            </Button> */}
           </div>
         </div>
 
