@@ -382,8 +382,8 @@ const PaymentDialog = ({ isOpen, onClose, orderItems, onSuccess }: PaymentDialog
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
+      <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <DollarSign className="h-5 w-5 text-green-600" />
             Payment Processing
@@ -396,62 +396,62 @@ const PaymentDialog = ({ isOpen, onClose, orderItems, onSuccess }: PaymentDialog
           </button>
         </DialogHeader>
         
-        <div className="space-y-6 pt-4">
+        <div className="space-y-4 pt-4 overflow-y-auto flex-1 px-1">
           {/* Customer Information */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
               <Label htmlFor="customerName" className="text-sm font-medium">Customer Name*</Label>
               <Input 
                 id="customerName"
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
                 placeholder="Enter customer name"
-                className="focus:ring-2 focus:ring-purple-500"
+                className="h-9"
                 required
               />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="customerPhone" className="text-sm font-medium">Customer Phone</Label>
               <Input 
                 id="customerPhone"
                 value={customerPhone}
                 onChange={(e) => setCustomerPhone(e.target.value)}
                 placeholder="Enter phone number"
-                className="focus:ring-2 focus:ring-purple-500"
+                className="h-9"
               />
             </div>
           </div>
 
           {/* Order Summary Card */}
-          <Card id="payment-summary" className="p-4 bg-gray-50 dark:bg-gray-800">
-            <h3 className="font-semibold mb-3 text-gray-900 dark:text-white">Order Summary</h3>
-            <div className="space-y-2">
+          <Card id="payment-summary" className="p-3 bg-muted/50">
+            <h3 className="font-semibold mb-2 text-sm">Order Summary</h3>
+            <div className="space-y-1.5">
               {orderItems.map((item) => (
-                <div key={item.id} className="flex justify-between text-sm">
-                  <span className="text-gray-600 dark:text-gray-300">{item.quantity}x {item.name}</span>
+                <div key={item.id} className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">{item.quantity}x {item.name}</span>
                   <span className="font-medium">₹{(item.price * item.quantity).toFixed(2)}</span>
                 </div>
               ))}
               
-              <div className="border-t pt-3 mt-3 space-y-2">
-                <div className="flex justify-between text-sm">
+              <div className="border-t pt-2 mt-2 space-y-1">
+                <div className="flex justify-between text-xs">
                   <span>Subtotal</span>
                   <span>₹{subtotal.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-sm text-gray-500">
+                <div className="flex justify-between text-xs text-muted-foreground">
                   <span>Tax (10%)</span>
                   <span>₹{tax.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between font-bold text-lg border-t pt-2">
+                <div className="flex justify-between font-bold text-base border-t pt-1.5">
                   <span>Total</span>
-                  <span className="text-purple-600">₹{total.toFixed(2)}</span>
+                  <span className="text-primary">₹{total.toFixed(2)}</span>
                 </div>
               </div>
             </div>
           </Card>
           
           {/* Payment Method */}
-          <div>
+          <div className="space-y-1.5">
             <Label className="text-sm font-medium">Payment Method</Label>
             <Select value={paymentMethod} onValueChange={(value) => {
               setPaymentMethod(value);
@@ -462,7 +462,7 @@ const PaymentDialog = ({ isOpen, onClose, orderItems, onSuccess }: PaymentDialog
                 setShowQRPayment(false);
               }
             }}>
-              <SelectTrigger className="mt-1">
+              <SelectTrigger className="h-9">
                 <SelectValue placeholder="Select payment method" />
               </SelectTrigger>
               <SelectContent>
@@ -475,8 +475,8 @@ const PaymentDialog = ({ isOpen, onClose, orderItems, onSuccess }: PaymentDialog
 
           {/* QR Code Payment Section */}
           {paymentMethod === 'upi' && paymentSettings?.upi_id && (
-            <Card className="p-4 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
-              <div className="space-y-4">
+            <Card className="p-3 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+              <div className="space-y-3">
                 {/* Timer */}
                 <div className="flex items-center justify-center gap-1 text-sm text-gray-600 dark:text-gray-400">
                   <Timer className="h-4 w-4" />
@@ -486,59 +486,59 @@ const PaymentDialog = ({ isOpen, onClose, orderItems, onSuccess }: PaymentDialog
                 {/* QR Code */}
                 {qrCodeUrl ? (
                   <div className="text-center">
-                    <div className="w-48 h-48 bg-white border-4 border-gray-300 rounded-lg flex items-center justify-center mx-auto mb-4 p-2">
+                    <div className="w-40 h-40 bg-white border-2 border-gray-300 rounded-lg flex items-center justify-center mx-auto mb-3 p-2">
                       <img 
                         src={qrCodeUrl} 
                         alt="UPI Payment QR Code" 
                         className="w-full h-full object-contain"
                       />
                     </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
                       Scan QR code with any UPI app to pay
                     </p>
                     
                     {/* UPI Apps */}
-                    <div className="flex justify-center gap-3 mb-4">
-                      <Badge variant="outline" className="flex items-center gap-1">
+                    <div className="flex justify-center gap-2 mb-3">
+                      <Badge variant="outline" className="flex items-center gap-1 text-xs py-0.5">
                         <Smartphone className="h-3 w-3" />
                         GPay
                       </Badge>
-                      <Badge variant="outline" className="flex items-center gap-1">
+                      <Badge variant="outline" className="flex items-center gap-1 text-xs py-0.5">
                         <Smartphone className="h-3 w-3" />
                         PhonePe
                       </Badge>
-                      <Badge variant="outline" className="flex items-center gap-1">
+                      <Badge variant="outline" className="flex items-center gap-1 text-xs py-0.5">
                         <Smartphone className="h-3 w-3" />
                         Paytm
                       </Badge>
                     </div>
 
-                    <Separator className="my-4" />
+                    <Separator className="my-3" />
 
                     {/* Manual UPI Payment */}
                     <div className="text-left">
-                      <p className="text-sm font-medium mb-2">Or pay manually using UPI ID:</p>
-                      <div className="flex items-center gap-2 p-2 bg-white dark:bg-gray-800 rounded border">
-                        <span className="text-sm font-mono flex-1">
+                      <p className="text-xs font-medium mb-1.5">Or pay manually using UPI ID:</p>
+                      <div className="flex items-center gap-2 p-1.5 bg-white dark:bg-gray-800 rounded border text-xs">
+                        <span className="font-mono flex-1 truncate">
                           {paymentSettings.upi_id}
                         </span>
                         <Button
                           size="sm"
                           variant="ghost"
                           onClick={copyUPIId}
-                          className="h-8 w-8 p-0"
+                          className="h-6 w-6 p-0"
                         >
                           <Copy className="h-3 w-3" />
                         </Button>
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-muted-foreground mt-1">
                         Amount: ₹{total.toFixed(2)} • Note: POS Order
                       </p>
                     </div>
                   </div>
                 ) : (
-                  <div className="text-center">
-                    <QrCode className="h-20 w-20 text-gray-400 mx-auto mb-2 animate-pulse" />
+                  <div className="text-center py-4">
+                    <QrCode className="h-16 w-16 text-gray-400 mx-auto mb-2 animate-pulse" />
                     <p className="text-sm text-gray-500">Generating QR Code...</p>
                   </div>
                 )}
@@ -547,26 +547,26 @@ const PaymentDialog = ({ isOpen, onClose, orderItems, onSuccess }: PaymentDialog
           )}
 
           {paymentMethod === 'upi' && !paymentSettings?.upi_id && (
-            <Card className="p-4 bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800">
-              <p className="text-sm text-yellow-800 dark:text-yellow-200">
+            <Card className="p-3 bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800">
+              <p className="text-xs text-yellow-800 dark:text-yellow-200">
                 UPI payment is not configured. Please contact the administrator to set up UPI payment settings.
               </p>
             </Card>
           )}
 
           {/* Action Buttons */}
-          <div className="flex justify-between gap-3 pt-4 border-t">
-            <Button variant="outline" onClick={onClose}>
+          <div className="flex justify-between gap-2 pt-3 border-t flex-shrink-0">
+            <Button variant="outline" onClick={onClose} size="sm">
               Cancel
             </Button>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={handlePrintBill}>
-                <Printer className="w-4 h-4 mr-2" />
+              <Button variant="outline" onClick={handlePrintBill} size="sm">
+                <Printer className="w-3.5 h-3.5 mr-1.5" />
                 Print Bill
               </Button>
               <Button 
                 onClick={handleCompletePayment}
-                className="bg-purple-600 hover:bg-purple-700"
+                size="sm"
               >
                 Complete Payment
               </Button>
