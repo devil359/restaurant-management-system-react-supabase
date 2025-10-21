@@ -29,10 +29,15 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
+    const authHeader =
+      req.headers.get('Authorization') ||
+      req.headers.get('authorization') ||
+      req.headers.get('X-Authorization') ||
+      req.headers.get('x-authorization');
+
+    if (!authHeader || !authHeader.toLowerCase().startsWith('bearer ')) {
       return new Response(
-        JSON.stringify({ error: 'Missing authorization header' }),
+        JSON.stringify({ error: 'Unauthorized' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
       );
     }
