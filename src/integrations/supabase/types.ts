@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_components: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -2427,6 +2448,7 @@ export type Database = {
           last_name: string | null
           restaurant_id: string | null
           role: Database["public"]["Enums"]["user_role"]
+          role_id: string | null
           updated_at: string
         }
         Insert: {
@@ -2436,6 +2458,7 @@ export type Database = {
           last_name?: string | null
           restaurant_id?: string | null
           role?: Database["public"]["Enums"]["user_role"]
+          role_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -2445,6 +2468,7 @@ export type Database = {
           last_name?: string | null
           restaurant_id?: string | null
           role?: Database["public"]["Enums"]["user_role"]
+          role_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -2453,6 +2477,13 @@ export type Database = {
             columns: ["restaurant_id"]
             isOneToOne: false
             referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
             referencedColumns: ["id"]
           },
         ]
@@ -3251,6 +3282,77 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      role_components: {
+        Row: {
+          component_id: string
+          created_at: string | null
+          role_id: string
+        }
+        Insert: {
+          component_id: string
+          created_at?: string | null
+          role_id: string
+        }
+        Update: {
+          component_id?: string
+          created_at?: string | null
+          role_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_components_component_id_fkey"
+            columns: ["component_id"]
+            isOneToOne: false
+            referencedRelation: "app_components"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "role_components_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      roles: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_deletable: boolean | null
+          name: string
+          restaurant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_deletable?: boolean | null
+          name: string
+          restaurant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_deletable?: boolean | null
+          name?: string
+          restaurant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roles_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       room_amenities: {
         Row: {
@@ -4830,6 +4932,12 @@ export type Database = {
           source: string
           source_id: string | null
           transaction_type: string
+        }[]
+      }
+      get_user_components: {
+        Args: { user_id: string }
+        Returns: {
+          component_name: string
         }[]
       }
       has_active_subscription: {

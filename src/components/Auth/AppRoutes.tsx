@@ -26,6 +26,7 @@ import Financial from "@/pages/Financial";
 import Security from "@/pages/Security";
 import UserManagement from "@/pages/UserManagement";
 import RecipeManagement from "@/pages/RecipeManagement";
+import RoleManagement from "@/pages/RoleManagement";
 import { PermissionGuard } from "./PermissionGuard";
 import { SidebarHeader } from "../Layout/SidebarHeader";
 import { cn } from "@/lib/utils";
@@ -185,6 +186,11 @@ export const AppRoutes = () => {
           <Route path="/user-management" element={
             <PermissionGuard permission="users.manage">
               <UserManagement />
+            </PermissionGuard>
+          } />
+          <Route path="/role-management" element={
+            <PermissionGuard permission="users.manage">
+              <RoleManagement />
             </PermissionGuard>
           } />
           <Route path="*" element={<Navigate to="/" replace />} />

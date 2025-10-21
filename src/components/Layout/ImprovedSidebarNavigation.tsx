@@ -173,6 +173,13 @@ const navigationGroups: NavigationGroup[] = [
         requiredPermissions: ["users.manage"]
       },
       {
+        title: "Role Management",
+        icon: Shield,
+        href: "/role-management",
+        description: "Configure roles & permissions",
+        requiredPermissions: ["users.manage"]
+      },
+      {
         title: "Channel Management",
         icon: Globe,
         href: "/channel-management",
