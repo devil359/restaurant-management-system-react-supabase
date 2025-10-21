@@ -64,14 +64,15 @@ const PaymentDialog = ({
 
   // Fetch payment settings
   const { data: paymentSettings } = useQuery({
-    queryKey: ['payment-settings', restaurantInfo?.id],
+    queryKey: ['payment-settings', restaurantInfo?.restaurantId || restaurantInfo?.id],
     queryFn: async () => {
-      if (!restaurantInfo?.id) return null;
+      const restaurantIdToUse = restaurantInfo?.restaurantId || restaurantInfo?.id;
+      if (!restaurantIdToUse) return null;
       
       const { data, error } = await supabase
         .from('payment_settings')
         .select('*')
-        .eq('restaurant_id', restaurantInfo.id)
+        .eq('restaurant_id', restaurantIdToUse)
         .eq('is_active', true)
         .order('created_at', { ascending: false })
         .limit(1)
@@ -84,7 +85,7 @@ const PaymentDialog = ({
       
       return data;
     },
-    enabled: !!restaurantInfo?.id
+    enabled: !!(restaurantInfo?.restaurantId || restaurantInfo?.id)
   });
 
   // Calculate totals
