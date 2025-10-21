@@ -92,9 +92,13 @@ const PaymentDialog = ({
 
   // Calculate totals
   const subtotal = orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const taxRate = 0.10; // 10% tax
-  const tax = subtotal * taxRate;
-  const total = subtotal + tax;
+  // const taxRate = 0.10; // 10% tax
+  // const tax = subtotal * taxRate;
+  // const total = subtotal + tax;
+
+   const taxRate = 0.10; // 10% tax
+
+  const total = subtotal;
 
   // Generate QR code when UPI method is selected
   useEffect(() => {
@@ -235,11 +239,15 @@ const PaymentDialog = ({
       doc.text(subtotal.toFixed(2), pageWidth - 5, yPos, { align: 'right' });
       yPos += 4;
       
-      const cgstRate = taxRate / 2;
-      const sgstRate = taxRate / 2;
-      const cgst = subtotal * cgstRate;
-      const sgst = subtotal * sgstRate;
-      
+      // const cgstRate = taxRate / 2;
+      // const sgstRate = taxRate / 2;
+      // const cgst = subtotal * cgstRate;
+      // const sgst = subtotal * sgstRate;
+
+      const cgstRate = 0;
+      const sgstRate = 0;
+      const cgst = 0;
+      const sgst = 0;
       doc.text(`CGST @ ${(cgstRate * 100).toFixed(1)}%:`, pageWidth - 35, yPos);
       doc.text(cgst.toFixed(2), pageWidth - 5, yPos, { align: 'right' });
       yPos += 4;
@@ -398,10 +406,10 @@ const PaymentDialog = ({
             <span>Subtotal</span>
             <span>₹{subtotal.toFixed(2)}</span>
           </div>
-          <div className="flex justify-between text-sm">
+          {/* <div className="flex justify-between text-sm">
             <span>Tax ({(taxRate * 100).toFixed(0)}%)</span>
             <span>₹{tax.toFixed(2)}</span>
-          </div>
+          </div> */}
           
           <Separator className="my-3" />
           
