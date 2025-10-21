@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Printer, Edit, Trash2, CreditCard, Wallet, QrCode, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import QRCode from 'qrcode';
 import type { OrderItem } from "@/types/orders";
@@ -66,31 +66,59 @@ const PaymentDialog = ({
     }
   });
 
-  // Fetch payment settings
+  // Fetch payment settings (fallback to restaurants.upi_id)
   const { data: paymentSettings } = useQuery({
-    queryKey: ['payment-settings'],
+    queryKey: ['payment-settings', restaurantInfo?.id],
+    enabled: !!restaurantInfo?.id,
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
-      
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('restaurant_id')
-        .eq('id', user.id)
-        .single();
-      
-      if (!profile?.restaurant_id) return null;
-      
+      const rid = restaurantInfo!.id as string;
+      // Primary: latest payment_settings
       const { data, error } = await supabase
         .from('payment_settings')
         .select('*')
-        .eq('restaurant_id', profile.restaurant_id)
+        .eq('restaurant_id', rid)
+        .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
-      
       if (error) console.error('Error fetching payment settings:', error);
-      return data;
+      if (data) return data;
+
+      // Fallback: restaurants table
+      const { data: rest, error: restErr } = await supabase
+        .from('restaurants')
+        .select('upi_id, payment_gateway_enabled, name')
+        .eq('id', rid)
+        .maybeSingle();
+      if (restErr) console.error('Error fetching restaurant fallback:', restErr);
+      if (rest) {
+        return {
+          upi_id: rest.upi_id,
+          upi_name: rest.name,
+          is_active: rest.payment_gateway_enabled,
+        } as any;
+      }
+      return null;
     }
   });
+
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    if (!restaurantInfo?.id) return;
+    const channel = supabase
+      .channel('payment-settings-pos-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'payment_settings',
+        filter: `restaurant_id=eq.${restaurantInfo.id}`,
+      }, () => {
+        queryClient.invalidateQueries({ queryKey: ['payment-settings', restaurantInfo.id] });
+        queryClient.invalidateQueries({ queryKey: ['payment-settings'], exact: false });
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [restaurantInfo?.id, queryClient]);
 
   // Calculate totals
   const subtotal = orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);

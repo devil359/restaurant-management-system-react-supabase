@@ -21,25 +21,44 @@ const PaymentSettingsTab = () => {
     isActive: true,
   });
 
-  // Fetch payment settings - get the latest one for this restaurant
+  // Fetch payment settings - get the latest one for this restaurant with fallback to restaurants table
   const { data: paymentSettings, isLoading } = useQuery({
     queryKey: ['payment-settings', restaurantId],
     enabled: !!restaurantId,
     queryFn: async () => {
+      // Primary: latest record from payment_settings
       const { data, error } = await supabase
         .from('payment_settings')
         .select('*')
-        .eq('restaurant_id', restaurantId)
+        .eq('restaurant_id', restaurantId as string)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
       if (error) throw error;
-      return data;
+      if (data) return data;
+
+      // Fallback: read from restaurants table
+      const { data: rest, error: restErr } = await supabase
+        .from('restaurants')
+        .select('id, name, upi_id, payment_gateway_enabled')
+        .eq('id', restaurantId as string)
+        .maybeSingle();
+
+      if (restErr) throw restErr;
+      if (rest) {
+        return {
+          restaurant_id: rest.id,
+          upi_id: rest.upi_id,
+          upi_name: rest.name,
+          is_active: rest.payment_gateway_enabled,
+        } as any;
+      }
+      return null;
     },
   });
 
-  React.useEffect(() => {
+React.useEffect(() => {
     if (paymentSettings) {
       setFormData({
         upiId: paymentSettings.upi_id || '',
@@ -48,6 +67,25 @@ const PaymentSettingsTab = () => {
       });
     }
   }, [paymentSettings]);
+
+  // Realtime updates for payment_settings for this restaurant
+  React.useEffect(() => {
+    if (!restaurantId) return;
+    const channel = supabase
+      .channel('payment-settings-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'payment_settings',
+        filter: `restaurant_id=eq.${restaurantId}`,
+      }, () => {
+        queryClient.invalidateQueries({ queryKey: ['payment-settings', restaurantId] });
+        queryClient.invalidateQueries({ queryKey: ['payment-settings'], exact: false });
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [restaurantId, queryClient]);
 
   const handleSave = async () => {
     if (!restaurantId) {
@@ -97,8 +135,11 @@ const PaymentSettingsTab = () => {
         console.warn('Restaurant table update failed:', restaurantError);
       }
 
-      // Refresh data
-      await queryClient.invalidateQueries({ queryKey: ['payment-settings'] });
+      // Refresh data across listeners
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['payment-settings', restaurantId] }),
+        queryClient.invalidateQueries({ queryKey: ['payment-settings'], exact: false }),
+      ]);
 
       toast({
         title: "Success",
