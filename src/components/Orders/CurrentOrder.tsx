@@ -26,8 +26,9 @@ const CurrentOrder = ({
   onClearOrder,
 }: CurrentOrderProps) => {
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const tax = subtotal * 0.10; // 10% tax
-  const total = subtotal + tax;
+  //const tax = subtotal * 0.10; // 10% tax
+  // const total = subtotal + tax; 
+  const total = subtotal;
 
   return (
     <div className="h-full flex flex-col bg-white/90 backdrop-blur-xl border border-white/30 rounded-3xl shadow-xl overflow-hidden">
@@ -115,10 +116,10 @@ const CurrentOrder = ({
             <span>Subtotal:</span>
             <span className="font-semibold">₹{subtotal.toFixed(2)}</span>
           </div>
-          <div className="flex justify-between text-gray-600">
+          {/* <div className="flex justify-between text-gray-600">
             <span>Tax (10%):</span>
             <span className="font-semibold">₹{tax.toFixed(2)}</span>
-          </div>
+          </div> */}
           <div className="flex justify-between text-xl font-bold border-t pt-3">
             <span>Total:</span>
             <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">₹{total.toFixed(2)}</span>
