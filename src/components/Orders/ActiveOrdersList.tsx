@@ -408,14 +408,8 @@ const ActiveOrdersList = ({ onRecallOrder }: ActiveOrdersListProps = {}) => {
         isOpen={selectedOrder !== null}
         onClose={() => setSelectedOrder(null)}
         order={selectedOrder}
-        onEditOrder={(order) => {
-          // Navigate to POS if needed or handle order edit
-          toast({
-            title: "Edit Order",
-            description: "Order editing functionality - navigate to POS to modify this order",
-          });
-          setSelectedOrder(null);
-        }}
+        onPrintBill={() => {}}
+        onEditOrder={() => {}}
       />
     </div>
   );
