@@ -325,6 +325,11 @@ const POSMode = () => {
     setShowPayment(true);
   };
 
+  const handleEditOrder = () => {
+    setShowPayment(false);
+    // Order is already visible, just close the payment dialog
+  };
+
   const handlePaymentSuccess = () => {
     handleSendToKitchen();
     setShowPayment(false);
@@ -430,11 +435,13 @@ const POSMode = () => {
       </div>
 
       {/* Payment Dialog */}
-      <POSPayment
+      <PaymentDialog
         isOpen={showPayment}
         onClose={() => setShowPayment(false)}
         orderItems={currentOrderItems}
         onSuccess={handlePaymentSuccess}
+        tableNumber={tableNumber}
+        onEditOrder={handleEditOrder}
       />
     </div>
   );
