@@ -264,8 +264,8 @@ const PaymentDialog = ({
       
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(10);
-      doc.text('Net Amount:', pageWidth - 35, yPos);
-      doc.text(`₹${total.toFixed(2)}`, pageWidth - 5, yPos, { align: 'right' });
+      doc.text('Net Amount:', pageWidth - 75, yPos);
+      doc.text(`₹${total.toFixed(2)}`, pageWidth - 10, yPos, { align: 'right' });
       yPos += 8;
       
       // Add QR code if UPI is configured and we're in QR step
