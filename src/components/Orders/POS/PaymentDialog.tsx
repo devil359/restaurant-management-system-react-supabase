@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -67,12 +68,19 @@ const PaymentDialog = ({
     queryFn: async () => {
       if (!restaurantInfo?.id) return null;
       
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('payment_settings')
         .select('*')
         .eq('restaurant_id', restaurantInfo.id)
         .eq('is_active', true)
-        .single();
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (error) {
+        console.error('Error fetching payment settings:', error);
+        return null;
+      }
       
       return data;
     },
@@ -122,112 +130,183 @@ const PaymentDialog = ({
   };
 
   const handlePrintBill = async () => {
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-    
-    // Restaurant Header
-    doc.setFontSize(18);
-    doc.setFont('helvetica', 'bold');
-    doc.text(restaurantInfo?.name || 'Restaurant', pageWidth / 2, 20, { align: 'center' });
-    
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    if (restaurantInfo?.address) {
-      doc.text(restaurantInfo.address, pageWidth / 2, 27, { align: 'center' });
-    }
-    if (restaurantInfo?.phone) {
-      doc.text(`Ph: ${restaurantInfo.phone}`, pageWidth / 2, 32, { align: 'center' });
-    }
-    if (restaurantInfo?.gstin) {
-      doc.text(`GSTIN: ${restaurantInfo.gstin}`, pageWidth / 2, 37, { align: 'center' });
-    }
-    
-    doc.setLineWidth(0.5);
-    doc.line(15, 42, pageWidth - 15, 42);
-    
-    // Bill details
-    doc.setFontSize(9);
-    const billNumber = `#${Date.now().toString().slice(-6)}`;
-    const currentDate = new Date().toLocaleDateString('en-IN');
-    const currentTime = new Date().toLocaleTimeString('en-IN');
-    
-    doc.text(`Bill No.: ${billNumber}`, 15, 48);
-    doc.text(`Date: ${currentDate}`, pageWidth - 15, 48, { align: 'right' });
-    doc.text(tableNumber ? `Table: ${tableNumber}` : 'POS Order', 15, 53);
-    doc.text(`Time: ${currentTime}`, pageWidth - 15, 53, { align: 'right' });
-    
-    if (customerName) {
-      doc.text(`Customer: ${customerName}`, 15, 58);
-      if (customerMobile) {
-        doc.text(`Ph: ${customerMobile}`, pageWidth - 15, 58, { align: 'right' });
-      }
-    }
-    
-    doc.line(15, 63, pageWidth - 15, 63);
-    
-    // Items header
-    doc.setFont('helvetica', 'bold');
-    doc.text('Particulars', 15, 69);
-    doc.text('Qty', pageWidth - 70, 69);
-    doc.text('Rate', pageWidth - 50, 69);
-    doc.text('Amount', pageWidth - 15, 69, { align: 'right' });
-    
-    doc.line(15, 71, pageWidth - 15, 71);
-    
-    // Items
-    doc.setFont('helvetica', 'normal');
-    let yPos = 77;
-    orderItems.forEach(item => {
-      doc.text(item.name, 15, yPos);
-      doc.text(item.quantity.toString(), pageWidth - 70, yPos);
-      doc.text(`₹${item.price.toFixed(2)}`, pageWidth - 50, yPos);
-      doc.text(`₹${(item.price * item.quantity).toFixed(2)}`, pageWidth - 15, yPos, { align: 'right' });
-      yPos += 6;
-    });
-    
-    doc.line(15, yPos, pageWidth - 15, yPos);
-    yPos += 6;
-    
-    // Totals
-    doc.text('Sub Total:', pageWidth - 70, yPos);
-    doc.text(`₹${subtotal.toFixed(2)}`, pageWidth - 15, yPos, { align: 'right' });
-    yPos += 5;
-    
-    doc.text(`Tax @ ${(taxRate * 100).toFixed(0)}%:`, pageWidth - 70, yPos);
-    doc.text(`₹${tax.toFixed(2)}`, pageWidth - 15, yPos, { align: 'right' });
-    yPos += 5;
-    
-    doc.line(15, yPos, pageWidth - 15, yPos);
-    yPos += 6;
-    
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.text('Net Amount:', pageWidth - 70, yPos);
-    doc.text(`₹${total.toFixed(2)}`, pageWidth - 15, yPos, { align: 'right' });
-    
-    // Add QR code if available
-    if (qrCodeUrl && currentStep === 'qr') {
-      yPos += 10;
-      doc.addImage(qrCodeUrl, 'PNG', pageWidth / 2 - 20, yPos, 40, 40);
-      yPos += 42;
-      doc.setFontSize(9);
+    try {
+      const doc = new jsPDF({
+        format: [80, 297], // 80mm thermal printer width
+        unit: 'mm'
+      });
+      
+      const pageWidth = doc.internal.pageSize.getWidth();
+      let yPos = 10;
+      
+      // Restaurant Header
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text(restaurantInfo?.name || 'Restaurant', pageWidth / 2, yPos, { align: 'center' });
+      yPos += 5;
+      
+      doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
-      doc.text('Scan QR to pay', pageWidth / 2, yPos, { align: 'center' });
+      if (restaurantInfo?.address) {
+        const addressLines = doc.splitTextToSize(restaurantInfo.address, pageWidth - 10);
+        doc.text(addressLines, pageWidth / 2, yPos, { align: 'center' });
+        yPos += addressLines.length * 4;
+      }
+      if (restaurantInfo?.phone) {
+        doc.text(`Ph: ${restaurantInfo.phone}`, pageWidth / 2, yPos, { align: 'center' });
+        yPos += 4;
+      }
+      if (restaurantInfo?.gstin) {
+        doc.text(`GSTIN: ${restaurantInfo.gstin}`, pageWidth / 2, yPos, { align: 'center' });
+        yPos += 4;
+      }
+      
+      // Dashed line
+      yPos += 2;
+      for (let i = 5; i < pageWidth - 5; i += 2) {
+        doc.line(i, yPos, i + 1, yPos);
+      }
+      yPos += 4;
+      
+      // Bill details
+      doc.setFontSize(8);
+      const billNumber = `#${Date.now().toString().slice(-6)}`;
+      const currentDate = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+      const currentTime = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+      
+      doc.text(`Bill No.: ${billNumber}`, 5, yPos);
+      doc.text(`Date: ${currentDate}`, pageWidth - 5, yPos, { align: 'right' });
+      yPos += 4;
+      
+      if (customerName) {
+        doc.text(`To: ${customerName}`, 5, yPos);
+        yPos += 4;
+        if (customerMobile) {
+          doc.text(`Ph: ${customerMobile}`, 5, yPos);
+          yPos += 4;
+        }
+      } else {
+        doc.text(tableNumber ? `Table: ${tableNumber}` : 'POS Order', 5, yPos);
+        yPos += 4;
+      }
+      
+      doc.text(`Time: ${currentTime}`, pageWidth - 5, yPos - 4, { align: 'right' });
+      
+      // Dashed line
+      yPos += 1;
+      for (let i = 5; i < pageWidth - 5; i += 2) {
+        doc.line(i, yPos, i + 1, yPos);
+      }
+      yPos += 4;
+      
+      // Items header
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.text('Particulars', 5, yPos);
+      doc.text('Qty', pageWidth - 35, yPos, { align: 'center' });
+      doc.text('Rate', pageWidth - 20, yPos, { align: 'right' });
+      doc.text('Amount', pageWidth - 5, yPos, { align: 'right' });
+      yPos += 4;
+      
+      // Items
+      doc.setFont('helvetica', 'normal');
+      orderItems.forEach(item => {
+        const itemName = doc.splitTextToSize(item.name, 35);
+        doc.text(itemName, 5, yPos);
+        doc.text(item.quantity.toString(), pageWidth - 35, yPos, { align: 'center' });
+        doc.text(item.price.toFixed(2), pageWidth - 20, yPos, { align: 'right' });
+        doc.text((item.price * item.quantity).toFixed(2), pageWidth - 5, yPos, { align: 'right' });
+        yPos += Math.max(itemName.length * 3.5, 4);
+      });
+      
+      // Dashed line
+      yPos += 1;
+      for (let i = 5; i < pageWidth - 5; i += 2) {
+        doc.line(i, yPos, i + 1, yPos);
+      }
+      yPos += 4;
+      
+      // Totals
+      doc.setFontSize(8);
+      doc.text('Sub Total:', pageWidth - 35, yPos);
+      doc.text(subtotal.toFixed(2), pageWidth - 5, yPos, { align: 'right' });
+      yPos += 4;
+      
+      const cgstRate = taxRate / 2;
+      const sgstRate = taxRate / 2;
+      const cgst = subtotal * cgstRate;
+      const sgst = subtotal * sgstRate;
+      
+      doc.text(`CGST @ ${(cgstRate * 100).toFixed(1)}%:`, pageWidth - 35, yPos);
+      doc.text(cgst.toFixed(2), pageWidth - 5, yPos, { align: 'right' });
+      yPos += 4;
+      
+      doc.text(`SGST @ ${(sgstRate * 100).toFixed(1)}%:`, pageWidth - 35, yPos);
+      doc.text(sgst.toFixed(2), pageWidth - 5, yPos, { align: 'right' });
+      yPos += 4;
+      
+      // Dashed line
+      for (let i = 5; i < pageWidth - 5; i += 2) {
+        doc.line(i, yPos, i + 1, yPos);
+      }
+      yPos += 4;
+      
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.text('Net Amount:', pageWidth - 35, yPos);
+      doc.text(`₹${total.toFixed(2)}`, pageWidth - 5, yPos, { align: 'right' });
+      yPos += 8;
+      
+      // Add QR code if UPI is configured and we're in QR step
+      if (qrCodeUrl && paymentSettings?.upi_id) {
+        for (let i = 5; i < pageWidth - 5; i += 2) {
+          doc.line(i, yPos, i + 1, yPos);
+        }
+        yPos += 5;
+        
+        const qrSize = 35;
+        doc.addImage(qrCodeUrl, 'PNG', (pageWidth - qrSize) / 2, yPos, qrSize, qrSize);
+        yPos += qrSize + 3;
+        
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Scan QR to pay', pageWidth / 2, yPos, { align: 'center' });
+        yPos += 5;
+      }
+      
+      // Footer
+      for (let i = 5; i < pageWidth - 5; i += 2) {
+        doc.line(i, yPos, i + 1, yPos);
+      }
+      yPos += 5;
+      
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text('!! Please visit again !!', pageWidth / 2, yPos, { align: 'center' });
+      
+      // Save and print
+      const pdfBlob = doc.output('blob');
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+      const printWindow = window.open(pdfUrl, '_blank');
+      
+      if (printWindow) {
+        printWindow.onload = () => {
+          printWindow.print();
+        };
+      }
+      
+      toast({
+        title: "Bill Generated",
+        description: "The bill has been generated and sent to printer."
+      });
+    } catch (error) {
+      console.error('Error generating bill:', error);
+      toast({
+        title: "Print Error",
+        description: "Failed to generate bill. Please try again.",
+        variant: "destructive"
+      });
     }
-    
-    // Footer
-    yPos += 10;
-    doc.setFontSize(10);
-    doc.text('!! Please visit again !!', pageWidth / 2, yPos, { align: 'center' });
-    
-    // Print
-    doc.autoPrint();
-    window.open(doc.output('bloburl'), '_blank');
-    
-    toast({
-      title: "Bill Printed",
-      description: "The bill has been sent to the printer."
-    });
   };
 
   const handleMethodSelect = (method: string) => {
@@ -235,7 +314,7 @@ const PaymentDialog = ({
       if (!paymentSettings?.upi_id) {
         toast({
           title: "UPI Not Configured",
-          description: "Please configure UPI settings first.",
+          description: "Please configure UPI settings in the Payment Settings tab first.",
           variant: "destructive"
         });
         return;
@@ -469,6 +548,14 @@ const PaymentDialog = ({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+        <VisuallyHidden>
+          <DialogTitle>
+            {currentStep === 'confirm' && 'Confirm Order'}
+            {currentStep === 'method' && 'Select Payment Method'}
+            {currentStep === 'qr' && 'UPI Payment'}
+            {currentStep === 'success' && 'Payment Successful'}
+          </DialogTitle>
+        </VisuallyHidden>
         {currentStep === 'confirm' && renderConfirmStep()}
         {currentStep === 'method' && renderMethodStep()}
         {currentStep === 'qr' && renderQRStep()}
