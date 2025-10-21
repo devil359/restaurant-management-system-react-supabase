@@ -376,10 +376,10 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
                     </div>
                   )}
                   
-                  <div className="flex justify-between text-sm text-gray-500">
+                  {/* <div className="flex justify-between text-sm text-gray-500">
                     <span> Service Tax (8%) </span>
                     <span>₹{tax.toFixed(2)}</span>
-                  </div>
+                  </div> */}
                   
                   <div className="flex justify-between font-bold text-lg border-t pt-2">
                     <span>Total</span>
