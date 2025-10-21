@@ -97,7 +97,18 @@ export const EditRoleDialog = ({ role, open, onOpenChange, onSuccess }: EditRole
 
     setIsSubmitting(true);
     try {
+      // Ensure we send the authenticated user's access token to the Edge Function
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+
+      if (!accessToken) {
+        throw new Error('You must be signed in to perform this action.');
+      }
+
       const { data, error } = await supabase.functions.invoke('role-management', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
         body: {
           action: 'update',
           id: role.id,
