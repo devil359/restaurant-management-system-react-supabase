@@ -93,7 +93,7 @@ const OrdersView = ({
     }
   };
 
-  // Fetch both regular orders and kitchen orders (POS orders)
+  // Fetch only regular orders (kitchen_orders are managed in Kitchen view)
   const { data: orders, refetch: refetchOrders, isLoading } = useQuery({
     queryKey: ['all-orders', dateFilter],
     queryFn: async () => {
@@ -109,7 +109,7 @@ const OrdersView = ({
 
       const dateRange = getDateRange(dateFilter);
       
-      // Fetch regular orders
+      // Fetch only regular orders from orders table
       const { data: regularOrders, error: ordersError } = await supabase
         .from('orders')
         .select('*')
@@ -120,34 +120,7 @@ const OrdersView = ({
 
       if (ordersError) throw ordersError;
 
-      // Fetch kitchen orders (POS orders)
-      const { data: kitchenOrders, error: kitchenError } = await supabase
-        .from('kitchen_orders')
-        .select('*')
-        .eq('restaurant_id', profile.restaurant_id)
-        .gte('created_at', dateRange.start.toISOString())
-        .lte('created_at', dateRange.end.toISOString())
-        .order('created_at', { ascending: false });
-
-      if (kitchenError) throw kitchenError;
-
-      // Convert kitchen orders to Order format
-      const convertedKitchenOrders: Order[] = (kitchenOrders || []).map(ko => ({
-        id: ko.id,
-        customer_name: ko.source || 'POS Customer',
-        items: Array.isArray(ko.items) ? ko.items.map((item: any) => `${item.quantity}x ${item.name}`) : [],
-        total: Array.isArray(ko.items) ? ko.items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0) : 0,
-        status: ko.status === 'new' ? 'pending' : ko.status === 'ready' ? 'completed' : ko.status as 'completed' | 'pending' | 'preparing' | 'ready' | 'cancelled',
-        created_at: ko.created_at,
-        restaurant_id: ko.restaurant_id || profile.restaurant_id,
-        updated_at: ko.updated_at
-      }));
-
-      // Combine and sort all orders
-      const allOrders = [...(regularOrders || []), ...convertedKitchenOrders];
-      allOrders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-      return allOrders as Order[];
+      return (regularOrders || []) as Order[];
     },
   });
 

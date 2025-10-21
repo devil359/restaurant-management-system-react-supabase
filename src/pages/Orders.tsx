@@ -40,7 +40,8 @@ const Orders = () => {
   };
 
   const quickActions = [
-    commonQuickActions.create(handleCreateNew),
+    // Hide create new order button - not needed currently
+    // commonQuickActions.create(handleCreateNew),
     commonQuickActions.search(handleSearch),
     commonQuickActions.filter(handleFilter),
     commonQuickActions.export(handleExport),
