@@ -34,7 +34,6 @@ export const useRestaurantId = () => {
         return {
           restaurantId: restaurant.id,
           restaurantName: restaurant.name,
-          name: restaurant.name,
           id : restaurant.id
         };
       }
@@ -46,7 +45,7 @@ export const useRestaurantId = () => {
 
   return { 
     restaurantId: data?.restaurantId ||data?.id || null, 
-    restaurantName: data?.restaurantName||data?.name || null,
+    restaurantName: data?.restaurantName || null,
     isLoading, 
     error 
   };

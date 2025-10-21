@@ -130,11 +130,6 @@ const PaymentDialog = ({
     }
   };
 
-  const getRestaurantName = (info: any) => {
-    // Try all possible paths to get restaurant name
-    return info?.name || info?.restaurantName || info?.restaurant_name || 'Restaurant';
-  };
-
   const handlePrintBill = async () => {
     try {
       const doc = new jsPDF({
@@ -145,10 +140,10 @@ const PaymentDialog = ({
       const pageWidth = doc.internal.pageSize.getWidth();
       let yPos = 10;
       
-      // Restaurant Header with updated name handling
+      // Restaurant Header
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
-      doc.text(getRestaurantName(restaurantInfo), pageWidth / 2, yPos, { align: 'center' });
+      doc.text(restaurantInfo?.name || 'Restaurant', pageWidth / 2, yPos, { align: 'center' });
       yPos += 5;
       
       doc.setFontSize(8);
@@ -259,9 +254,9 @@ const PaymentDialog = ({
       
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(10);
-      doc.text('Net Amount:', pageWidth - 55, yPos);
-      doc.text(`₹${total.toFixed(2)}`, pageWidth - 10, yPos, { align: 'right' });
-      yPos += 3;
+      doc.text('Net Amount:', pageWidth - 35, yPos);
+      doc.text(`₹${total.toFixed(2)}`, pageWidth - 5, yPos, { align: 'right' });
+      yPos += 8;
       
       // Add QR code if UPI is configured and we're in QR step
       if (qrCodeUrl && paymentSettings?.upi_id) {
