@@ -394,7 +394,7 @@ const PaymentDialog = ({
       </Card>
 
       <div className="grid grid-cols-2 gap-3">
-        <Button variant="outline" onClick={handleEditOrder} className="w-full">
+        <Button variant="outline" onClick={handleEditOrder} className="w-full opacity-50 pointer-events-none">
           <Receipt className="w-4 h-4 mr-2" />
           Edit Order
         </Button>
