@@ -21,6 +21,7 @@ interface PaymentDialogProps {
   onSuccess: () => void;
   tableNumber?: string;
   onEditOrder?: () => void;
+  orderId?: string; // Kitchen order ID to update status
 }
 
 const PaymentDialog = ({ 
@@ -29,7 +30,8 @@ const PaymentDialog = ({
   orderItems, 
   onSuccess,
   tableNumber = '',
-  onEditOrder 
+  onEditOrder,
+  orderId 
 }: PaymentDialogProps) => {
   const [currentStep, setCurrentStep] = useState<PaymentStep>('confirm');
   const [customerName, setCustomerName] = useState('');
@@ -333,6 +335,23 @@ const PaymentDialog = ({
       // For now, we'll simulate a successful payment
       
       await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Update order status to completed in database if orderId is provided
+      if (orderId) {
+        const { error } = await supabase
+          .from('kitchen_orders')
+          .update({ status: 'completed' })
+          .eq('id', orderId);
+        
+        if (error) {
+          console.error('Error updating order status:', error);
+          toast({
+            title: "Warning",
+            description: "Payment received but order status update failed.",
+            variant: "destructive"
+          });
+        }
+      }
       
       setCurrentStep('success');
       

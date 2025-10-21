@@ -417,6 +417,7 @@ const ActiveOrdersList = ({ onRecallOrder }: ActiveOrdersListProps = {}) => {
         })) : []}
         onSuccess={() => setSelectedOrder(null)}
         tableNumber={selectedOrder?.source || undefined}
+        orderId={selectedOrder?.id}
       />
     </div>
   );
