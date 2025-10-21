@@ -9,7 +9,7 @@ import type { Json } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import OrderDetailsDialog from "./OrderDetailsDialog";
+import PaymentDialog from "./POS/PaymentDialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface OrderItem {
@@ -404,12 +404,19 @@ const ActiveOrdersList = ({ onRecallOrder }: ActiveOrdersListProps = {}) => {
         </div>
       </div>
 
-      <OrderDetailsDialog
+      <PaymentDialog
         isOpen={selectedOrder !== null}
         onClose={() => setSelectedOrder(null)}
-        order={selectedOrder}
-        onPrintBill={() => {}}
-        onEditOrder={() => {}}
+        orderItems={selectedOrder ? selectedOrder.items.map(item => ({
+          id: crypto.randomUUID(),
+          menuItemId: undefined,
+          name: item.name,
+          price: item.price || 0,
+          quantity: item.quantity,
+          modifiers: item.notes || []
+        })) : []}
+        onSuccess={() => setSelectedOrder(null)}
+        tableNumber={selectedOrder?.source || undefined}
       />
     </div>
   );
