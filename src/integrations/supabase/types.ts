@@ -40,7 +40,7 @@ export type Database = {
           action: string
           created_at: string
           id: string
-          ip_address: unknown
+          ip_address: unknown | null
           new_values: Json | null
           old_values: Json | null
           record_id: string | null
@@ -53,7 +53,7 @@ export type Database = {
           action: string
           created_at?: string
           id?: string
-          ip_address?: unknown
+          ip_address?: unknown | null
           new_values?: Json | null
           old_values?: Json | null
           record_id?: string | null
@@ -66,7 +66,7 @@ export type Database = {
           action?: string
           created_at?: string
           id?: string
-          ip_address?: unknown
+          ip_address?: unknown | null
           new_values?: Json | null
           old_values?: Json | null
           record_id?: string | null
@@ -1697,38 +1697,32 @@ export type Database = {
       kitchen_orders: {
         Row: {
           created_at: string
-          customer_name: string | null
           id: string
           items: Json
           order_id: string | null
           restaurant_id: string | null
           source: string
           status: string
-          table_number: string | null
           updated_at: string
         }
         Insert: {
           created_at?: string
-          customer_name?: string | null
           id?: string
           items: Json
           order_id?: string | null
           restaurant_id?: string | null
           source: string
           status?: string
-          table_number?: string | null
           updated_at?: string
         }
         Update: {
           created_at?: string
-          customer_name?: string | null
           id?: string
           items?: Json
           order_id?: string | null
           restaurant_id?: string | null
           source?: string
           status?: string
-          table_number?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -4845,12 +4839,6 @@ export type Database = {
           id: string
           restaurant_id: string | null
         }[]
-        SetofOptions: {
-          from: "*"
-          to: "customer_activities"
-          isOneToOne: false
-          isSetofReturn: true
-        }
       }
       add_customer_note: {
         Args: {
@@ -4867,12 +4855,6 @@ export type Database = {
           id: string
           restaurant_id: string | null
         }[]
-        SetofOptions: {
-          from: "*"
-          to: "customer_notes"
-          isOneToOne: false
-          isSetofReturn: true
-        }
       }
       add_loyalty_transaction: {
         Args: {
@@ -4896,12 +4878,6 @@ export type Database = {
           source_id: string | null
           transaction_type: string
         }[]
-        SetofOptions: {
-          from: "*"
-          to: "loyalty_transactions"
-          isOneToOne: false
-          isSetofReturn: true
-        }
       }
       calculate_customer_tier: {
         Args: { customer_points: number; restaurant_id_param: string }
@@ -4931,12 +4907,6 @@ export type Database = {
           id: string
           restaurant_id: string | null
         }[]
-        SetofOptions: {
-          from: "*"
-          to: "customer_activities"
-          isOneToOne: false
-          isSetofReturn: true
-        }
       }
       get_customer_notes: {
         Args: { customer_id_param: string }
@@ -4948,12 +4918,6 @@ export type Database = {
           id: string
           restaurant_id: string | null
         }[]
-        SetofOptions: {
-          from: "*"
-          to: "customer_notes"
-          isOneToOne: false
-          isSetofReturn: true
-        }
       }
       get_loyalty_transactions: {
         Args: { customer_id_param: string }
@@ -4969,12 +4933,6 @@ export type Database = {
           source_id: string | null
           transaction_type: string
         }[]
-        SetofOptions: {
-          from: "*"
-          to: "loyalty_transactions"
-          isOneToOne: false
-          isSetofReturn: true
-        }
       }
       get_user_components: {
         Args: { user_id: string }
@@ -4986,15 +4944,15 @@ export type Database = {
         Args: { restaurant_id: string }
         Returns: boolean
       }
-      has_any_role:
-        | { Args: { _roles: string[]; _user_id: string }; Returns: boolean }
-        | {
-            Args: {
+      has_any_role: {
+        Args:
+          | {
               _roles: Database["public"]["Enums"]["user_role"][]
               _user_id: string
             }
-            Returns: boolean
-          }
+          | { _roles: string[]; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["user_role"]
