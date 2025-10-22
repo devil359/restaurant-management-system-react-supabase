@@ -342,15 +342,3 @@
     @apply bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 shadow-lg;
   }
 }
-
-/* Enhanced font loading */
-@font-face {
-  font-family: 'Inter';
-  font-style: normal;
-  font-weight: 300 800;
-  font-display: swap;
-  src: url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-}
-
-/* Add Playfair Display for headings */
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');
