@@ -193,19 +193,38 @@ const PaymentDialog = ({
   };
 
   const handleAddMenuItem = (item: any) => {
-    const newItem: OrderItem = {
-      id: `new-${Date.now()}-${Math.random()}`,
-      menuItemId: item.id,
-      name: item.name,
-      price: item.price,
-      quantity: 1,
-      modifiers: []
-    };
-    setNewItemsBuffer(prev => [...prev, newItem]);
-    toast({
-      title: "Item Added",
-      description: `${item.name} added to new items list.`
-    });
+    // Check if item already exists in buffer
+    const existingIndex = newItemsBuffer.findIndex(bufferItem => bufferItem.name === item.name);
+    
+    if (existingIndex >= 0) {
+      // Increase quantity if item exists
+      setNewItemsBuffer(prev => 
+        prev.map((bufferItem, idx) => 
+          idx === existingIndex 
+            ? { ...bufferItem, quantity: bufferItem.quantity + 1 }
+            : bufferItem
+        )
+      );
+      toast({
+        title: "Quantity Increased",
+        description: `${item.name} quantity increased to ${newItemsBuffer[existingIndex].quantity + 1}.`
+      });
+    } else {
+      // Add new item
+      const newItem: OrderItem = {
+        id: `new-${Date.now()}-${Math.random()}`,
+        menuItemId: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: 1,
+        modifiers: []
+      };
+      setNewItemsBuffer(prev => [...prev, newItem]);
+      toast({
+        title: "Item Added",
+        description: `${item.name} added to new items list.`
+      });
+    }
   };
 
   const handleRemoveNewItem = (itemId: string) => {
