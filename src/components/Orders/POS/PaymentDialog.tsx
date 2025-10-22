@@ -212,6 +212,51 @@ const PaymentDialog = ({
     setNewItemsBuffer(prev => prev.filter(item => item.id !== itemId));
   };
 
+  const handleRemoveExistingItem = async (itemIndex: number) => {
+    if (!orderId) return;
+
+    try {
+      // Get current order
+      const { data: currentOrder, error: fetchError } = await supabase
+        .from('kitchen_orders')
+        .select('items')
+        .eq('id', orderId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Remove the item at the specified index
+      const updatedItems = [...(currentOrder?.items || [])];
+      updatedItems.splice(itemIndex, 1);
+
+      // Update the order
+      const { error: updateError } = await supabase
+        .from('kitchen_orders')
+        .update({ 
+          items: updatedItems,
+          status: 'pending' // Reset to pending
+        })
+        .eq('id', orderId);
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: "Item Removed",
+        description: "Item has been removed from the order."
+      });
+
+      // Refresh the order data
+      onSuccess();
+    } catch (error) {
+      console.error('Error removing item:', error);
+      toast({
+        title: "Failed to Remove Item",
+        description: "There was an error removing the item.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleUpdateNewItemQuantity = (itemId: string, newQuantity: number) => {
     if (newQuantity < 1) {
       handleRemoveNewItem(itemId);
@@ -265,23 +310,28 @@ const PaymentDialog = ({
 
       if (fetchError) throw fetchError;
 
-      // Combine old items with new items
-      const oldItems = currentOrder?.items || [];
-      const newItemStrings = newItemsBuffer.map(item => 
-        `${item.quantity}x ${item.name}`
-      );
-      const combinedItems = [...oldItems, ...newItemStrings];
+      // Normalize old items to ensure they are objects
+      const normalizedOldItems = (currentOrder?.items || []).map(item => {
+        if (typeof item === 'string') {
+          // Parse string format "1x Item Name" to object
+          const match = item.match(/^(\d+)x\s+(.+)$/);
+          if (match) {
+            return { name: match[2], quantity: parseInt(match[1]), price: 0 };
+          }
+          return { name: item, quantity: 1, price: 0 };
+        }
+        return item;
+      });
 
-      // Calculate new total
-      const newItemsTotal = newItemsBuffer.reduce(
-        (sum, item) => sum + (item.price * item.quantity), 
-        0
-      );
-      const oldTotal = orderItems.reduce(
-        (sum, item) => sum + (item.price * item.quantity), 
-        0
-      );
-      const newTotal = oldTotal + newItemsTotal;
+      // Convert newItemsBuffer to proper format
+      const formattedNewItems = newItemsBuffer.map(item => ({
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity
+      }));
+
+      // Combine old items with new items as objects
+      const combinedItems = [...normalizedOldItems, ...formattedNewItems];
 
       // Update the order with new items
       const { error: updateError } = await supabase
@@ -782,9 +832,17 @@ const PaymentDialog = ({
         </h3>
         <div className="space-y-2 max-h-32 overflow-y-auto">
           {orderItems.map((item, idx) => (
-            <div key={idx} className="flex justify-between text-sm text-muted-foreground">
-              <span>{item.quantity}x {item.name}</span>
-              <span>₹{(item.price * item.quantity).toFixed(2)}</span>
+            <div key={idx} className="flex items-center justify-between gap-2 text-sm">
+              <span className="flex-1">{item.quantity}x {item.name}</span>
+              <span className="font-medium">₹{(item.price * item.quantity).toFixed(2)}</span>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => handleRemoveExistingItem(idx)}
+                className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-900/20"
+              >
+                <X className="w-4 h-4" />
+              </Button>
             </div>
           ))}
         </div>
