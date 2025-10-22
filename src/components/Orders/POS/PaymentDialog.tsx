@@ -343,17 +343,17 @@ const PaymentDialog = ({
       
       if (!profile?.restaurant_id) throw new Error('Restaurant not found');
 
-      // Get current order to update items
-      const { data: currentOrder, error: fetchError } = await supabase
+      // Get current kitchen order with order_id
+      const { data: currentKitchenOrder, error: fetchError } = await supabase
         .from('kitchen_orders')
-        .select('items')
+        .select('items, order_id, table_number, customer_name')
         .eq('id', orderId)
         .single();
 
       if (fetchError) throw fetchError;
 
       // Normalize old items to ensure they are objects
-      const normalizedOldItems = (currentOrder?.items || []).map(item => {
+      const normalizedOldItems = (currentKitchenOrder?.items || []).map(item => {
         if (typeof item === 'string') {
           // Parse string format "1x Item Name" to object
           const match = item.match(/^(\d+)x\s+(.+)$/);
@@ -372,23 +372,46 @@ const PaymentDialog = ({
         quantity: item.quantity
       }));
 
-      // Combine old items with new items as objects
+      // Combine old items with new items for the main order
       const combinedItems = [...normalizedOldItems, ...formattedNewItems];
 
-      // Update the order with new items
-      const { error: updateError } = await supabase
+      // Create a NEW separate kitchen order for just the new items
+      const { error: newKitchenOrderError } = await supabase
         .from('kitchen_orders')
-        .update({ 
-          items: combinedItems,
+        .insert({
+          restaurant_id: profile.restaurant_id,
+          order_id: currentKitchenOrder.order_id,
+          table_number: currentKitchenOrder.table_number,
+          customer_name: currentKitchenOrder.customer_name,
+          items: formattedNewItems,
           status: 'new'
-        })
-        .eq('id', orderId);
+        });
 
-      if (updateError) throw updateError;
+      if (newKitchenOrderError) throw newKitchenOrderError;
+
+      // Update the main order in orders table with all items (old + new)
+      if (currentKitchenOrder?.order_id) {
+        const totalAmount = combinedItems.reduce((sum, item) => {
+          const itemPrice = typeof item === 'object' ? (item.price || 0) : 0;
+          const itemQty = typeof item === 'object' ? (item.quantity || 1) : 1;
+          return sum + (itemPrice * itemQty);
+        }, 0);
+
+        const { error: orderUpdateError } = await supabase
+          .from('orders')
+          .update({
+            items: combinedItems,
+            total: totalAmount,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', currentKitchenOrder.order_id);
+
+        if (orderUpdateError) console.error('Error updating main order:', orderUpdateError);
+      }
 
       toast({
-        title: "Items Added Successfully",
-        description: `${newItemsBuffer.length} new item(s) have been sent to the kitchen.`
+        title: "New Items Sent to Kitchen",
+        description: `${newItemsBuffer.length} new item(s) have been sent as a separate kitchen order.`
       });
 
       // Update the local orderItems and go back to confirm step
