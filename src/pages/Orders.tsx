@@ -53,17 +53,17 @@ const Orders = () => {
       {/* Modern Header with Glass Effect */}
       <div className="bg-white/80 backdrop-blur-xl border-b border-white/20 shadow-xl sticky top-0 z-40">
         <StandardizedLayout padding="md">
-          <div className="mb-6 bg-white/90 backdrop-blur-sm border border-white/30 rounded-3xl shadow-xl p-6">
+          <div className="mb-3 md:mb-6 bg-white/90 backdrop-blur-sm border border-white/30 rounded-2xl md:rounded-3xl shadow-xl p-3 md:p-6">
             <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
+              <h1 className="text-2xl md:text-4xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-1 md:mb-2">
                 Orders Management
               </h1>
-              <p className="text-gray-600 text-lg">View and manage all your restaurant orders</p>
+              <p className="text-gray-600 text-sm md:text-lg">View and manage all your restaurant orders</p>
             </div>
           </div>
           
           {/* Quick Actions */}
-          <div className="bg-white/90 backdrop-blur-sm border border-white/30 rounded-2xl shadow-lg p-4 mb-4">
+          <div className="bg-white/90 backdrop-blur-sm border border-white/30 rounded-2xl shadow-lg p-3 md:p-4 mb-2 md:mb-4">
             <QuickActionsToolbar 
               actions={quickActions}
             />
