@@ -7,12 +7,13 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Receipt, CreditCard, Wallet, QrCode, Check, Printer, Trash2 } from 'lucide-react';
+import { ArrowLeft, Receipt, CreditCard, Wallet, QrCode, Check, Printer, Trash2, Plus, X, Search } from 'lucide-react';
 import QRCode from 'qrcode';
 import jsPDF from 'jspdf';
 import type { OrderItem } from "@/types/orders";
+import { Input } from "@/components/ui/input";
 
-type PaymentStep = 'confirm' | 'method' | 'qr' | 'success';
+type PaymentStep = 'confirm' | 'method' | 'qr' | 'success' | 'edit';
 
 interface PaymentDialogProps {
   isOpen: boolean;
@@ -37,6 +38,8 @@ const PaymentDialog = ({
   const [customerName, setCustomerName] = useState('');
   const [customerMobile, setCustomerMobile] = useState('');
   const [qrCodeUrl, setQrCodeUrl] = useState('');
+  const [menuSearchQuery, setMenuSearchQuery] = useState('');
+  const [newItemsBuffer, setNewItemsBuffer] = useState<OrderItem[]>([]);
   const { toast } = useToast();
 
   // Fetch restaurant info
@@ -62,6 +65,33 @@ const PaymentDialog = ({
       
       return data;
     }
+  });
+
+  // Fetch menu items for edit mode
+  const { data: menuItems = [] } = useQuery({
+    queryKey: ['menu-items-for-edit'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+      
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('restaurant_id')
+        .eq('id', user.id)
+        .single();
+      
+      if (!profile?.restaurant_id) return [];
+      
+      const { data } = await supabase
+        .from('menu_items')
+        .select('*')
+        .eq('restaurant_id', profile.restaurant_id)
+        .eq('is_available', true)
+        .order('name');
+      
+      return data || [];
+    },
+    enabled: isOpen
   });
 
   // Fetch payment settings
@@ -118,23 +148,177 @@ const PaymentDialog = ({
       setCustomerName('');
       setCustomerMobile('');
       setQrCodeUrl('');
+      setMenuSearchQuery('');
+      setNewItemsBuffer([]);
     }
   }, [isOpen]);
 
   const handleEditOrder = () => {
-    onClose();
-    onEditOrder?.();
+    setCurrentStep('edit');
+    setNewItemsBuffer([]);
+    setMenuSearchQuery('');
   };
 
-  const handleDeleteOrder = () => {
-    if (window.confirm('Are you sure you want to delete this order?')) {
+  const handleDeleteOrder = async () => {
+    if (!window.confirm('Are you sure you want to delete this order permanently? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      if (orderId) {
+        // Delete from kitchen_orders table
+        const { error } = await supabase
+          .from('kitchen_orders')
+          .delete()
+          .eq('id', orderId);
+
+        if (error) throw error;
+      }
+
       toast({
-        title: "Order Deleted",
-        description: "The order has been cancelled."
+        title: "Order Deleted Successfully",
+        description: "The order has been permanently deleted."
       });
+      
       onClose();
+      onSuccess(); // Refresh the order list
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      toast({
+        title: "Delete Failed",
+        description: "Failed to delete the order. Please try again.",
+        variant: "destructive"
+      });
     }
   };
+
+  const handleAddMenuItem = (item: any) => {
+    const newItem: OrderItem = {
+      id: `new-${Date.now()}-${Math.random()}`,
+      menuItemId: item.id,
+      name: item.name,
+      price: item.price,
+      quantity: 1,
+      modifiers: []
+    };
+    setNewItemsBuffer(prev => [...prev, newItem]);
+    toast({
+      title: "Item Added",
+      description: `${item.name} added to new items list.`
+    });
+  };
+
+  const handleRemoveNewItem = (itemId: string) => {
+    setNewItemsBuffer(prev => prev.filter(item => item.id !== itemId));
+  };
+
+  const handleUpdateNewItemQuantity = (itemId: string, newQuantity: number) => {
+    if (newQuantity < 1) {
+      handleRemoveNewItem(itemId);
+      return;
+    }
+    setNewItemsBuffer(prev => 
+      prev.map(item => 
+        item.id === itemId ? { ...item, quantity: newQuantity } : item
+      )
+    );
+  };
+
+  const handleSaveNewItems = async () => {
+    if (newItemsBuffer.length === 0) {
+      toast({
+        title: "No Items to Add",
+        description: "Please add at least one item from the menu.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      if (!orderId) {
+        toast({
+          title: "Error",
+          description: "Order ID not found. Cannot add items.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Get restaurant ID
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+      
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('restaurant_id')
+        .eq('id', user.id)
+        .single();
+      
+      if (!profile?.restaurant_id) throw new Error('Restaurant not found');
+
+      // Get current order to update items
+      const { data: currentOrder, error: fetchError } = await supabase
+        .from('kitchen_orders')
+        .select('items')
+        .eq('id', orderId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Combine old items with new items
+      const oldItems = currentOrder?.items || [];
+      const newItemStrings = newItemsBuffer.map(item => 
+        `${item.quantity}x ${item.name}`
+      );
+      const combinedItems = [...oldItems, ...newItemStrings];
+
+      // Calculate new total
+      const newItemsTotal = newItemsBuffer.reduce(
+        (sum, item) => sum + (item.price * item.quantity), 
+        0
+      );
+      const oldTotal = orderItems.reduce(
+        (sum, item) => sum + (item.price * item.quantity), 
+        0
+      );
+      const newTotal = oldTotal + newItemsTotal;
+
+      // Update the order with new items
+      const { error: updateError } = await supabase
+        .from('kitchen_orders')
+        .update({ 
+          items: combinedItems,
+          total: newTotal,
+          status: 'pending' // Reset to pending to notify kitchen
+        })
+        .eq('id', orderId);
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: "Items Added Successfully",
+        description: `${newItemsBuffer.length} new item(s) have been sent to the kitchen.`
+      });
+
+      // Update the local orderItems and go back to confirm step
+      setCurrentStep('confirm');
+      setNewItemsBuffer([]);
+      onSuccess(); // Refresh the order list
+    } catch (error) {
+      console.error('Error adding items to order:', error);
+      toast({
+        title: "Failed to Add Items",
+        description: "There was an error adding items to the order.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Filter menu items based on search
+  const filteredMenuItems = menuItems.filter(item =>
+    item.name.toLowerCase().includes(menuSearchQuery.toLowerCase()) ||
+    (item.category && item.category.toLowerCase().includes(menuSearchQuery.toLowerCase()))
+  );
 
   const handlePrintBill = async () => {
     try {
@@ -421,7 +605,7 @@ const PaymentDialog = ({
       </Card>
 
       <div className="grid grid-cols-2 gap-3">
-        <Button variant="outline" onClick={handleEditOrder} className="w-full opacity-50 pointer-events-none">
+        <Button variant="outline" onClick={handleEditOrder} className="w-full">
           <Receipt className="w-4 h-4 mr-2" />
           Edit Order
         </Button>
@@ -573,6 +757,152 @@ const PaymentDialog = ({
     </div>
   );
 
+  const renderEditStep = () => (
+    <div className="space-y-4 p-2">
+      <Button
+        variant="ghost"
+        onClick={() => setCurrentStep('confirm')}
+        className="mb-2"
+      >
+        <ArrowLeft className="w-4 h-4 mr-2" />
+        Back to Order
+      </Button>
+
+      <div className="text-center mb-4">
+        <h2 className="text-2xl font-bold text-foreground mb-1">Edit Order</h2>
+        <p className="text-sm text-muted-foreground">
+          Add new items to {tableNumber ? `Table ${tableNumber}` : 'this order'}
+        </p>
+      </div>
+
+      {/* Previously Sent Items */}
+      <Card className="p-4 bg-muted/30">
+        <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
+          <Receipt className="w-4 h-4" />
+          Previously Sent Items
+        </h3>
+        <div className="space-y-2 max-h-32 overflow-y-auto">
+          {orderItems.map((item, idx) => (
+            <div key={idx} className="flex justify-between text-sm text-muted-foreground">
+              <span>{item.quantity}x {item.name}</span>
+              <span>₹{(item.price * item.quantity).toFixed(2)}</span>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* New Items to Add */}
+      {newItemsBuffer.length > 0 && (
+        <Card className="p-4 bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
+          <h3 className="font-semibold text-sm mb-3 flex items-center gap-2 text-green-700 dark:text-green-400">
+            <Plus className="w-4 h-4" />
+            New Items to Add
+          </h3>
+          <div className="space-y-3 max-h-40 overflow-y-auto">
+            {newItemsBuffer.map((item) => (
+              <div key={item.id} className="flex items-center justify-between gap-2">
+                <span className="text-sm flex-1">{item.name}</span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleUpdateNewItemQuantity(item.id, item.quantity - 1)}
+                    className="h-7 w-7 p-0"
+                  >
+                    -
+                  </Button>
+                  <span className="text-sm font-medium w-8 text-center">{item.quantity}</span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleUpdateNewItemQuantity(item.id, item.quantity + 1)}
+                    className="h-7 w-7 p-0"
+                  >
+                    +
+                  </Button>
+                  <span className="text-sm font-medium w-16 text-right">
+                    ₹{(item.price * item.quantity).toFixed(2)}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleRemoveNewItem(item.id)}
+                    className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-100"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Search Menu Items */}
+      <div className="space-y-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search menu items..."
+            value={menuSearchQuery}
+            onChange={(e) => setMenuSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+
+        {/* Menu Items List */}
+        <Card className="max-h-64 overflow-y-auto">
+          <div className="p-2 space-y-1">
+            {filteredMenuItems.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                {menuSearchQuery ? 'No items found matching your search' : 'No menu items available'}
+              </p>
+            ) : (
+              filteredMenuItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => handleAddMenuItem(item)}
+                  className="w-full flex items-center justify-between p-3 hover:bg-accent rounded-lg transition-colors text-left"
+                >
+                  <div className="flex-1">
+                    <p className="font-medium text-sm">{item.name}</p>
+                    {item.category && (
+                      <p className="text-xs text-muted-foreground">{item.category}</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="font-semibold text-sm">₹{item.price.toFixed(2)}</span>
+                    <Plus className="w-4 h-4 text-green-600" />
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </Card>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="pt-2 space-y-2">
+        <Button 
+          onClick={handleSaveNewItems}
+          disabled={newItemsBuffer.length === 0}
+          className="w-full bg-green-600 hover:bg-green-700 text-white"
+          size="lg"
+        >
+          <Check className="w-4 h-4 mr-2" />
+          Save & Send New Items to Kitchen
+        </Button>
+        <Button 
+          onClick={() => setCurrentStep('confirm')}
+          variant="outline"
+          className="w-full"
+        >
+          Cancel
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
@@ -582,12 +912,14 @@ const PaymentDialog = ({
             {currentStep === 'method' && 'Select Payment Method'}
             {currentStep === 'qr' && 'UPI Payment'}
             {currentStep === 'success' && 'Payment Successful'}
+            {currentStep === 'edit' && 'Edit Order'}
           </DialogTitle>
         </VisuallyHidden>
         {currentStep === 'confirm' && renderConfirmStep()}
         {currentStep === 'method' && renderMethodStep()}
         {currentStep === 'qr' && renderQRStep()}
         {currentStep === 'success' && renderSuccessStep()}
+        {currentStep === 'edit' && renderEditStep()}
       </DialogContent>
     </Dialog>
   );
