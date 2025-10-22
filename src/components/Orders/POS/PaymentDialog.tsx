@@ -346,7 +346,7 @@ const PaymentDialog = ({
       // Get current kitchen order with order_id
       const { data: currentKitchenOrder, error: fetchError } = await supabase
         .from('kitchen_orders')
-        .select('items, order_id, table_number, customer_name')
+        .select('items, order_id, table_number, customer_name, source')
         .eq('id', orderId)
         .single();
 
@@ -383,6 +383,7 @@ const PaymentDialog = ({
           order_id: currentKitchenOrder.order_id,
           table_number: currentKitchenOrder.table_number,
           customer_name: currentKitchenOrder.customer_name,
+          source: currentKitchenOrder.source || 'pos',
           items: formattedNewItems,
           status: 'new'
         });
