@@ -288,7 +288,6 @@ const PaymentDialog = ({
         .from('kitchen_orders')
         .update({ 
           items: combinedItems,
-          total: newTotal,
           status: 'pending' // Reset to pending to notify kitchen
         })
         .eq('id', orderId);
