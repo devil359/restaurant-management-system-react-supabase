@@ -172,6 +172,10 @@ const ActiveOrdersList = ({ onRecallOrder }: ActiveOrdersListProps = {}) => {
               const audio = new Audio("/notification.mp3");
               audio.play().catch(console.error);
             }
+          } else if (payload.eventType === "DELETE") {
+            // Remove deleted order from UI immediately
+            const deletedOrderId = payload.old.id;
+            setActiveOrders((prev) => prev.filter(order => order.id !== deletedOrderId));
           }
         }
       )

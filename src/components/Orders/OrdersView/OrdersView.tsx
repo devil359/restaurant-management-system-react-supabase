@@ -19,6 +19,7 @@ import * as XLSX from 'xlsx';
 import { usePagination } from "@/hooks/usePagination";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { EnhancedSkeleton } from "@/components/ui/enhanced-skeleton";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 
 interface OrdersViewProps {
   searchTrigger?: number;
@@ -122,6 +123,13 @@ const OrdersView = ({
 
       return (regularOrders || []) as Order[];
     },
+  });
+
+  // Real-time subscription for orders table to update UI immediately
+  useRealtimeSubscription({
+    table: 'orders',
+    queryKey: ['all-orders', dateFilter],
+    schema: 'public',
   });
 
   const handleOrderAdded = () => {

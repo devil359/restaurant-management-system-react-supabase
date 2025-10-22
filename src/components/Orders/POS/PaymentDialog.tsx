@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Receipt, CreditCard, Wallet, QrCode, Check, Printer, Trash2, Plus, X, Search } from 'lucide-react';
 import QRCode from 'qrcode';
 import jsPDF from 'jspdf';
@@ -41,6 +41,7 @@ const PaymentDialog = ({
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
   const [newItemsBuffer, setNewItemsBuffer] = useState<OrderItem[]>([]);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Fetch restaurant info
   const { data: restaurantInfo } = useQuery({
@@ -166,13 +167,35 @@ const PaymentDialog = ({
 
     try {
       if (orderId) {
+        // First, get the order_id from kitchen_orders to delete related order
+        const { data: kitchenOrder } = await supabase
+          .from('kitchen_orders')
+          .select('order_id')
+          .eq('id', orderId)
+          .single();
+
         // Delete from kitchen_orders table
-        const { error } = await supabase
+        const { error: kitchenError } = await supabase
           .from('kitchen_orders')
           .delete()
           .eq('id', orderId);
 
-        if (error) throw error;
+        if (kitchenError) throw kitchenError;
+
+        // Delete corresponding order from orders table if it exists
+        if (kitchenOrder?.order_id) {
+          const { error: orderError } = await supabase
+            .from('orders')
+            .delete()
+            .eq('id', kitchenOrder.order_id);
+
+          if (orderError) console.error('Error deleting from orders table:', orderError);
+        }
+
+        // Invalidate queries to refresh UI
+        queryClient.invalidateQueries({ queryKey: ['kitchen-orders'] });
+        queryClient.invalidateQueries({ queryKey: ['orders'] });
+        queryClient.invalidateQueries({ queryKey: ['dashboard-orders'] });
       }
 
       toast({
