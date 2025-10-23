@@ -59,8 +59,9 @@ Deno.serve(async (req) => {
       }
     );
 
-    // Verify user is authenticated and has admin/owner role
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    // Verify user is authenticated and has admin/owner role using the Bearer token explicitly
+    const token = (authHeader || '').replace(/bearer\s+/i, '');
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
     console.log('User fetch result:', { userId: user?.id, hasError: !!userError });
     
     if (userError) {
