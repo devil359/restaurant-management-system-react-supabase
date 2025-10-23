@@ -108,6 +108,7 @@ export const EditRoleDialog = ({ role, open, onOpenChange, onSuccess }: EditRole
       const { data, error } = await supabase.functions.invoke('role-management', {
         headers: {
           Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
         },
         body: {
           action: 'update',

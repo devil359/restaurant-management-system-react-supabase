@@ -163,7 +163,33 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { action, ...data } = await req.json();
+    // Enforce POST and safely parse body
+    if (req.method !== 'POST') {
+      return new Response(
+        JSON.stringify({ error: 'Method not allowed' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 405 }
+      );
+    }
+
+    let payload: any = null;
+    try {
+      payload = await req.json();
+    } catch (e) {
+      console.error('Invalid JSON body:', e);
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON body' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+
+    if (!payload || typeof payload !== 'object') {
+      return new Response(
+        JSON.stringify({ error: 'Empty request body' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+
+    const { action, ...data } = payload;
 
     switch (action) {
       case 'create': {
