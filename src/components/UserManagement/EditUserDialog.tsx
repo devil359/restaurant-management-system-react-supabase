@@ -22,11 +22,19 @@ import {
 } from "@/components/ui/select";
 import { UserRole } from "@/types/auth";
 
+interface Role {
+  id: string;
+  name: string;
+  description?: string;
+}
+
 interface User {
   id: string;
   first_name?: string;
   last_name?: string;
   role: string;
+  role_id?: string;
+  role_name_text?: string;
   restaurant_id?: string;
   is_active?: boolean;
   created_at: string;
@@ -45,18 +53,43 @@ export const EditUserDialog = ({ user, open, onOpenChange, onUserUpdated }: Edit
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
-    role: "staff" as UserRole,
+    roleId: "",
+    roleName: "",
     newPassword: "",
   });
   const [loading, setLoading] = useState(false);
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [systemRoles] = useState<UserRole[]>(['staff', 'waiter', 'chef', 'manager', 'admin', 'owner']);
   const { user: currentUser } = useAuth();
+
+  useEffect(() => {
+    const fetchRoles = async () => {
+      if (!currentUser?.restaurant_id) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('roles')
+          .select('*')
+          .eq('restaurant_id', currentUser.restaurant_id)
+          .order('name');
+        
+        if (error) throw error;
+        setRoles(data || []);
+      } catch (error) {
+        console.error('Error fetching roles:', error);
+      }
+    };
+
+    fetchRoles();
+  }, [currentUser?.restaurant_id]);
 
   useEffect(() => {
     if (user) {
       setFormData({
         firstName: user.first_name || "",
         lastName: user.last_name || "",
-        role: user.role as UserRole,
+        roleId: user.role_id || user.role || "staff",
+        roleName: user.role_name_text || user.role || "staff",
         newPassword: "",
       });
     }
@@ -67,13 +100,19 @@ export const EditUserDialog = ({ user, open, onOpenChange, onUserUpdated }: Edit
     setLoading(true);
     
     try {
+      // Determine if it's a system role or custom role
+      const isSystemRole = systemRoles.includes(formData.roleId as UserRole);
+      const customRole = roles.find(r => r.id === formData.roleId);
+
       // Update profile
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
           first_name: formData.firstName,
           last_name: formData.lastName,
-          role: formData.role,
+          role: isSystemRole ? (formData.roleId as UserRole) : 'staff',
+          role_id: isSystemRole ? null : formData.roleId,
+          role_name_text: isSystemRole ? null : (customRole?.name || formData.roleName),
         })
         .eq('id', user.id);
 
@@ -91,6 +130,7 @@ export const EditUserDialog = ({ user, open, onOpenChange, onUserUpdated }: Edit
 
       toast.success("User updated successfully");
       onUserUpdated();
+      onOpenChange(false);
     } catch (error: any) {
       console.error('Error updating user:', error);
       toast.error(error.message || "Failed to update user");
@@ -139,8 +179,15 @@ export const EditUserDialog = ({ user, open, onOpenChange, onUserUpdated }: Edit
                 Role
               </Label>
               <Select
-                value={formData.role}
-                onValueChange={(value: UserRole) => setFormData({ ...formData, role: value })}
+                value={formData.roleId}
+                onValueChange={(value) => {
+                  const customRole = roles.find(r => r.id === value);
+                  setFormData({ 
+                    ...formData, 
+                    roleId: value,
+                    roleName: customRole?.name || value
+                  });
+                }}
               >
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Select a role" />
@@ -150,12 +197,19 @@ export const EditUserDialog = ({ user, open, onOpenChange, onUserUpdated }: Edit
                   <SelectItem value="waiter">Waiter</SelectItem>
                   <SelectItem value="chef">Chef</SelectItem>
                   <SelectItem value="manager">Manager</SelectItem>
-                  {(currentUser?.role === 'owner' || currentUser?.role === 'admin') && (
+                  {(currentUser?.role === 'owner' || currentUser?.role === 'admin' || 
+                    currentUser?.role_name_text?.toLowerCase() === 'admin' ||
+                    currentUser?.role_name_text?.toLowerCase() === 'owner') && (
                     <SelectItem value="admin">Admin</SelectItem>
                   )}
-                  {currentUser?.role === 'owner' && (
+                  {(currentUser?.role === 'owner' || currentUser?.role_name_text?.toLowerCase() === 'owner') && (
                     <SelectItem value="owner">Owner</SelectItem>
                   )}
+                  {roles.length > 0 && roles.map((role) => (
+                    <SelectItem key={role.id} value={role.id}>
+                      {role.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -22,6 +22,12 @@ import {
 } from "@/components/ui/select";
 import { UserRole } from "@/types/auth";
 
+interface Role {
+  id: string;
+  name: string;
+  description?: string;
+}
+
 interface CreateUserDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -34,10 +40,34 @@ export const CreateUserDialog = ({ open, onOpenChange, onUserCreated }: CreateUs
     password: "",
     firstName: "",
     lastName: "",
-    role: "staff" as UserRole,
+    roleId: "staff",
+    roleName: "staff",
   });
   const [loading, setLoading] = useState(false);
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [systemRoles] = useState<UserRole[]>(['staff', 'waiter', 'chef', 'manager', 'admin', 'owner']);
   const { user: currentUser } = useAuth();
+
+  useEffect(() => {
+    const fetchRoles = async () => {
+      if (!currentUser?.restaurant_id) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('roles')
+          .select('*')
+          .eq('restaurant_id', currentUser.restaurant_id)
+          .order('name');
+        
+        if (error) throw error;
+        setRoles(data || []);
+      } catch (error) {
+        console.error('Error fetching roles:', error);
+      }
+    };
+
+    fetchRoles();
+  }, [currentUser?.restaurant_id, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,6 +92,10 @@ export const CreateUserDialog = ({ open, onOpenChange, onUserCreated }: CreateUs
       if (authError) throw authError;
 
       if (authData.user) {
+        // Determine if it's a system role or custom role
+        const isSystemRole = systemRoles.includes(formData.roleId as UserRole);
+        const customRole = roles.find(r => r.id === formData.roleId);
+
         // Create profile
         const { error: profileError } = await supabase
           .from('profiles')
@@ -69,7 +103,9 @@ export const CreateUserDialog = ({ open, onOpenChange, onUserCreated }: CreateUs
             id: authData.user.id,
             first_name: formData.firstName,
             last_name: formData.lastName,
-            role: formData.role,
+            role: isSystemRole ? (formData.roleId as UserRole) : 'staff',
+            role_id: isSystemRole ? null : formData.roleId,
+            role_name_text: isSystemRole ? null : (customRole?.name || formData.roleName),
             restaurant_id: currentUser.restaurant_id,
             is_active: true,
           });
@@ -79,12 +115,14 @@ export const CreateUserDialog = ({ open, onOpenChange, onUserCreated }: CreateUs
 
       toast.success("User created successfully");
       onUserCreated();
+      onOpenChange(false);
       setFormData({
         email: "",
         password: "",
         firstName: "",
         lastName: "",
-        role: "staff",
+        roleId: "staff",
+        roleName: "staff",
       });
     } catch (error: any) {
       console.error('Error creating user:', error);
@@ -161,8 +199,15 @@ export const CreateUserDialog = ({ open, onOpenChange, onUserCreated }: CreateUs
                 Role
               </Label>
               <Select
-                value={formData.role}
-                onValueChange={(value: UserRole) => setFormData({ ...formData, role: value })}
+                value={formData.roleId}
+                onValueChange={(value) => {
+                  const customRole = roles.find(r => r.id === value);
+                  setFormData({ 
+                    ...formData, 
+                    roleId: value,
+                    roleName: customRole?.name || value
+                  });
+                }}
               >
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Select a role" />
@@ -172,12 +217,19 @@ export const CreateUserDialog = ({ open, onOpenChange, onUserCreated }: CreateUs
                   <SelectItem value="waiter">Waiter</SelectItem>
                   <SelectItem value="chef">Chef</SelectItem>
                   <SelectItem value="manager">Manager</SelectItem>
-                  {(currentUser?.role === 'owner' || currentUser?.role === 'admin') && (
+                  {(currentUser?.role === 'owner' || currentUser?.role === 'admin' || 
+                    currentUser?.role_name_text?.toLowerCase() === 'admin' ||
+                    currentUser?.role_name_text?.toLowerCase() === 'owner') && (
                     <SelectItem value="admin">Admin</SelectItem>
                   )}
-                  {currentUser?.role === 'owner' && (
+                  {(currentUser?.role === 'owner' || currentUser?.role_name_text?.toLowerCase() === 'owner') && (
                     <SelectItem value="owner">Owner</SelectItem>
                   )}
+                  {roles.length > 0 && roles.map((role) => (
+                    <SelectItem key={role.id} value={role.id}>
+                      {role.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

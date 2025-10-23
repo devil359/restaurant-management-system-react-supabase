@@ -48,7 +48,8 @@ export const UserList = ({ onUserUpdated }: UserListProps) => {
 
   const fetchUsers = async () => {
     try {
-      const { data, error } = await supabase
+      // First get profiles
+      const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select(`
           *,
@@ -57,8 +58,27 @@ export const UserList = ({ onUserUpdated }: UserListProps) => {
         .eq('restaurant_id', currentUser?.restaurant_id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setUsers(data || []);
+      if (profilesError) throw profilesError;
+
+      // Then get emails from auth.users for each profile
+      const usersWithEmails = await Promise.all(
+        (profilesData || []).map(async (profile) => {
+          try {
+            const { data: { user } } = await supabase.auth.admin.getUserById(profile.id);
+            return {
+              ...profile,
+              email: user?.email || 'No email'
+            };
+          } catch (error) {
+            return {
+              ...profile,
+              email: 'No email'
+            };
+          }
+        })
+      );
+
+      setUsers(usersWithEmails);
     } catch (error) {
       console.error('Error fetching users:', error);
       toast.error('Failed to fetch users');
