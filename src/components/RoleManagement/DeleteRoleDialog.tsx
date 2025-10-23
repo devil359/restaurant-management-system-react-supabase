@@ -40,17 +40,7 @@ export const DeleteRoleDialog = ({ role, open, onOpenChange, onSuccess }: Delete
 
     setIsDeleting(true);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData.session?.access_token;
-      if (!accessToken) {
-        throw new Error('You must be signed in to perform this action.');
-      }
-
       const { data, error } = await supabase.functions.invoke('role-management', {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
         body: {
           action: 'delete',
           id: role.id,

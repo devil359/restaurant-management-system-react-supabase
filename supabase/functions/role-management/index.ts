@@ -171,33 +171,11 @@ Deno.serve(async (req) => {
       );
     }
 
-    const contentType = req.headers.get('content-type') || '';
     let payload: any = null;
-
-    // Read raw body once to avoid JSON parse errors on empty bodies
-    let rawBody = '';
     try {
-      rawBody = await req.text();
+      payload = await req.json();
     } catch (e) {
-      console.error('Failed reading request body:', e);
-      return new Response(
-        JSON.stringify({ error: 'Unable to read request body' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
-    }
-
-    if (!rawBody || rawBody.trim().length === 0) {
-      console.error('Empty request body received');
-      return new Response(
-        JSON.stringify({ error: 'Empty request body' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
-    }
-
-    try {
-      payload = JSON.parse(rawBody);
-    } catch (e) {
-      console.error('Invalid JSON body:', e, { contentType, rawPreview: rawBody.slice(0, 100) });
+      console.error('Invalid JSON body:', e);
       return new Response(
         JSON.stringify({ error: 'Invalid JSON body' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
