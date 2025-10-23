@@ -43,20 +43,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const fetchUserProfile = async (userId: string, email?: string) => {
     try {
-      // Fetch user profile with role information
+      // Fetch user profile with role information and custom role details
       const { data: profile } = await supabase
         .from('profiles')
-        .select('*')
+        .select(`
+          *,
+          roles:role_id (
+            id,
+            name,
+            description
+          )
+        `)
         .eq('id', userId)
         .single();
 
       if (profile) {
+        // Prioritize role_name_text, then custom role from roles table, then fallback to enum
+        const userRole = profile.role_name_text || 
+                        (profile.roles?.name) || 
+                        profile.role;
+
         setUser({
           id: profile.id,
           email: email,
           first_name: profile.first_name,
           last_name: profile.last_name,
-          role: profile.role as UserRole,
+          role: userRole as UserRole,
+          role_id: profile.role_id,
+          role_name_text: profile.role_name_text,
           restaurant_id: profile.restaurant_id,
           avatar_url: profile.avatar_url,
           phone: profile.phone,
@@ -94,7 +108,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const hasPermission = (permission: Permission): boolean => {
     if (!user) return false;
-    const userPermissions = rolePermissions[user.role] || [];
+    
+    // For custom roles, check if role exists in rolePermissions map
+    // Custom roles use the role_name_text, system roles use the enum
+    const roleKey = (user.role_name_text?.toLowerCase() || user.role?.toLowerCase()) as UserRole;
+    const userPermissions = rolePermissions[roleKey] || [];
     return userPermissions.includes(permission);
   };
 
@@ -103,8 +121,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return permissions.some(permission => hasPermission(permission));
   };
 
-  const isRole = (role: UserRole): boolean => {
-    return user?.role === role;
+  const isRole = (role: UserRole | string): boolean => {
+    // Check both role_name_text and the role enum
+    const currentRole = user?.role_name_text || user?.role;
+    return currentRole?.toLowerCase() === role.toLowerCase();
   };
 
   const signOut = async (): Promise<void> => {

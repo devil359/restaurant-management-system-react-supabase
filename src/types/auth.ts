@@ -212,13 +212,15 @@ export interface UserProfile {
   email?: string;
   first_name?: string;
   last_name?: string;
-  role: UserRole;
+  role: UserRole | string; // Can be system role or custom role name
+  role_id?: string; // Foreign key to custom roles table
+  role_name_text?: string; // Text representation of custom role
   restaurant_id?: string;
   avatar_url?: string;
   phone?: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface AuthContextType {
@@ -226,7 +228,7 @@ export interface AuthContextType {
   loading: boolean;
   hasPermission: (permission: Permission) => boolean;
   hasAnyPermission: (permissions: Permission[]) => boolean;
-  isRole: (role: UserRole) => boolean;
+  isRole: (role: UserRole | string) => boolean;
   signOut: () => Promise<void>;
 }
 

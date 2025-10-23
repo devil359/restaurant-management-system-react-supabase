@@ -27,6 +27,8 @@ interface User {
   first_name?: string;
   last_name?: string;
   role: string;
+  role_id?: string;
+  role_name_text?: string;
   restaurant_id?: string;
   is_active?: boolean;
   created_at: string;
@@ -48,7 +50,10 @@ export const UserList = ({ onUserUpdated }: UserListProps) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select(`
+          *,
+          roles:role_id(name)
+        `)
         .eq('restaurant_id', currentUser?.restaurant_id)
         .order('created_at', { ascending: false });
 
@@ -150,7 +155,7 @@ export const UserList = ({ onUserUpdated }: UserListProps) => {
                 <TableCell>{user.email || 'No email'}</TableCell>
                 <TableCell>
                   <Badge variant={getRoleBadgeVariant(user.role)}>
-                    {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                    {user.role_name_text || (user.role.charAt(0).toUpperCase() + user.role.slice(1))}
                   </Badge>
                 </TableCell>
                 <TableCell>

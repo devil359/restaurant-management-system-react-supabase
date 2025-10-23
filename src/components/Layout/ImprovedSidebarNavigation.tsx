@@ -428,7 +428,7 @@ export const ImprovedSidebarNavigation = ({
               {user?.first_name ? `${user.first_name} ${user.last_name || ""}`.trim() : user?.email?.split("@")[0] || "User"}
             </p>
             <p className="text-xs text-white/70 truncate">
-              {user?.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : "Staff Member"}
+              {user?.role_name_text || (user?.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : "Staff Member")}
             </p>
           </div>
           <Button
