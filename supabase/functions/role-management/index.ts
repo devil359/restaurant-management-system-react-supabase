@@ -118,21 +118,42 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if user has admin/owner role
-    const { data: hasRole, error: roleError } = await supabaseClient.rpc('has_any_role', {
-      _user_id: user.id,
-      _roles: ['admin', 'owner'],
-    });
+    // Check if user has admin/owner role without relying on overloaded RPC (avoids PGRST203)
+    const { data: roleProfile, error: roleProfileError } = await supabaseClient
+      .from('profiles')
+      .select('role, role_id')
+      .eq('id', user.id)
+      .single();
 
-    console.log('Role check result:', { hasRole, error: roleError?.message });
-
-    if (roleError) {
-      console.error('Role check error:', roleError);
+    if (roleProfileError) {
+      console.error('Role profile fetch error:', roleProfileError);
       return new Response(
-        JSON.stringify({ error: 'Failed to verify permissions', details: roleError.message }),
+        JSON.stringify({ error: 'Failed to verify permissions', details: roleProfileError.message }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
       );
     }
+
+    let roleName: string | null = null;
+    if (roleProfile?.role_id) {
+      const { data: roleRow, error: roleRowError } = await supabaseClient
+        .from('roles')
+        .select('name')
+        .eq('id', roleProfile.role_id)
+        .single();
+      if (roleRowError) {
+        console.error('Role lookup error:', roleRowError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to verify permissions', details: roleRowError.message }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
+        );
+      }
+      roleName = roleRow?.name ?? null;
+    } else if (roleProfile?.role) {
+      roleName = roleProfile.role;
+    }
+
+    const hasRole = ['admin', 'owner'].includes((roleName ?? '').toLowerCase());
+    console.log('Role check result (manual):', { roleName, hasRole });
 
     if (!hasRole) {
       console.error('User does not have required role');
