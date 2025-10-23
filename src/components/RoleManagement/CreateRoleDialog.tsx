@@ -69,34 +69,34 @@ export const CreateRoleDialog = ({ open, onOpenChange, onSuccess }: CreateRoleDi
 
     setIsSubmitting(true);
     try {
-      // Ensure we send the authenticated user's access token to the Edge Function
+      // Validate session to ensure supabase-js will attach the auth token automatically
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      
+
       if (sessionError) {
         console.error('Session error:', sessionError);
         throw new Error('Failed to get authentication session: ' + sessionError.message);
       }
 
-      const accessToken = sessionData.session?.access_token;
-
-      if (!accessToken) {
+      if (!sessionData.session?.access_token) {
         console.error('No access token found in session');
         throw new Error('You must be signed in to perform this action.');
       }
 
-      console.log('Calling role-management function with token');
+      // Prepare payload and add rich client-side logs
+      const payload = {
+        action: 'create',
+        name: name.trim(),
+        description: (description || '').trim() || null,
+        componentIds: selectedComponents,
+      };
+      console.log('CreateRoleDialog → sending payload', {
+        ...payload,
+        componentCount: selectedComponents.length,
+      });
 
+      // Use supabase.functions.invoke without overriding headers so body is sent correctly
       const { data, error } = await supabase.functions.invoke('role-management', {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: {
-          action: 'create',
-          name: name.trim(),
-          description: description.trim() || null,
-          componentIds: selectedComponents,
-        },
+        body: payload,
       });
 
       console.log('Function response:', { data, error });

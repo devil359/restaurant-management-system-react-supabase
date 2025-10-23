@@ -172,12 +172,18 @@ Deno.serve(async (req) => {
     }
 
     const contentType = req.headers.get('content-type') || '';
+    const contentLength = req.headers.get('content-length') || '';
+    const hasBody = !!req.body;
+    const bodyUsedBefore = (req as any).bodyUsed ?? false;
+    console.log('Request diagnostics:', { method: req.method, contentType, contentLength, hasBody, bodyUsedBefore });
+
     let payload: any = null;
 
-    // Read raw body once to avoid JSON parse errors on empty bodies
+    // Always read from a cloned request to avoid "body already used" issues
     let rawBody = '';
     try {
-      rawBody = await req.text();
+      rawBody = await req.clone().text();
+      console.log('Raw body info:', { length: rawBody?.length ?? 0, preview: rawBody?.slice(0, 120) });
     } catch (e) {
       console.error('Failed reading request body:', e);
       return new Response(
@@ -187,9 +193,9 @@ Deno.serve(async (req) => {
     }
 
     if (!rawBody || rawBody.trim().length === 0) {
-      console.error('Empty request body received');
+      console.error('Empty request body received', { contentType, contentLength, hasBody });
       return new Response(
-        JSON.stringify({ error: 'Empty request body' }),
+        JSON.stringify({ error: 'Empty request body', details: { contentType, contentLength, hasBody } }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       );
     }
@@ -197,9 +203,9 @@ Deno.serve(async (req) => {
     try {
       payload = JSON.parse(rawBody);
     } catch (e) {
-      console.error('Invalid JSON body:', e, { contentType, rawPreview: rawBody.slice(0, 100) });
+      console.error('Invalid JSON body:', e, { contentType, rawPreview: rawBody.slice(0, 200) });
       return new Response(
-        JSON.stringify({ error: 'Invalid JSON body' }),
+        JSON.stringify({ error: 'Invalid JSON body', details: 'Failed to parse JSON' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       );
     }
