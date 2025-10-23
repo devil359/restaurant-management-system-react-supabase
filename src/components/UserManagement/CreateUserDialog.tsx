@@ -78,6 +78,10 @@ export const CreateUserDialog = ({ open, onOpenChange, onUserCreated }: CreateUs
 
     setLoading(true);
     try {
+      // Determine if it's a system role or custom role
+      const isSystemRole = systemRoles.includes(formData.roleId as UserRole);
+      const customRole = roles.find(r => r.id === formData.roleId);
+
       // Create user in Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.admin.createUser({
         email: formData.email,
@@ -86,16 +90,16 @@ export const CreateUserDialog = ({ open, onOpenChange, onUserCreated }: CreateUs
         user_metadata: {
           first_name: formData.firstName,
           last_name: formData.lastName,
+          role: isSystemRole ? formData.roleId : 'staff',
+          role_id: isSystemRole ? null : formData.roleId,
+          role_name_text: isSystemRole ? null : (customRole?.name || formData.roleName),
+          restaurant_id: currentUser.restaurant_id,
         }
       });
 
       if (authError) throw authError;
 
       if (authData.user) {
-        // Determine if it's a system role or custom role
-        const isSystemRole = systemRoles.includes(formData.roleId as UserRole);
-        const customRole = roles.find(r => r.id === formData.roleId);
-
         // Create profile
         const { error: profileError } = await supabase
           .from('profiles')

@@ -18,7 +18,7 @@ import {
   DropdownMenuItem, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Edit, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
+import { MoreHorizontal, Edit, Trash2 } from "lucide-react";
 import { EditUserDialog } from "./EditUserDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
@@ -93,24 +93,6 @@ export const UserList = ({ onUserUpdated }: UserListProps) => {
     }
   }, [currentUser?.restaurant_id]);
 
-  const handleToggleStatus = async (userId: string, currentStatus: boolean) => {
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_active: !currentStatus })
-        .eq('id', userId);
-
-      if (error) throw error;
-      
-      toast.success(`User ${!currentStatus ? 'activated' : 'deactivated'} successfully`);
-      fetchUsers();
-      onUserUpdated();
-    } catch (error) {
-      console.error('Error updating user status:', error);
-      toast.error('Failed to update user status');
-    }
-  };
-
   const handleDeleteUser = async (userId: string) => {
     try {
       // First delete from auth.users (this will cascade to profiles)
@@ -159,7 +141,6 @@ export const UserList = ({ onUserUpdated }: UserListProps) => {
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Role</TableHead>
-              <TableHead>Status</TableHead>
               <TableHead>Created</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -179,11 +160,6 @@ export const UserList = ({ onUserUpdated }: UserListProps) => {
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  <Badge variant={user.is_active ? 'default' : 'secondary'}>
-                    {user.is_active ? 'Active' : 'Inactive'}
-                  </Badge>
-                </TableCell>
-                <TableCell>
                   {new Date(user.created_at).toLocaleDateString()}
                 </TableCell>
                 <TableCell className="text-right">
@@ -197,21 +173,6 @@ export const UserList = ({ onUserUpdated }: UserListProps) => {
                       <DropdownMenuItem onClick={() => setEditingUser(user)}>
                         <Edit className="mr-2 h-4 w-4" />
                         Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => handleToggleStatus(user.id, user.is_active || false)}
-                      >
-                        {user.is_active ? (
-                          <>
-                            <ToggleLeft className="mr-2 h-4 w-4" />
-                            Deactivate
-                          </>
-                        ) : (
-                          <>
-                            <ToggleRight className="mr-2 h-4 w-4" />
-                            Activate
-                          </>
-                        )}
                       </DropdownMenuItem>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>

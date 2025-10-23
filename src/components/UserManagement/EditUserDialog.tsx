@@ -84,16 +84,19 @@ export const EditUserDialog = ({ user, open, onOpenChange, onUserUpdated }: Edit
   }, [currentUser?.restaurant_id]);
 
   useEffect(() => {
-    if (user) {
+    if (user && open) {
+      // Determine the correct roleId - use role_id if it exists (custom role), otherwise use system role
+      const roleId = user.role_id || user.role || "staff";
+      
       setFormData({
         firstName: user.first_name || "",
         lastName: user.last_name || "",
-        roleId: user.role_id || user.role || "staff",
+        roleId: roleId,
         roleName: user.role_name_text || user.role || "staff",
         newPassword: "",
       });
     }
-  }, [user]);
+  }, [user, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
