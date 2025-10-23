@@ -70,16 +70,26 @@ export const CreateRoleDialog = ({ open, onOpenChange, onSuccess }: CreateRoleDi
     setIsSubmitting(true);
     try {
       // Ensure we send the authenticated user's access token to the Edge Function
-      const { data: sessionData } = await supabase.auth.getSession();
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error('Session error:', sessionError);
+        throw new Error('Failed to get authentication session: ' + sessionError.message);
+      }
+
       const accessToken = sessionData.session?.access_token;
 
       if (!accessToken) {
+        console.error('No access token found in session');
         throw new Error('You must be signed in to perform this action.');
       }
+
+      console.log('Calling role-management function with token');
 
       const { data, error } = await supabase.functions.invoke('role-management', {
         headers: {
           Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
         },
         body: {
           action: 'create',
@@ -89,22 +99,31 @@ export const CreateRoleDialog = ({ open, onOpenChange, onSuccess }: CreateRoleDi
         },
       });
 
-      if (error) throw error;
+      console.log('Function response:', { data, error });
 
-      if (data.success) {
+      if (error) {
+        console.error('Function invocation error:', error);
+        throw error;
+      }
+
+      if (data?.success) {
+        toast({
+          title: 'Success',
+          description: 'Role created successfully',
+        });
         setName('');
         setDescription('');
         setSelectedComponents([]);
         onSuccess();
         onOpenChange(false);
       } else {
-        throw new Error(data.error || 'Failed to create role');
+        throw new Error(data?.error || 'Failed to create role');
       }
     } catch (error: any) {
       console.error('Error creating role:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to create role',
+        description: error.message || 'Failed to create role. Please check the console for details.',
         variant: 'destructive',
       });
     } finally {

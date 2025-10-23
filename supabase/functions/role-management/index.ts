@@ -35,9 +35,12 @@ Deno.serve(async (req) => {
       req.headers.get('X-Authorization') ||
       req.headers.get('x-authorization');
 
+    console.log('Auth header received:', authHeader ? 'Yes' : 'No');
+
     if (!authHeader || !authHeader.toLowerCase().startsWith('bearer ')) {
+      console.error('Missing or invalid auth header');
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
+        JSON.stringify({ error: 'Missing or invalid authorization header' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
       );
     }
@@ -58,20 +61,46 @@ Deno.serve(async (req) => {
 
     // Verify user is authenticated and has admin/owner role
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-    if (userError || !user) {
+    console.log('User fetch result:', { userId: user?.id, hasError: !!userError });
+    
+    if (userError) {
+      console.error('User authentication error:', userError);
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
+        JSON.stringify({ error: 'Authentication failed', details: userError.message }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+      );
+    }
+    
+    if (!user) {
+      console.error('No user found in token');
+      return new Response(
+        JSON.stringify({ error: 'No user found' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
       );
     }
 
-    const { data: profile } = await supabaseClient
+    const { data: profile, error: profileError } = await supabaseClient
       .from('profiles')
       .select('restaurant_id')
       .eq('id', user.id)
       .single();
 
+    console.log('Profile fetch result:', { 
+      hasProfile: !!profile, 
+      restaurantId: profile?.restaurant_id,
+      error: profileError?.message 
+    });
+
+    if (profileError) {
+      console.error('Profile fetch error:', profileError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to fetch user profile', details: profileError.message }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
+      );
+    }
+
     if (!profile?.restaurant_id) {
+      console.error('No restaurant associated with user');
       return new Response(
         JSON.stringify({ error: 'No restaurant associated with user' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
@@ -79,14 +108,25 @@ Deno.serve(async (req) => {
     }
 
     // Check if user has admin/owner role
-    const { data: hasRole } = await supabaseClient.rpc('has_any_role', {
+    const { data: hasRole, error: roleError } = await supabaseClient.rpc('has_any_role', {
       _user_id: user.id,
       _roles: ['admin', 'owner'],
     });
 
-    if (!hasRole) {
+    console.log('Role check result:', { hasRole, error: roleError?.message });
+
+    if (roleError) {
+      console.error('Role check error:', roleError);
       return new Response(
-        JSON.stringify({ error: 'Insufficient permissions' }),
+        JSON.stringify({ error: 'Failed to verify permissions', details: roleError.message }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
+      );
+    }
+
+    if (!hasRole) {
+      console.error('User does not have required role');
+      return new Response(
+        JSON.stringify({ error: 'Insufficient permissions - admin or owner role required' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
       );
     }
