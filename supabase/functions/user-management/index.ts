@@ -8,25 +8,29 @@ const corsHeaders = {
 }
 
 // Input validation schemas
+const systemRoles = ['owner', 'admin', 'manager', 'chef', 'waiter', 'staff', 'viewer'] as const
+
 const createUserSchema = z.object({
   email: z.string().email('Invalid email format').max(255, 'Email too long'),
   password: z.string().min(8, 'Password must be at least 8 characters').max(100, 'Password too long'),
   first_name: z.string().trim().min(1, 'First name required').max(100, 'First name too long'),
   last_name: z.string().trim().min(1, 'Last name required').max(100, 'Last name too long'),
-  role: z.enum(['owner', 'admin', 'manager', 'chef', 'waiter', 'staff', 'viewer'], { 
-    errorMap: () => ({ message: 'Invalid role' })
-  }),
+  // Optional support for custom roles via role_id/role_name_text
+  role: z.enum(systemRoles).optional().default('staff'),
+  role_id: z.string().uuid('Invalid role id').optional(),
+  role_name_text: z.string().trim().max(100).optional(),
   phone: z.string().regex(/^\+?[1-9]\d{1,14}$/, 'Invalid phone number format').optional()
 })
 
 const updateUserSchema = z.object({
   id: z.string().uuid('Invalid user ID'),
-  email: z.string().email('Invalid email format').max(255, 'Email too long'),
-  first_name: z.string().trim().min(1, 'First name required').max(100, 'First name too long'),
-  last_name: z.string().trim().min(1, 'Last name required').max(100, 'Last name too long'),
-  role: z.enum(['owner', 'admin', 'manager', 'chef', 'waiter', 'staff', 'viewer'], {
-    errorMap: () => ({ message: 'Invalid role' })
-  }),
+  email: z.string().email('Invalid email format').max(255, 'Email too long').optional(),
+  first_name: z.string().trim().min(1, 'First name required').max(100, 'First name too long').optional(),
+  last_name: z.string().trim().min(1, 'Last name required').max(100, 'Last name too long').optional(),
+  role: z.enum(systemRoles).optional(),
+  role_id: z.string().uuid('Invalid role id').optional(),
+  role_name_text: z.string().trim().max(100).optional(),
+  new_password: z.string().min(8, 'Password must be at least 8 characters').max(100, 'Password too long').optional(),
   phone: z.string().regex(/^\+?[1-9]\d{1,14}$/, 'Invalid phone number format').optional(),
   is_active: z.boolean().optional()
 })
@@ -90,7 +94,7 @@ serve(async (req) => {
       case 'create_user': {
         // Validate input
         const validated = createUserSchema.parse(userData)
-        
+
         // Create new user account
         const { data: newUser, error: createError } = await supabaseClient.auth.admin.createUser({
           email: validated.email,
@@ -104,31 +108,24 @@ serve(async (req) => {
 
         if (createError) throw createError
 
-        // Create profile for the new user
+        const isSystemRole = !validated.role_id
+
+        // Create profile for the new user (supports custom roles)
         const { error: profileError } = await supabaseClient
           .from('profiles')
           .insert({
             id: newUser.user.id,
             first_name: validated.first_name,
             last_name: validated.last_name,
-            role: validated.role,
+            role: isSystemRole ? (validated.role ?? 'staff') : 'staff',
+            role_id: isSystemRole ? null : validated.role_id,
+            role_name_text: isSystemRole ? null : (validated.role_name_text ?? null),
             restaurant_id: profile.restaurant_id,
             phone: validated.phone || null,
             is_active: true
           })
 
         if (profileError) throw profileError
-        
-        // Create entry in user_roles table
-        const { error: roleError } = await supabaseClient
-          .from('user_roles')
-          .insert({
-            user_id: newUser.user.id,
-            role: validated.role,
-            restaurant_id: profile.restaurant_id
-          })
-        
-        if (roleError) throw roleError
 
         return new Response(
           JSON.stringify({ success: true, user: newUser.user }),
@@ -139,56 +136,50 @@ serve(async (req) => {
       case 'update_user': {
         // Validate input
         const validated = updateUserSchema.parse(userData)
-        
-        // Update user metadata
-        const { data: updatedUser, error: updateError } = await supabaseClient.auth.admin.updateUserById(
-          validated.id,
-          {
-            email: validated.email,
-            user_metadata: {
-              first_name: validated.first_name,
-              last_name: validated.last_name
-            }
+
+        // Build admin update payload conditionally
+        const adminUpdate: any = {}
+        if (validated.email) adminUpdate.email = validated.email
+        if (validated.new_password) adminUpdate.password = validated.new_password
+        if (validated.first_name || validated.last_name) {
+          adminUpdate.user_metadata = {
+            ...(validated.first_name ? { first_name: validated.first_name } : {}),
+            ...(validated.last_name ? { last_name: validated.last_name } : {}),
           }
-        )
+        }
 
-        if (updateError) throw updateError
+        if (Object.keys(adminUpdate).length > 0) {
+          const { error: updateError } = await supabaseClient.auth.admin.updateUserById(
+            validated.id,
+            adminUpdate
+          )
+          if (updateError) throw updateError
+        }
 
-        // Update profile
-        const { error: profileError } = await supabaseClient
-          .from('profiles')
-          .update({
-            first_name: validated.first_name,
-            last_name: validated.last_name,
-            role: validated.role,
-            phone: validated.phone || null,
-            is_active: validated.is_active ?? true
-          })
-          .eq('id', validated.id)
+        // Prepare profile update
+        const profileUpdate: Record<string, any> = {}
+        if (validated.first_name) profileUpdate.first_name = validated.first_name
+        if (validated.last_name) profileUpdate.last_name = validated.last_name
 
-        if (profileError) throw profileError
-        
-        // Update user_roles table
-        const { error: deleteRoleError } = await supabaseClient
-          .from('user_roles')
-          .delete()
-          .eq('user_id', validated.id)
-          .eq('restaurant_id', profile.restaurant_id)
-        
-        if (deleteRoleError) console.error('Error deleting old role:', deleteRoleError)
-        
-        const { error: roleError } = await supabaseClient
-          .from('user_roles')
-          .insert({
-            user_id: validated.id,
-            role: validated.role,
-            restaurant_id: profile.restaurant_id
-          })
-        
-        if (roleError) throw roleError
+        const isSystemRole = !validated.role_id
+        if (validated.role || validated.role_id || validated.role_name_text) {
+          profileUpdate.role = isSystemRole ? (validated.role ?? 'staff') : 'staff'
+          profileUpdate.role_id = isSystemRole ? null : (validated.role_id ?? null)
+          profileUpdate.role_name_text = isSystemRole ? null : (validated.role_name_text ?? null)
+        }
+        if (validated.phone !== undefined) profileUpdate.phone = validated.phone
+        if (validated.is_active !== undefined) profileUpdate.is_active = validated.is_active
+
+        if (Object.keys(profileUpdate).length > 0) {
+          const { error: profileError } = await supabaseClient
+            .from('profiles')
+            .update(profileUpdate)
+            .eq('id', validated.id)
+          if (profileError) throw profileError
+        }
 
         return new Response(
-          JSON.stringify({ success: true, user: updatedUser.user }),
+          JSON.stringify({ success: true }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }

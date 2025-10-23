@@ -101,42 +101,41 @@ export const EditUserDialog = ({ user, open, onOpenChange, onUserUpdated }: Edit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
+
     try {
       // Determine if it's a system role or custom role
       const isSystemRole = systemRoles.includes(formData.roleId as UserRole);
       const customRole = roles.find(r => r.id === formData.roleId);
 
-      // Update profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          role: isSystemRole ? (formData.roleId as UserRole) : 'staff',
-          role_id: isSystemRole ? null : formData.roleId,
-          role_name_text: isSystemRole ? null : (customRole?.name || formData.roleName),
-        })
-        .eq('id', user.id);
+      const payload: any = {
+        id: user.id,
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+      };
 
-      if (profileError) throw profileError;
-
-      // Update password if provided
-      if (formData.newPassword) {
-        const { error: passwordError } = await supabase.auth.admin.updateUserById(
-          user.id,
-          { password: formData.newPassword }
-        );
-
-        if (passwordError) throw passwordError;
+      if (isSystemRole) {
+        payload.role = formData.roleId as UserRole;
+      } else {
+        payload.role_id = formData.roleId;
+        payload.role_name_text = customRole?.name || formData.roleName;
       }
 
-      toast.success("User updated successfully");
+      if (formData.newPassword) {
+        payload.new_password = formData.newPassword;
+      }
+
+      const { data, error } = await supabase.functions.invoke('user-management', {
+        body: { action: 'update_user', userData: payload },
+      });
+
+      if (error) throw error as any;
+
+      toast.success('User updated successfully');
       onUserUpdated();
       onOpenChange(false);
     } catch (error: any) {
       console.error('Error updating user:', error);
-      toast.error(error.message || "Failed to update user");
+      toast.error(error.message || 'Failed to update user');
     } finally {
       setLoading(false);
     }
