@@ -118,7 +118,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if user has admin/owner role without relying on overloaded RPC (avoids PGRST203)
+    // Check if user has admin/owner role
+    // First check enum role, then check custom role from roles table
     const { data: roleProfile, error: roleProfileError } = await supabaseClient
       .from('profiles')
       .select('role, role_id')
@@ -134,6 +135,16 @@ Deno.serve(async (req) => {
     }
 
     let roleName: string | null = null;
+    let isSystemRole = false;
+
+    // Check system role (enum) first
+    if (roleProfile?.role) {
+      roleName = roleProfile.role;
+      isSystemRole = true;
+      console.log('User has system role:', { roleName, isSystemRole });
+    }
+
+    // Check custom role (from roles table) if role_id exists
     if (roleProfile?.role_id) {
       const { data: roleRow, error: roleRowError } = await supabaseClient
         .from('roles')
@@ -141,19 +152,16 @@ Deno.serve(async (req) => {
         .eq('id', roleProfile.role_id)
         .single();
       if (roleRowError) {
-        console.error('Role lookup error:', roleRowError);
-        return new Response(
-          JSON.stringify({ error: 'Failed to verify permissions', details: roleRowError.message }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
-        );
+        console.error('Custom role lookup error:', roleRowError);
+      } else if (roleRow?.name) {
+        roleName = roleRow.name;
+        isSystemRole = false;
+        console.log('User has custom role:', { roleName, customRoleId: roleProfile.role_id });
       }
-      roleName = roleRow?.name ?? null;
-    } else if (roleProfile?.role) {
-      roleName = roleProfile.role;
     }
 
     const hasRole = ['admin', 'owner'].includes((roleName ?? '').toLowerCase());
-    console.log('Role check result (manual):', { roleName, hasRole });
+    console.log('Role check result:', { roleName, isSystemRole, hasRole, userId: user.id });
 
     if (!hasRole) {
       console.error('User does not have required role');
