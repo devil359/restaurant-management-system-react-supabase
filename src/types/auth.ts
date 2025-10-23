@@ -148,7 +148,7 @@ export const rolePermissions: RolePermissions = {
   ],
   manager: [
     // All access except financial reports - managers can now view analytics
-    'dashboard.view', 'dashboard.analytics',
+    //'dashboard.view', 'dashboard.analytics',
     'orders.view', 'orders.create', 'orders.update', 'orders.delete', 'pos.access',
     'menu.view', 'menu.create', 'menu.update', 'menu.delete',
     'inventory.view', 'inventory.create', 'inventory.update', 'inventory.delete',
@@ -156,17 +156,17 @@ export const rolePermissions: RolePermissions = {
     'customers.view', 'customers.create', 'customers.update', 'customers.delete',
     'rooms.view', 'rooms.create', 'rooms.update', 'rooms.delete', 'rooms.checkout',
     'reservations.view', 'reservations.create', 'reservations.update', 'reservations.delete',
-    'analytics.view', // Added analytics access for managers
+   // 'analytics.view', // Added analytics access for managers
     'settings.view', 'settings.update',
     'kitchen.view', 'kitchen.update',
     'tables.view', 'tables.create', 'tables.update', 'tables.delete',
     'housekeeping.view', 'housekeeping.create', 'housekeeping.update', 'housekeeping.delete',
-    'audit.view',
-    'gdpr.view'
+   // 'audit.view',
+   // 'gdpr.view'
   ],
   chef: [
     // Access to orders, kitchen, inventory, menu management
-    'dashboard.view',
+    //'dashboard.view',
     'orders.view', 'orders.create', 'orders.update', 'pos.access',
     'menu.view', 'menu.create', 'menu.update', 'menu.delete',
     'inventory.view', 'inventory.create', 'inventory.update', 'inventory.delete',
@@ -174,7 +174,6 @@ export const rolePermissions: RolePermissions = {
   ],
   waiter: [
     // Access to operations and guest services
-    'dashboard.view',
     'orders.view', 'orders.create', 'orders.update', 'pos.access',
     'kitchen.view',
     'menu.view',
@@ -186,7 +185,6 @@ export const rolePermissions: RolePermissions = {
   ],
   staff: [
     // Same as waiter - access to operations and guest services
-    'dashboard.view',
     'orders.view', 'orders.create', 'orders.update', 'pos.access',
     'kitchen.view',
     'menu.view',
@@ -197,10 +195,10 @@ export const rolePermissions: RolePermissions = {
     'housekeeping.view'
   ],
   viewer: [
-    'dashboard.view',
+    //'dashboard.view',
     // 'orders.view',
     // 'menu.view',
-    // 'inventory.view',
+     'inventory.view',
     // 'customers.view',
     // 'rooms.view',
     // 'reservations.view'
