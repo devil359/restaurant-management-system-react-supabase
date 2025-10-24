@@ -165,8 +165,7 @@ export const rolePermissions: RolePermissions = {
     'gdpr.view'
   ],
   chef: [
-    // Access to orders, kitchen, inventory, menu management
-    'dashboard.view',
+    // Access to orders, kitchen, inventory, menu management - no dashboard access
     'orders.view', 'orders.create', 'orders.update', 'pos.access',
     'menu.view', 'menu.create', 'menu.update', 'menu.delete',
     'inventory.view', 'inventory.create', 'inventory.update', 'inventory.delete',
@@ -185,14 +184,12 @@ export const rolePermissions: RolePermissions = {
     'housekeeping.view'
   ],
   staff: [
-    // Same as waiter - access to operations and guest services
-    'dashboard.view',
-    'orders.view', 'orders.create', 'orders.update', 'pos.access',
-    'kitchen.view',
+    // Access to operations and guest services - no dashboard, AI, or settings access
+    'orders.view', 'orders.create', 'orders.update', 'orders.delete', 'pos.access',
     'menu.view',
+    'inventory.view', 'inventory.create', 'inventory.update', 'inventory.delete',
+    'kitchen.view',
     'tables.view', 'tables.update',
-    'inventory.view',
-    'rooms.view', 'rooms.checkout',
     'reservations.view', 'reservations.create', 'reservations.update',
     'housekeeping.view'
   ],

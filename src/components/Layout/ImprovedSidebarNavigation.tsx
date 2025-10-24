@@ -211,7 +211,7 @@ const standaloneItems: NavigationItem[] = [
     icon: MessageSquare,
     href: "/ai",
     description: "AI-powered help",
-    requiredPermissions: ["dashboard.view"] // Basic access
+    requiredPermissions: ["dashboard.view"] // Requires dashboard access
   },
   {
     title: "Security",
@@ -224,8 +224,8 @@ const standaloneItems: NavigationItem[] = [
     title: "Settings",
     icon: Settings,
     href: "/settings",
-    description: "System configuration"
-    // No permissions required - everyone needs access to logout
+    description: "System configuration",
+    requiredPermissions: ["settings.view"] // Requires settings permission
   }
 ];
 
