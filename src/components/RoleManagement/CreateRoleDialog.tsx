@@ -94,9 +94,9 @@ export const CreateRoleDialog = ({ open, onOpenChange, onSuccess }: CreateRoleDi
         componentCount: selectedComponents.length,
       });
 
-      // Use supabase.functions.invoke without overriding headers so body is sent correctly
+      // Use supabase.functions.invoke with JSON-stringified body
       const { data, error } = await supabase.functions.invoke('role-management', {
-        body: payload,
+        body: JSON.stringify(payload),
       });
 
       console.log('Function response:', { data, error });

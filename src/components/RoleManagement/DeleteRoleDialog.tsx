@@ -47,14 +47,10 @@ export const DeleteRoleDialog = ({ role, open, onOpenChange, onSuccess }: Delete
       }
 
       const { data, error } = await supabase.functions.invoke('role-management', {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: {
+        body: JSON.stringify({
           action: 'delete',
           id: role.id,
-        },
+        }),
       });
 
       if (error) throw error;
