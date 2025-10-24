@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -19,6 +18,7 @@ export const useStatsData = () => {
         throw new Error("No restaurant found for user");
       }
 
+      // Fetch all orders from all sources (POS, table, manual, room service, QSR, etc.)
       const { data, error } = await supabase
         .from("orders")
         .select("*")

@@ -230,6 +230,8 @@ const ImprovedAddOrderForm = ({ onSuccess, onCancel, editingOrder }: ImprovedAdd
         ),
         total: orderTotal,
         status: editingOrder ? editingOrder.status : "pending",
+        source: "manual",
+        order_type: values.orderType === "dineIn" ? "dine-in" : "takeaway",
       };
 
       if (editingOrder) {

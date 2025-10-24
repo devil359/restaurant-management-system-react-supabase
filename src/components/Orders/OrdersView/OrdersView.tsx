@@ -39,6 +39,7 @@ const OrdersView = ({
   const [dateFilter, setDateFilter] = useState<string>("today");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [showFilters, setShowFilters] = useState(false);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const isMobile = useIsMobile();
@@ -94,7 +95,7 @@ const OrdersView = ({
     }
   };
 
-  // Fetch only regular orders (kitchen_orders are managed in Kitchen view)
+  // Fetch all orders from all sources (POS, table, takeaway, dine-in, delivery, etc.)
   const { data: orders, refetch: refetchOrders, isLoading } = useQuery({
     queryKey: ['all-orders', dateFilter],
     queryFn: async () => {
@@ -110,8 +111,8 @@ const OrdersView = ({
 
       const dateRange = getDateRange(dateFilter);
       
-      // Fetch only regular orders from orders table
-      const { data: regularOrders, error: ordersError } = await supabase
+      // Fetch all orders from orders table - includes POS, table, manual, room service, QSR, etc.
+      const { data: allOrders, error: ordersError } = await supabase
         .from('orders')
         .select('*')
         .eq('restaurant_id', profile.restaurant_id)
@@ -121,7 +122,7 @@ const OrdersView = ({
 
       if (ordersError) throw ordersError;
 
-      return (regularOrders || []) as Order[];
+      return (allOrders || []) as Order[];
     },
   });
 
@@ -221,9 +222,9 @@ const OrdersView = ({
 
   const orderStats = {
     totalOrders: filteredOrders.length || 0,
-    pendingOrders: filteredOrders.filter(order => order.status === 'pending' || order.status === 'preparing').length || 0,
+    pendingOrders: filteredOrders.filter(order => ['pending', 'preparing', 'ready'].includes(order.status)).length || 0,
     completedOrders: filteredOrders.filter(order => order.status === 'completed').length || 0,
-    totalRevenue: filteredOrders.reduce((sum, order) => sum + order.total, 0) || 0,
+    totalRevenue: filteredOrders.filter(order => order.status === 'completed').reduce((sum, order) => sum + order.total, 0) || 0,
   };
 
   const getDateFilterLabel = () => {
@@ -317,7 +318,7 @@ const OrdersView = ({
           >
             <Filter className="h-4 w-4" />
             Filters
-            {(statusFilter !== "all" || dateFilter !== "today") && (
+            {(statusFilter !== "all" || dateFilter !== "today" || sourceFilter !== "all") && (
               <Badge variant="secondary" className="ml-1">
                 Active
               </Badge>
@@ -358,14 +359,30 @@ const OrdersView = ({
               </SelectContent>
             </Select>
 
+            {/* Source Filter */}
+            <Select value={sourceFilter} onValueChange={setSourceFilter}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Filter by source" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Sources</SelectItem>
+                <SelectItem value="pos">POS</SelectItem>
+                <SelectItem value="table">Table Order</SelectItem>
+                <SelectItem value="manual">Manual</SelectItem>
+                <SelectItem value="qsr">QSR</SelectItem>
+                <SelectItem value="room_service">Room Service</SelectItem>
+              </SelectContent>
+            </Select>
+
             {/* Clear Filters */}
-            {(searchQuery || statusFilter !== "all" || dateFilter !== "today") && (
+            {(searchQuery || statusFilter !== "all" || dateFilter !== "today" || sourceFilter !== "all") && (
               <Button
                 variant="ghost"
                 onClick={() => {
                   setSearchQuery("");
                   setStatusFilter("all");
                   setDateFilter("today");
+                  setSourceFilter("all");
                 }}
                 className="text-sm"
               >

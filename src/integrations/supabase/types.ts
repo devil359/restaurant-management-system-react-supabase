@@ -2173,6 +2173,7 @@ export type Database = {
           customer_name: string
           id: string
           items: string[]
+          order_type: string | null
           restaurant_id: string
           source: string | null
           status: string
@@ -2184,6 +2185,7 @@ export type Database = {
           customer_name: string
           id?: string
           items: string[]
+          order_type?: string | null
           restaurant_id: string
           source?: string | null
           status?: string
@@ -2195,6 +2197,7 @@ export type Database = {
           customer_name?: string
           id?: string
           items?: string[]
+          order_type?: string | null
           restaurant_id?: string
           source?: string | null
           status?: string

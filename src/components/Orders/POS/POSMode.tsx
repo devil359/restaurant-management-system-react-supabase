@@ -247,7 +247,9 @@ const POSMode = () => {
             customer_name: orderSource,
             items: currentOrderItems.map(item => `${item.quantity}x ${item.name}`),
             total: currentOrderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0),
-            status: "pending"
+            status: "pending",
+            source: "pos",
+            order_type: orderType.toLowerCase()
           })
           .select()
           .single();
@@ -289,7 +291,9 @@ const POSMode = () => {
             customer_name: orderSource,
             items: currentOrderItems.map(item => `${item.quantity}x ${item.name}`),
             total: currentOrderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0),
-            status: "pending"
+            status: "pending",
+            source: "pos",
+            order_type: orderType.toLowerCase()
           });
 
         if (orderError) throw orderError;

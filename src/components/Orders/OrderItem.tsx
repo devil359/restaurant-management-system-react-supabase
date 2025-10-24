@@ -59,8 +59,32 @@ const OrderItem: React.FC<OrderItemProps> = ({ order, onStatusChange, onEdit, on
     }
   };
 
+  const getSourceLabel = (source?: string, orderType?: string) => {
+    if (!source) return null;
+    
+    const sourceLabels: Record<string, string> = {
+      'pos': 'POS',
+      'table': 'Table Order',
+      'manual': 'Manual',
+      'room_service': 'Room Service',
+      'qsr': 'QSR'
+    };
+
+    const orderTypeLabels: Record<string, string> = {
+      'dine-in': 'Dine-In',
+      'takeaway': 'Takeaway',
+      'delivery': 'Delivery'
+    };
+
+    const sourceText = sourceLabels[source] || source;
+    const typeText = orderType ? ` - ${orderTypeLabels[orderType] || orderType}` : '';
+    
+    return `${sourceText}${typeText}`;
+  };
+
   const statusConfig = getStatusConfig(order.status);
   const StatusIcon = statusConfig.icon;
+  const sourceLabel = getSourceLabel(order.source, order.order_type);
 
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-all duration-200 border-l-4 border-l-primary/20 hover:border-l-primary">
@@ -75,6 +99,11 @@ const OrderItem: React.FC<OrderItemProps> = ({ order, onStatusChange, onEdit, on
                   <StatusIcon className="w-3 h-3 mr-1.5" />
                   {statusConfig.label}
                 </Badge>
+                {sourceLabel && (
+                  <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950 dark:text-indigo-300">
+                    {sourceLabel}
+                  </Badge>
+                )}
               </div>
               
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
