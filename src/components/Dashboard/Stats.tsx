@@ -10,16 +10,24 @@ const Stats = () => {
   const [selectedStat, setSelectedStat] = useState<string | null>(null);
   const { data: ordersData } = useStatsData();
 
-  // Calculate stats from orders
-  const totalSales = ordersData?.reduce((sum, order) => sum + order.total, 0) || 0;
-  const activeOrders = ordersData?.filter(order => order.status === "pending").length || 0;
+  // Calculate stats from orders - only count completed orders for revenue
+  const completedOrders = ordersData?.filter(order => order.status === 'completed') || [];
+  const totalSales = completedOrders.reduce((sum, order) => sum + order.total, 0);
+  
+  // Active orders should only include pending, preparing, and ready status
+  const activeOrders = ordersData?.filter(order => 
+    ['pending', 'preparing', 'ready'].includes(order.status)
+  ).length || 0;
+  
   const uniqueCustomers = ordersData ? new Set(ordersData.map(order => order.customer_name)).size : 0;
-  const todaysOrders = ordersData?.filter(order => {
+  
+  // Today's revenue - only completed orders from today
+  const todaysCompletedOrders = completedOrders.filter(order => {
     const orderDate = new Date(order.created_at).toDateString();
     const today = new Date().toDateString();
     return orderDate === today;
-  }) || [];
-  const todaysRevenue = todaysOrders.reduce((sum, order) => sum + order.total, 0);
+  });
+  const todaysRevenue = todaysCompletedOrders.reduce((sum, order) => sum + order.total, 0);
 
   const stats = [
     {
@@ -29,10 +37,10 @@ const Stats = () => {
       trend: "+12.5%",
       color: "text-green-600 dark:text-green-400",
       type: "sales" as const,
-      chart: ordersData?.map(order => ({
+      chart: completedOrders.map(order => ({
         date: new Date(order.created_at).toLocaleDateString(),
         amount: order.total
-      })) || []
+      }))
     },
     {
       title: "Active Orders",
@@ -41,7 +49,7 @@ const Stats = () => {
       trend: "+3",
       color: "text-blue-600 dark:text-blue-400",
       type: "orders" as const,
-      data: ordersData?.filter(order => order.status === "pending") || []
+      data: ordersData?.filter(order => ['pending', 'preparing', 'ready'].includes(order.status)) || []
     },
     {
       title: "Customers",
@@ -63,7 +71,7 @@ const Stats = () => {
       trend: "+8.2%",
       color: "text-orange-600 dark:text-orange-400",
       type: "revenue" as const,
-      chart: todaysOrders.map(order => ({
+      chart: todaysCompletedOrders.map(order => ({
         time: new Date(order.created_at).toLocaleTimeString(),
         amount: order.total
       }))
