@@ -195,15 +195,6 @@ export const EditUserDialog = ({ user, open, onOpenChange, onUserUpdated }: Edit
                   <SelectValue placeholder="Select a role" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="staff">Staff</SelectItem>
-                  <SelectItem value="waiter">Waiter</SelectItem>
-                  <SelectItem value="chef">Chef</SelectItem>
-                  <SelectItem value="manager">Manager</SelectItem>
-                  {(currentUser?.role === 'owner' || currentUser?.role === 'admin' || 
-                    currentUser?.role_name_text?.toLowerCase() === 'admin' ||
-                    currentUser?.role_name_text?.toLowerCase() === 'owner') && (
-                    <SelectItem value="admin">Admin</SelectItem>
-                  )}
                   {(currentUser?.role === 'owner' || currentUser?.role_name_text?.toLowerCase() === 'owner') && (
                     <SelectItem value="owner">Owner</SelectItem>
                   )}
