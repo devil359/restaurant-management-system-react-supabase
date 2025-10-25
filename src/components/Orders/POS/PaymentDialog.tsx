@@ -4,6 +4,7 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -37,9 +38,11 @@ const PaymentDialog = ({
   const [currentStep, setCurrentStep] = useState<PaymentStep>('confirm');
   const [customerName, setCustomerName] = useState('');
   const [customerMobile, setCustomerMobile] = useState('');
+  const [sendBillToMobile, setSendBillToMobile] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
   const [newItemsBuffer, setNewItemsBuffer] = useState<OrderItem[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -142,15 +145,52 @@ const PaymentDialog = ({
     }
   }, [currentStep, paymentSettings, total, restaurantInfo, tableNumber]);
 
+  // Fetch existing customer details if orderId exists
+  useEffect(() => {
+    const fetchCustomerDetails = async () => {
+      if (orderId && isOpen) {
+        try {
+          const { data: kitchenOrder } = await supabase
+            .from('kitchen_orders')
+            .select('order_id')
+            .eq('id', orderId)
+            .single();
+
+          if (kitchenOrder?.order_id) {
+            const { data: order } = await supabase
+              .from('orders')
+              .select('customer_name, customer_phone')
+              .eq('id', kitchenOrder.order_id)
+              .single();
+
+            if (order) {
+              if (order.customer_name) setCustomerName(order.customer_name);
+              if (order.customer_phone) {
+                setCustomerMobile(order.customer_phone);
+                setSendBillToMobile(true);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching customer details:', error);
+        }
+      }
+    };
+
+    fetchCustomerDetails();
+  }, [orderId, isOpen]);
+
   // Reset state when dialog closes
   useEffect(() => {
     if (!isOpen) {
       setCurrentStep('confirm');
       setCustomerName('');
       setCustomerMobile('');
+      setSendBillToMobile(false);
       setQrCodeUrl('');
       setMenuSearchQuery('');
       setNewItemsBuffer([]);
+      setIsSaving(false);
     }
   }, [isOpen]);
 
@@ -411,7 +451,122 @@ const PaymentDialog = ({
     (item.category && item.category.toLowerCase().includes(menuSearchQuery.toLowerCase()))
   );
 
+  const saveCustomerDetails = async (): Promise<boolean> => {
+    // If checkbox not checked, return success
+    if (!sendBillToMobile) return true;
+
+    // Validate inputs
+    if (!customerName.trim()) {
+      toast({
+        title: "Customer Name Required",
+        description: "Please enter customer name to send bill.",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    if (!customerMobile.trim()) {
+      toast({
+        title: "Mobile Number Required",
+        description: "Please enter mobile number to send bill.",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    // Validate mobile number (10 digits)
+    const mobileRegex = /^[0-9]{10}$/;
+    if (!mobileRegex.test(customerMobile.trim())) {
+      toast({
+        title: "Invalid Mobile Number",
+        description: "Please enter a valid 10-digit mobile number.",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    setIsSaving(true);
+
+    try {
+      // If orderId exists, update the corresponding order record
+      if (orderId) {
+        const { data: kitchenOrder } = await supabase
+          .from('kitchen_orders')
+          .select('order_id')
+          .eq('id', orderId)
+          .single();
+
+        if (kitchenOrder?.order_id) {
+          const { error } = await supabase
+            .from('orders')
+            .update({
+              customer_name: customerName.trim(),
+              customer_phone: customerMobile.trim()
+            })
+            .eq('id', kitchenOrder.order_id);
+
+          if (error) throw error;
+        }
+      }
+
+      setIsSaving(false);
+      return true;
+    } catch (error) {
+      console.error('Error saving customer details:', error);
+      toast({
+        title: "Save Failed",
+        description: "Failed to save customer details. Please try again.",
+        variant: "destructive"
+      });
+      setIsSaving(false);
+      return false;
+    }
+  };
+
+  const sendBillViaWhatsApp = async () => {
+    if (!sendBillToMobile || !customerMobile) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('send-whatsapp-bill', {
+        body: {
+          phoneNumber: customerMobile,
+          restaurantName: restaurantInfo?.name || 'Restaurant',
+          customerName: customerName || 'Valued Customer',
+          total: total,
+          roomName: tableNumber || 'POS',
+          checkoutDate: new Date().toLocaleDateString('en-IN'),
+          billingId: orderId || 'N/A'
+        }
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast({
+          title: "Bill Sent Successfully",
+          description: `Bill has been sent to ${customerMobile} via WhatsApp.`
+        });
+      } else {
+        toast({
+          title: "Failed to Send Bill",
+          description: data?.message || "There was an error sending the bill.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error sending WhatsApp bill:', error);
+      toast({
+        title: "WhatsApp Send Failed",
+        description: "Failed to send bill via WhatsApp. Please check Twilio settings.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handlePrintBill = async () => {
+    // Save customer details first
+    const saved = await saveCustomerDetails();
+    if (!saved) return;
     try {
       const doc = new jsPDF({
         format: [80, 297], // 80mm thermal printer width
@@ -581,9 +736,16 @@ const PaymentDialog = ({
         };
       }
       
+      // Send bill via WhatsApp if checkbox is checked
+      if (sendBillToMobile && customerMobile) {
+        await sendBillViaWhatsApp();
+      }
+      
       toast({
         title: "Bill Generated",
-        description: "The bill has been generated and sent to printer."
+        description: sendBillToMobile 
+          ? "Bill has been generated and sent to customer's mobile."
+          : "The bill has been generated and sent to printer."
       });
     } catch (error) {
       console.error('Error generating bill:', error);
@@ -681,10 +843,6 @@ const PaymentDialog = ({
             <span>Subtotal</span>
             <span>₹{subtotal.toFixed(2)}</span>
           </div>
-          {/* <div className="flex justify-between text-sm">
-            <span>Tax ({(taxRate * 100).toFixed(0)}%)</span>
-            <span>₹{tax.toFixed(2)}</span>
-          </div> */}
           
           <Separator className="my-3" />
           
@@ -700,9 +858,14 @@ const PaymentDialog = ({
           <Receipt className="w-4 h-4 mr-2" />
           Edit Order
         </Button>
-        <Button variant="outline" onClick={handlePrintBill} className="w-full">
+        <Button 
+          variant="outline" 
+          onClick={handlePrintBill} 
+          className="w-full"
+          disabled={isSaving}
+        >
           <Printer className="w-4 h-4 mr-2" />
-          Print Bill
+          {isSaving ? "Saving..." : "Print Bill"}
         </Button>
       </div>
 
@@ -715,12 +878,66 @@ const PaymentDialog = ({
         Delete Order
       </Button>
 
+      {/* Send Bill to Mobile Checkbox and Inputs */}
+      <Card className="p-4 bg-muted/30 border-2 border-primary/20">
+        <div className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="send-bill-checkbox"
+              checked={sendBillToMobile}
+              onChange={(e) => setSendBillToMobile(e.target.checked)}
+              className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+            />
+            <label
+              htmlFor="send-bill-checkbox"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+            >
+              Send bill to customer's mobile
+            </label>
+          </div>
+
+          {sendBillToMobile && (
+            <div className="space-y-3 animate-in slide-in-from-top-2">
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  Customer Name <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  placeholder="Enter customer name"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  Mobile Number <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  type="tel"
+                  placeholder="Enter 10-digit mobile number"
+                  value={customerMobile}
+                  onChange={(e) => setCustomerMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  className="w-full"
+                  maxLength={10}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      </Card>
+
       <Button 
-        onClick={() => setCurrentStep('method')}
+        onClick={async () => {
+          const saved = await saveCustomerDetails();
+          if (saved) setCurrentStep('method');
+        }}
         className="w-full bg-green-600 hover:bg-green-700 text-white"
         size="lg"
+        disabled={isSaving}
       >
-        Proceed to Payment Methods
+        {isSaving ? "Saving Details..." : "Proceed to Payment Methods"}
       </Button>
     </div>
   );
