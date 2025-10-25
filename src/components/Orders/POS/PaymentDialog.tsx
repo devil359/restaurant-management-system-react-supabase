@@ -43,6 +43,8 @@ const PaymentDialog = ({
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
   const [newItemsBuffer, setNewItemsBuffer] = useState<OrderItem[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [promotionCode, setPromotionCode] = useState('');
+  const [appliedPromotion, setAppliedPromotion] = useState<any>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -124,15 +126,44 @@ const PaymentDialog = ({
     enabled: !!(restaurantInfo?.restaurantId || restaurantInfo?.id)
   });
 
-  // Calculate totals
+  // Fetch active promotions
+  const { data: activePromotions = [] } = useQuery({
+    queryKey: ['active-promotions', restaurantInfo?.restaurantId || restaurantInfo?.id],
+    queryFn: async () => {
+      const restaurantIdToUse = restaurantInfo?.restaurantId || restaurantInfo?.id;
+      if (!restaurantIdToUse) return [];
+      
+      const today = new Date().toISOString().split('T')[0];
+      const { data, error } = await supabase
+        .from('promotion_campaigns')
+        .select('*')
+        .eq('restaurant_id', restaurantIdToUse)
+        .eq('status', 'active')
+        .lte('start_date', today)
+        .gte('end_date', today);
+      
+      if (error) {
+        console.error('Error fetching promotions:', error);
+        return [];
+      }
+      
+      return data || [];
+    },
+    enabled: !!(restaurantInfo?.restaurantId || restaurantInfo?.id)
+  });
+
+  // Calculate totals with promotion discount
   const subtotal = orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  // const taxRate = 0.10; // 10% tax
-  // const tax = subtotal * taxRate;
-  // const total = subtotal + tax;
-
-   const taxRate = 0.10; // 10% tax
-
-  const total = subtotal;
+  
+  // Calculate discount amount if promotion is applied
+  const discountAmount = appliedPromotion 
+    ? appliedPromotion.discount_percentage 
+      ? (subtotal * appliedPromotion.discount_percentage / 100)
+      : appliedPromotion.discount_amount || 0
+    : 0;
+  
+  const totalAfterDiscount = subtotal - discountAmount;
+  const total = totalAfterDiscount;
 
   // Generate QR code when UPI method is selected
   useEffect(() => {
@@ -806,6 +837,20 @@ const PaymentDialog = ({
       doc.text(sgst.toFixed(2), pageWidth - 5, yPos, { align: 'right' });
       yPos += 4;
       
+      // Promotion discount if applied
+      if (appliedPromotion && discountAmount > 0) {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.text(`Discount (${appliedPromotion.name}):`, pageWidth - 35, yPos);
+        doc.text(`-${discountAmount.toFixed(2)}`, pageWidth - 5, yPos, { align: 'right' });
+        yPos += 4;
+        if (appliedPromotion.promotion_code) {
+          doc.setFontSize(7);
+          doc.text(`Code: ${appliedPromotion.promotion_code}`, pageWidth - 35, yPos);
+          yPos += 3;
+        }
+      }
+      
       // Dashed line
       for (let i = 5; i < pageWidth - 5; i += 2) {
         doc.line(i, yPos, i + 1, yPos);
@@ -878,6 +923,44 @@ const PaymentDialog = ({
         variant: "destructive"
       });
     }
+  };
+
+  const handleApplyPromotion = () => {
+    if (!promotionCode.trim()) {
+      toast({
+        title: "Enter Promotion Code",
+        description: "Please enter a promotion code to apply.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const promotion = activePromotions.find(
+      promo => promo.promotion_code?.toUpperCase() === promotionCode.trim().toUpperCase()
+    );
+
+    if (promotion) {
+      setAppliedPromotion(promotion);
+      toast({
+        title: "Promotion Applied!",
+        description: `${promotion.name} - ${promotion.discount_percentage ? `${promotion.discount_percentage}% off` : `₹${promotion.discount_amount} off`}`,
+      });
+    } else {
+      toast({
+        title: "Invalid Code",
+        description: "The promotion code you entered is not valid or has expired.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleRemovePromotion = () => {
+    setAppliedPromotion(null);
+    setPromotionCode('');
+    toast({
+      title: "Promotion Removed",
+      description: "The promotion code has been removed from this order."
+    });
   };
 
   const handleMethodSelect = (method: string) => {
@@ -967,12 +1050,54 @@ const PaymentDialog = ({
             <span>₹{subtotal.toFixed(2)}</span>
           </div>
           
+          {appliedPromotion && (
+            <div className="flex justify-between text-sm text-green-600">
+              <span>Discount ({appliedPromotion.name})</span>
+              <span>-₹{discountAmount.toFixed(2)}</span>
+            </div>
+          )}
+          
           <Separator className="my-3" />
           
           <div className="flex justify-between text-lg font-bold">
             <span>Total Due</span>
             <span>₹{total.toFixed(2)}</span>
           </div>
+        </div>
+      </Card>
+
+      {/* Promotion Code Section */}
+      <Card className="p-4 bg-background">
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Input
+              placeholder="Enter promotion code"
+              value={promotionCode}
+              onChange={(e) => setPromotionCode(e.target.value.toUpperCase())}
+              disabled={!!appliedPromotion}
+              className="flex-1"
+            />
+            {appliedPromotion ? (
+              <Button onClick={handleRemovePromotion} variant="destructive" size="sm">
+                <X className="w-4 h-4 mr-1" />
+                Remove
+              </Button>
+            ) : (
+              <Button onClick={handleApplyPromotion} size="sm">
+                Apply
+              </Button>
+            )}
+          </div>
+          {appliedPromotion && (
+            <div className="text-sm text-green-600 font-medium">
+              ✓ {appliedPromotion.name} applied - Save ₹{discountAmount.toFixed(2)}
+            </div>
+          )}
+          {activePromotions.length > 0 && !appliedPromotion && (
+            <div className="text-xs text-muted-foreground">
+              Available codes: {activePromotions.map(p => p.promotion_code).filter(Boolean).join(', ')}
+            </div>
+          )}
         </div>
       </Card>
 
