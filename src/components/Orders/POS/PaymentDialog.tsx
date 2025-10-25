@@ -45,6 +45,7 @@ const PaymentDialog = ({
   const [isSaving, setIsSaving] = useState(false);
   const [promotionCode, setPromotionCode] = useState('');
   const [appliedPromotion, setAppliedPromotion] = useState<any>(null);
+  const [manualDiscountPercent, setManualDiscountPercent] = useState<number>(0);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -152,17 +153,25 @@ const PaymentDialog = ({
     enabled: !!(restaurantInfo?.restaurantId || restaurantInfo?.id)
   });
 
-  // Calculate totals with promotion discount
+  // Calculate totals with promotion discount and manual discount
   const subtotal = orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   
-  // Calculate discount amount if promotion is applied
-  const discountAmount = appliedPromotion 
+  // Calculate promotion discount amount if promotion is applied
+  const promotionDiscountAmount = appliedPromotion 
     ? appliedPromotion.discount_percentage 
       ? (subtotal * appliedPromotion.discount_percentage / 100)
       : appliedPromotion.discount_amount || 0
     : 0;
   
-  const totalAfterDiscount = subtotal - discountAmount;
+  // Calculate manual discount amount
+  const manualDiscountAmount = manualDiscountPercent > 0 
+    ? (subtotal * manualDiscountPercent / 100)
+    : 0;
+  
+  // Total discount is sum of both
+  const totalDiscountAmount = promotionDiscountAmount + manualDiscountAmount;
+  
+  const totalAfterDiscount = subtotal - totalDiscountAmount;
   const total = totalAfterDiscount;
 
   // Generate QR code when UPI method is selected
@@ -838,17 +847,35 @@ const PaymentDialog = ({
       yPos += 4;
       
       // Promotion discount if applied
-      if (appliedPromotion && discountAmount > 0) {
+      if (appliedPromotion && promotionDiscountAmount > 0) {
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(8);
-        doc.text(`Discount (${appliedPromotion.name}):`, pageWidth - 35, yPos);
-        doc.text(`-${discountAmount.toFixed(2)}`, pageWidth - 5, yPos, { align: 'right' });
+        doc.text(`Promo Discount (${appliedPromotion.name}):`, pageWidth - 35, yPos);
+        doc.text(`-${promotionDiscountAmount.toFixed(2)}`, pageWidth - 5, yPos, { align: 'right' });
         yPos += 4;
         if (appliedPromotion.promotion_code) {
           doc.setFontSize(7);
           doc.text(`Code: ${appliedPromotion.promotion_code}`, pageWidth - 35, yPos);
           yPos += 3;
         }
+      }
+      
+      // Manual discount if applied
+      if (manualDiscountPercent > 0) {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.text(`Manual Discount (${manualDiscountPercent}%):`, pageWidth - 35, yPos);
+        doc.text(`-${manualDiscountAmount.toFixed(2)}`, pageWidth - 5, yPos, { align: 'right' });
+        yPos += 4;
+      }
+      
+      // Total discount
+      if (totalDiscountAmount > 0) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.text('Total Discount:', pageWidth - 35, yPos);
+        doc.text(`-${totalDiscountAmount.toFixed(2)}`, pageWidth - 5, yPos, { align: 'right' });
+        yPos += 4;
       }
       
       // Dashed line
@@ -1050,10 +1077,24 @@ const PaymentDialog = ({
             <span>₹{subtotal.toFixed(2)}</span>
           </div>
           
-          {appliedPromotion && (
+          {appliedPromotion && promotionDiscountAmount > 0 && (
             <div className="flex justify-between text-sm text-green-600">
-              <span>Discount ({appliedPromotion.name})</span>
-              <span>-₹{discountAmount.toFixed(2)}</span>
+              <span>Promo Discount ({appliedPromotion.name})</span>
+              <span>-₹{promotionDiscountAmount.toFixed(2)}</span>
+            </div>
+          )}
+          
+          {manualDiscountPercent > 0 && (
+            <div className="flex justify-between text-sm text-green-600">
+              <span>Manual Discount ({manualDiscountPercent}%)</span>
+              <span>-₹{manualDiscountAmount.toFixed(2)}</span>
+            </div>
+          )}
+          
+          {totalDiscountAmount > 0 && (
+            <div className="flex justify-between text-sm font-semibold text-green-600">
+              <span>Total Discount</span>
+              <span>-₹{totalDiscountAmount.toFixed(2)}</span>
             </div>
           )}
           
@@ -1090,12 +1131,50 @@ const PaymentDialog = ({
           </div>
           {appliedPromotion && (
             <div className="text-sm text-green-600 font-medium">
-              ✓ {appliedPromotion.name} applied - Save ₹{discountAmount.toFixed(2)}
+              ✓ {appliedPromotion.name} applied - Save ₹{promotionDiscountAmount.toFixed(2)}
             </div>
           )}
           {activePromotions.length > 0 && !appliedPromotion && (
             <div className="text-xs text-muted-foreground">
               Available codes: {activePromotions.map(p => p.promotion_code).filter(Boolean).join(', ')}
+            </div>
+          )}
+        </div>
+      </Card>
+
+      {/* Manual Discount Section */}
+      <Card className="p-4 bg-background">
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Manual Discount (%)</label>
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              placeholder="0"
+              min="0"
+              max="100"
+              value={manualDiscountPercent || ''}
+              onChange={(e) => {
+                const value = parseFloat(e.target.value) || 0;
+                if (value >= 0 && value <= 100) {
+                  setManualDiscountPercent(value);
+                }
+              }}
+              className="flex-1"
+            />
+            <span className="text-sm text-muted-foreground">%</span>
+            {manualDiscountPercent > 0 && (
+              <Button 
+                onClick={() => setManualDiscountPercent(0)} 
+                variant="outline" 
+                size="sm"
+              >
+                Clear
+              </Button>
+            )}
+          </div>
+          {manualDiscountPercent > 0 && (
+            <div className="text-sm text-green-600 font-medium">
+              ✓ {manualDiscountPercent}% discount applied - Save ₹{manualDiscountAmount.toFixed(2)}
             </div>
           )}
         </div>
