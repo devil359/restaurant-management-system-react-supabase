@@ -152,24 +152,31 @@ const PaymentDialog = ({
         try {
           const { data: kitchenOrder } = await supabase
             .from('kitchen_orders')
-            .select('order_id')
+            .select('order_id, customer_name')
             .eq('id', orderId)
             .single();
 
           if (kitchenOrder?.order_id) {
+            // Try fetching from orders with both naming conventions
             const { data: order } = await supabase
               .from('orders')
-              .select('Customer_Name, Customer_MobileNumber')
+              .select('Customer_Name, Customer_MobileNumber, customer_name, customer_phone')
               .eq('id', kitchenOrder.order_id)
-              .single();
+              .maybeSingle();
 
             if (order) {
-              if (order.Customer_Name) setCustomerName(order.Customer_Name);
-              if (order.Customer_MobileNumber) {
-                setCustomerMobile(order.Customer_MobileNumber);
+              const name = (order as any).Customer_Name || (order as any).customer_name;
+              const phone = (order as any).Customer_MobileNumber || (order as any).customer_phone;
+              if (name) setCustomerName(name);
+              if (phone) {
+                setCustomerMobile(phone);
                 setSendBillToMobile(true);
               }
             }
+          } else if (kitchenOrder?.customer_name) {
+            // Fall back to any name stored on the kitchen order
+            setCustomerName(kitchenOrder.customer_name);
+            setSendBillToMobile(true);
           }
         } catch (error) {
           console.error('Error fetching customer details:', error);
@@ -561,24 +568,60 @@ const PaymentDialog = ({
           .select();
 
         if (updateError) {
-          console.error('❌ Update error:', updateError);
-          throw updateError;
-        }
+          console.warn('⚠️ Update with PascalCase columns failed, trying snake_case...', updateError);
+          // Try again with snake_case column names (older schema)
+          const { data: updateData2, error: updateError2 } = await supabase
+            .from('orders')
+            .update({
+              customer_name: customerName.trim(),
+              customer_phone: customerMobile.trim()
+            })
+            .eq('id', targetOrderId)
+            .select();
 
-        console.log('✅ Customer details saved successfully:', updateData);
-        toast({
-          title: "Details Saved",
-          description: "Customer details saved successfully."
-        });
+          if (updateError2) {
+            console.error('❌ Update error (both attempts failed):', updateError2);
+            throw updateError2;
+          }
+
+          console.log('✅ Customer details saved successfully (snake_case):', updateData2);
+          toast({
+            title: "Details Saved",
+            description: "Customer details saved successfully."
+          });
+        } else {
+          console.log('✅ Customer details saved successfully:', updateData);
+          toast({
+            title: "Details Saved",
+            description: "Customer details saved successfully."
+          });
+        }
       } else {
-        console.error('❌ Could not find valid order ID to update');
-        toast({
-          title: "Error",
-          description: "Could not find order to update. Please try again.",
-          variant: "destructive"
-        });
+        console.warn('⚠️ No linked order found. Saving name on kitchen order and proceeding.');
+        // Fallback: store the customer name on the kitchen order so it is visible to staff
+        try {
+          const { error: koUpdateError } = await supabase
+            .from('kitchen_orders')
+            .update({ customer_name: customerName.trim() })
+            .eq('id', orderId);
+
+          if (koUpdateError) {
+            console.error('⚠️ Failed to save on kitchen_orders:', koUpdateError);
+            toast({
+              title: "Proceeding without DB save",
+              description: "Could not link order yet. We'll still proceed and include details on the bill.",
+            });
+          } else {
+            toast({
+              title: "Details Saved (Temporary)",
+              description: "Name saved for this order. It will be attached when the order is created.",
+            });
+          }
+        } catch (e) {
+          console.error('⚠️ Kitchen order fallback failed:', e);
+        }
         setIsSaving(false);
-        return false;
+        return true;
       }
 
       setIsSaving(false);
