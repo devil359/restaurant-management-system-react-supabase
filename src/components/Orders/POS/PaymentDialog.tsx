@@ -159,14 +159,14 @@ const PaymentDialog = ({
           if (kitchenOrder?.order_id) {
             const { data: order } = await supabase
               .from('orders')
-              .select('customer_name, customer_phone')
+              .select('Customer_Name, Customer_MobileNumber')
               .eq('id', kitchenOrder.order_id)
               .single();
 
             if (order) {
-              if (order.customer_name) setCustomerName(order.customer_name);
-              if (order.customer_phone) {
-                setCustomerMobile(order.customer_phone);
+              if (order.Customer_Name) setCustomerName(order.Customer_Name);
+              if (order.Customer_MobileNumber) {
+                setCustomerMobile(order.Customer_MobileNumber);
                 setSendBillToMobile(true);
               }
             }
@@ -554,8 +554,8 @@ const PaymentDialog = ({
         const { data: updateData, error: updateError } = await supabase
           .from('orders')
           .update({
-            customer_name: customerName.trim(),
-            customer_phone: customerMobile.trim()
+            Customer_Name: customerName.trim(),
+            Customer_MobileNumber: customerMobile.trim()
           })
           .eq('id', targetOrderId)
           .select();
