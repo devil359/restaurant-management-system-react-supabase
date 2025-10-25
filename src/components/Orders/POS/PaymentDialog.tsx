@@ -452,11 +452,32 @@ const PaymentDialog = ({
   );
 
   const saveCustomerDetails = async (): Promise<boolean> => {
+    console.log('🔄 saveCustomerDetails called', { 
+      sendBillToMobile, 
+      orderId, 
+      customerName: customerName.substring(0, 10) + '...', 
+      customerMobile: customerMobile ? '***' + customerMobile.slice(-4) : 'empty'
+    });
+
     // If checkbox not checked, return success
-    if (!sendBillToMobile) return true;
+    if (!sendBillToMobile) {
+      console.log('✅ Checkbox not checked, skipping save');
+      return true;
+    }
+
+    if (!orderId) {
+      console.error('❌ No orderId provided');
+      toast({
+        title: "Error",
+        description: "Order ID not found. Cannot save customer details.",
+        variant: "destructive"
+      });
+      return false;
+    }
 
     // Validate inputs
     if (!customerName.trim()) {
+      console.log('❌ Customer name empty');
       toast({
         title: "Customer Name Required",
         description: "Please enter customer name to send bill.",
@@ -466,6 +487,7 @@ const PaymentDialog = ({
     }
 
     if (!customerMobile.trim()) {
+      console.log('❌ Mobile number empty');
       toast({
         title: "Mobile Number Required",
         description: "Please enter mobile number to send bill.",
@@ -477,6 +499,7 @@ const PaymentDialog = ({
     // Validate mobile number (10 digits)
     const mobileRegex = /^[0-9]{10}$/;
     if (!mobileRegex.test(customerMobile.trim())) {
+      console.log('❌ Invalid mobile format:', customerMobile);
       toast({
         title: "Invalid Mobile Number",
         description: "Please enter a valid 10-digit mobile number.",
@@ -488,31 +511,80 @@ const PaymentDialog = ({
     setIsSaving(true);
 
     try {
-      // If orderId exists, update the corresponding order record
-      if (orderId) {
-        const { data: kitchenOrder } = await supabase
-          .from('kitchen_orders')
-          .select('order_id')
+      console.log('🔍 Looking up kitchen order:', orderId);
+      // Try to find the order_id from kitchen_orders
+      const { data: kitchenOrder, error: kitchenError } = await supabase
+        .from('kitchen_orders')
+        .select('order_id')
+        .eq('id', orderId)
+        .maybeSingle();
+
+      console.log('📋 Kitchen order lookup result:', { kitchenOrder, kitchenError });
+
+      let targetOrderId = null;
+
+      if (kitchenOrder?.order_id) {
+        // Found a linked order_id
+        targetOrderId = kitchenOrder.order_id;
+        console.log('✅ Found linked order_id:', targetOrderId);
+      } else {
+        // Maybe orderId is directly the orders table ID
+        console.log('⚠️ No kitchen order found, checking if orderId is direct orders ID');
+        const { data: directOrder, error: directError } = await supabase
+          .from('orders')
+          .select('id')
           .eq('id', orderId)
-          .single();
+          .maybeSingle();
 
-        if (kitchenOrder?.order_id) {
-          const { error } = await supabase
-            .from('orders')
-            .update({
-              customer_name: customerName.trim(),
-              customer_phone: customerMobile.trim()
-            })
-            .eq('id', kitchenOrder.order_id);
-
-          if (error) throw error;
+        if (directOrder) {
+          targetOrderId = orderId;
+          console.log('✅ orderId is direct orders table ID:', targetOrderId);
+        } else {
+          console.error('❌ No order found with ID:', orderId, { directError });
         }
+      }
+
+      if (targetOrderId) {
+        console.log('💾 Updating order with customer details:', {
+          orderId: targetOrderId,
+          name: customerName.trim(),
+          phone: customerMobile.trim()
+        });
+
+        const { data: updateData, error: updateError } = await supabase
+          .from('orders')
+          .update({
+            customer_name: customerName.trim(),
+            customer_phone: customerMobile.trim()
+          })
+          .eq('id', targetOrderId)
+          .select();
+
+        if (updateError) {
+          console.error('❌ Update error:', updateError);
+          throw updateError;
+        }
+
+        console.log('✅ Customer details saved successfully:', updateData);
+        toast({
+          title: "Details Saved",
+          description: "Customer details saved successfully."
+        });
+      } else {
+        console.error('❌ Could not find valid order ID to update');
+        toast({
+          title: "Error",
+          description: "Could not find order to update. Please try again.",
+          variant: "destructive"
+        });
+        setIsSaving(false);
+        return false;
       }
 
       setIsSaving(false);
       return true;
     } catch (error) {
-      console.error('Error saving customer details:', error);
+      console.error('❌ Error saving customer details:', error);
       toast({
         title: "Save Failed",
         description: "Failed to save customer details. Please try again.",
@@ -564,9 +636,14 @@ const PaymentDialog = ({
   };
 
   const handlePrintBill = async () => {
+    console.log('🖨️ Print bill clicked');
     // Save customer details first
     const saved = await saveCustomerDetails();
-    if (!saved) return;
+    if (!saved) {
+      console.log('❌ Customer details not saved, aborting print');
+      return;
+    }
+    console.log('✅ Proceeding with print');
     try {
       const doc = new jsPDF({
         format: [80, 297], // 80mm thermal printer width
@@ -738,7 +815,10 @@ const PaymentDialog = ({
       
       // Send bill via WhatsApp if checkbox is checked
       if (sendBillToMobile && customerMobile) {
+        console.log('📱 Sending bill via WhatsApp');
         await sendBillViaWhatsApp();
+      } else {
+        console.log('ℹ️ Skipping WhatsApp send', { sendBillToMobile, customerMobile });
       }
       
       toast({
