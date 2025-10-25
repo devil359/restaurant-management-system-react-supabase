@@ -1698,6 +1698,7 @@ export type Database = {
         Row: {
           created_at: string
           customer_name: string | null
+          customer_phone: string | null
           id: string
           items: Json
           order_id: string | null
@@ -1710,6 +1711,7 @@ export type Database = {
         Insert: {
           created_at?: string
           customer_name?: string | null
+          customer_phone?: string | null
           id?: string
           items: Json
           order_id?: string | null
@@ -1722,6 +1724,7 @@ export type Database = {
         Update: {
           created_at?: string
           customer_name?: string | null
+          customer_phone?: string | null
           id?: string
           items?: Json
           order_id?: string | null

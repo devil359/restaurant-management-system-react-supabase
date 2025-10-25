@@ -192,7 +192,7 @@ const PaymentDialog = ({
         try {
           const { data: kitchenOrder } = await supabase
             .from('kitchen_orders')
-            .select('order_id, customer_name')
+            .select('order_id, customer_name, customer_phone')
             .eq('id', orderId)
             .single();
 
@@ -213,10 +213,15 @@ const PaymentDialog = ({
                 setSendBillToMobile(true);
               }
             }
-          } else if (kitchenOrder?.customer_name) {
-            // Fall back to any name stored on the kitchen order
-            setCustomerName(kitchenOrder.customer_name);
-            setSendBillToMobile(true);
+          } else {
+            // Fall back to details stored on the kitchen order
+            if (kitchenOrder?.customer_name) setCustomerName(kitchenOrder.customer_name);
+            if ((kitchenOrder as any)?.customer_phone) {
+              setCustomerMobile((kitchenOrder as any).customer_phone);
+              setSendBillToMobile(true);
+            } else {
+              setSendBillToMobile(false);
+            }
           }
         } catch (error) {
           console.error('Error fetching customer details:', error);
@@ -642,7 +647,7 @@ const PaymentDialog = ({
         try {
           const { error: koUpdateError } = await supabase
             .from('kitchen_orders')
-            .update({ customer_name: customerName.trim() })
+            .update({ customer_name: customerName.trim(), customer_phone: customerMobile.trim() })
             .eq('id', orderId);
 
           if (koUpdateError) {
