@@ -133,7 +133,7 @@ const PaymentDialog = ({
 
   // Generate QR code when UPI method is selected
   useEffect(() => {
-    if (currentStep === 'qr' && paymentSettings?.upi_id) {
+    if (paymentSettings?.upi_id) {
       const upiUrl = `upi://pay?pa=${paymentSettings.upi_id}&pn=${encodeURIComponent(restaurantInfo?.name || 'Restaurant')}&am=${total.toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Order ${tableNumber || 'POS'}`)}`;
       
       QRCode.toDataURL(upiUrl, { width: 300, margin: 2 })
