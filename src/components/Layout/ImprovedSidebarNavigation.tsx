@@ -25,7 +25,9 @@ import {
   Zap,
   ChevronLeft,
   Menu,
-  BookOpen
+  BookOpen,
+  Target,
+  FileText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -166,6 +168,20 @@ const navigationGroups: NavigationGroup[] = [
         requiredPermissions: ["customers.view"]
       },
       {
+        title: "CRM",
+        icon: MessageSquare,
+        href: "/crm",
+        description: "Customer relationship",
+        requiredPermissions: ["customers.view"]
+      },
+      {
+        title: "Marketing",
+        icon: Target,
+        href: "/marketing",
+        description: "Campaigns & promotions",
+        requiredPermissions: ["customers.view"]
+      },
+      {
         title: "User Management",
         icon: UserPlus,
         href: "/user-management",
@@ -199,6 +215,13 @@ const navigationGroups: NavigationGroup[] = [
         href: "/financial",
         description: "Financial reports",
         requiredPermissions: ["financial.view"]
+      },
+      {
+        title: "Reports",
+        icon: FileText,
+        href: "/reports",
+        description: "Business reports",
+        requiredPermissions: ["analytics.view"]
       }
     ]
   }

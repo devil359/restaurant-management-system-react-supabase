@@ -20,6 +20,8 @@ import {
   Globe,
   ChefHat,
   Utensils,
+  Target,
+  FileText,
 } from "lucide-react";
 
 interface SidebarNavigationProps {
@@ -51,9 +53,11 @@ const SidebarNavigation = ({ allowedComponents = [] }: SidebarNavigationProps) =
     '/expenses': 'expenses',
     '/suppliers': 'suppliers',
     '/crm': 'crm',
+    '/marketing': 'marketing',
     '/ai': 'ai',
     '/housekeeping': 'housekeeping',
     '/settings': 'settings',
+    '/reports': 'reports',
   };
   
   const navigationItems = [
@@ -74,8 +78,10 @@ const SidebarNavigation = ({ allowedComponents = [] }: SidebarNavigationProps) =
     { icon: DollarSign, label: "Expenses", path: "/expenses" },
     { icon: Truck, label: "Suppliers", path: "/suppliers" },
     { icon: MessageSquare, label: "CRM", path: "/crm" },
+    { icon: Target, label: "Marketing", path: "/marketing" },
     { icon: Sparkles, label: "AI Assistant", path: "/ai" },
     { icon: Sparkles, label: "Housekeeping", path: "/housekeeping" },
+    { icon: FileText, label: "Reports", path: "/reports" },
     { icon: Settings, label: "Settings", path: "/settings" },
   ];
 
