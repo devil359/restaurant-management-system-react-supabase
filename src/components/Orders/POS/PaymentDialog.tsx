@@ -859,7 +859,7 @@ const PaymentDialog = ({
       if (appliedPromotion && promotionDiscountAmount > 0) {
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(8);
-        doc.text(`Promo Discount (${appliedPromotion.name}):`, pageWidth - 35, yPos);
+        doc.text(`Promo Discount (${appliedPromotion.name}):`, pageWidth - 75, yPos);
         doc.text(`-${promotionDiscountAmount.toFixed(2)}`, pageWidth - 5, yPos, { align: 'right' });
         yPos += 4;
         if (appliedPromotion.promotion_code) {
@@ -873,7 +873,7 @@ const PaymentDialog = ({
       if (manualDiscountPercent > 0) {
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(8);
-        doc.text(`Manual Discount (${manualDiscountPercent}%):`, pageWidth - 35, yPos);
+        doc.text(`Discount (${manualDiscountPercent}%):`, pageWidth - 35, yPos);
         doc.text(`-${manualDiscountAmount.toFixed(2)}`, pageWidth - 5, yPos, { align: 'right' });
         yPos += 4;
       }
@@ -1137,7 +1137,7 @@ const PaymentDialog = ({
           
           {manualDiscountPercent > 0 && (
             <div className="flex justify-between text-sm text-green-600">
-              <span>Manual Discount ({manualDiscountPercent}%)</span>
+              <span>Discount ({manualDiscountPercent}%)</span>
               <span>-₹{manualDiscountAmount.toFixed(2)}</span>
             </div>
           )}
@@ -1259,7 +1259,7 @@ const PaymentDialog = ({
       {/* Manual Discount Section */}
       <Card className="p-4 bg-background">
         <div className="space-y-2">
-          <label className="text-sm font-medium">Manual Discount (%)</label>
+          <label className="text-sm font-medium">Discount (%)</label>
           <div className="flex items-center gap-2">
             <Input
               type="number"
