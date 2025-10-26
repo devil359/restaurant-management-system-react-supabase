@@ -35,18 +35,30 @@ Deno.serve(async (req) => {
 
     console.log('Validating promo code:', { code, orderSubtotal, restaurantId });
 
-    // Get today's date for comparison
+    // Get today's date for comparison (as ISO date string)
     const today = new Date().toISOString().split('T')[0];
+    console.log('Today:', today);
 
     // Query promotion_campaigns table for matching code
+    // First, let's get all matching promotions to debug
+    const { data: allPromotions, error: debugError } = await supabase
+      .from('promotion_campaigns')
+      .select('*')
+      .eq('restaurant_id', restaurantId)
+      .ilike('promotion_code', code.trim());
+
+    console.log('All matching promotions:', allPromotions);
+
+    // Now query with date filters
     const { data: promotion, error: promoError } = await supabase
       .from('promotion_campaigns')
       .select('*')
       .eq('restaurant_id', restaurantId)
+      .eq('is_active', true)
       .ilike('promotion_code', code.trim())
       .lte('start_date', today)
       .gte('end_date', today)
-      .single();
+      .maybeSingle();
 
     if (promoError || !promotion) {
       console.log('Promo code not found or expired:', promoError);
