@@ -91,6 +91,7 @@ const RoomCheckoutPage: React.FC<RoomCheckoutPageProps> = ({
   const [promotionCode, setPromotionCode] = useState('');
   const [appliedPromotion, setAppliedPromotion] = useState<any>(null);
   const [promotionDiscountAmount, setPromotionDiscountAmount] = useState(0);
+  const [activePromotions, setActivePromotions] = useState<any[]>([]);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -144,6 +145,23 @@ const RoomCheckoutPage: React.FC<RoomCheckoutPageProps> = ({
         const timestamp = Date.now();
         const randomNum = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
         setInvoiceNumber(`TEMP-${timestamp}${randomNum}`);
+        
+        // Fetch active promotions
+        if (roomData?.restaurant_id) {
+          const today = new Date().toISOString().split('T')[0];
+          const { data: promotionsData, error: promotionsError } = await supabase
+            .from('promotion_campaigns')
+            .select('*')
+            .eq('restaurant_id', roomData.restaurant_id)
+            .eq('is_active', true)
+            .lte('start_date', today)
+            .gte('end_date', today);
+          
+          if (!promotionsError && promotionsData) {
+            setActivePromotions(promotionsData);
+          }
+        }
+        
         
       } catch (error) {
         console.error('Error fetching checkout data:', error);
@@ -490,6 +508,7 @@ const RoomCheckoutPage: React.FC<RoomCheckoutPageProps> = ({
                 onApplyPromotion={handleApplyPromotion}
                 onRemovePromotion={handleRemovePromotion}
                 promotionDiscountAmount={calculatedPromotionDiscount}
+                activePromotions={activePromotions}
               />
             </CardContent>
           </Card>

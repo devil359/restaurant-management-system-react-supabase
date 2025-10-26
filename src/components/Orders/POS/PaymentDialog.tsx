@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -1155,33 +1156,91 @@ const PaymentDialog = ({
       {/* Promotion Code Section */}
       <Card className="p-4 bg-background">
         <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Input
-              placeholder="Enter promotion code"
-              value={promotionCode}
-              onChange={(e) => setPromotionCode(e.target.value.toUpperCase())}
-              disabled={!!appliedPromotion}
-              className="flex-1"
-            />
-            {appliedPromotion ? (
-              <Button onClick={handleRemovePromotion} variant="destructive" size="sm">
-                <X className="w-4 h-4 mr-1" />
-                Remove
-              </Button>
-            ) : (
-              <Button onClick={handleApplyPromotion} size="sm">
-                Apply
-              </Button>
-            )}
-          </div>
-          {appliedPromotion && (
-            <div className="text-sm text-green-600 font-medium">
-              ✓ {appliedPromotion.name} applied - Save ₹{promotionDiscountAmount.toFixed(2)}
-            </div>
-          )}
-          {activePromotions.length > 0 && !appliedPromotion && (
-            <div className="text-xs text-muted-foreground">
-              Available codes: {activePromotions.map(p => p.promotion_code).filter(Boolean).join(', ')}
+          <h3 className="font-semibold text-sm">Apply Promotion</h3>
+          
+          {!appliedPromotion ? (
+            <>
+              {/* Show active promotions list */}
+              {activePromotions.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground font-medium">Available Promotions:</p>
+                  <div className="grid gap-2 max-h-32 overflow-y-auto">
+                    {activePromotions.map((promo) => (
+                      <div
+                        key={promo.id}
+                        onClick={() => {
+                          setPromotionCode(promo.promotion_code || '');
+                          setTimeout(() => handleApplyPromotion(), 50);
+                        }}
+                        className="p-2 border rounded-lg cursor-pointer hover:bg-accent hover:border-primary transition-all"
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="secondary" className="text-xs">
+                                {promo.promotion_code}
+                              </Badge>
+                              <span className="text-xs font-medium">{promo.name}</span>
+                            </div>
+                            {promo.description && (
+                              <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{promo.description}</p>
+                            )}
+                          </div>
+                          <span className="text-xs font-semibold text-green-600">
+                            {promo.discount_percentage ? `${promo.discount_percentage}% off` : `₹${promo.discount_amount} off`}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <Separator className="my-2" />
+                  <p className="text-xs text-muted-foreground">Or enter manually:</p>
+                </div>
+              )}
+              
+              {/* Manual code entry */}
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="Enter promotion code"
+                  value={promotionCode}
+                  onChange={(e) => setPromotionCode(e.target.value.toUpperCase())}
+                  className="flex-1"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      handleApplyPromotion();
+                    }
+                  }}
+                />
+                <Button onClick={handleApplyPromotion} size="sm">
+                  Apply
+                </Button>
+              </div>
+            </>
+          ) : (
+            <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Badge variant="default" className="bg-green-600">
+                      {appliedPromotion.code}
+                    </Badge>
+                    <span className="text-sm font-semibold text-green-700 dark:text-green-300">
+                      {appliedPromotion.name}
+                    </span>
+                  </div>
+                  <p className="text-xs text-green-600 dark:text-green-400">
+                    Discount: ₹{promotionDiscountAmount.toFixed(2)}
+                  </p>
+                </div>
+                <Button
+                  onClick={handleRemovePromotion}
+                  variant="ghost"
+                  size="sm"
+                  className="text-red-600 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-900/20"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           )}
         </div>
