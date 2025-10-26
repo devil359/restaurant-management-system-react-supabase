@@ -961,8 +961,9 @@ const PaymentDialog = ({
     }
   };
 
-  const handleApplyPromotion = async () => {
-    if (!promotionCode.trim()) {
+  const handleApplyPromotion = async (passedCode?: string) => {
+    const codeToValidate = (passedCode ?? promotionCode).trim();
+    if (!codeToValidate) {
       toast({
         title: "Enter Promotion Code",
         description: "Please enter a promotion code to apply.",
@@ -974,10 +975,10 @@ const PaymentDialog = ({
     try {
       const restaurantIdToUse = restaurantInfo?.restaurantId || restaurantInfo?.id;
       
-      // Call backend validation function
+      // Call backend validation function with the exact code we want to validate
       const { data, error } = await supabase.functions.invoke('validate-promo-code', {
         body: {
-          code: promotionCode.trim(),
+          code: codeToValidate,
           orderSubtotal: subtotal,
           restaurantId: restaurantIdToUse
         }
@@ -986,6 +987,7 @@ const PaymentDialog = ({
       if (error) throw error;
 
       if (data.valid && data.promotion) {
+        setPromotionCode(codeToValidate);
         setAppliedPromotion(data.promotion);
         toast({
           title: "Promotion Applied!",
@@ -1169,8 +1171,8 @@ const PaymentDialog = ({
                 onValueChange={(value) => {
                   setPromotionCode(value);
                   if (value && value !== "manual") {
-                    // Auto-apply when selecting from dropdown
-                    setTimeout(() => handleApplyPromotion(), 100);
+                    // Auto-apply when selecting from dropdown using the selected value directly
+                    handleApplyPromotion(value);
                   }
                 }}
               >
@@ -1218,7 +1220,7 @@ const PaymentDialog = ({
                       }
                     }}
                   />
-                  <Button onClick={handleApplyPromotion} size="sm">
+                  <Button onClick={() => handleApplyPromotion()} size="sm">
                     Apply
                   </Button>
                 </div>
