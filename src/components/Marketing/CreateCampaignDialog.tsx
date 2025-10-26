@@ -64,7 +64,6 @@ const CreateCampaignDialog: React.FC<CreateCampaignDialogProps> = ({
           end_date: formData.end_date,
           promotion_code: formData.promotion_code || null,
           restaurant_id: restaurantId,
-          status: 'scheduled',
         }]);
 
       if (error) throw error;
