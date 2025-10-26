@@ -957,7 +957,7 @@ const PaymentDialog = ({
     }
   };
 
-  const handleApplyPromotion = () => {
+  const handleApplyPromotion = async () => {
     if (!promotionCode.trim()) {
       toast({
         title: "Enter Promotion Code",
@@ -967,20 +967,38 @@ const PaymentDialog = ({
       return;
     }
 
-    const promotion = activePromotions.find(
-      promo => promo.promotion_code?.toUpperCase() === promotionCode.trim().toUpperCase()
-    );
-
-    if (promotion) {
-      setAppliedPromotion(promotion);
-      toast({
-        title: "Promotion Applied!",
-        description: `${promotion.name} - ${promotion.discount_percentage ? `${promotion.discount_percentage}% off` : `₹${promotion.discount_amount} off`}`,
+    try {
+      const restaurantIdToUse = restaurantInfo?.restaurantId || restaurantInfo?.id;
+      
+      // Call backend validation function
+      const { data, error } = await supabase.functions.invoke('validate-promo-code', {
+        body: {
+          code: promotionCode.trim(),
+          orderSubtotal: subtotal,
+          restaurantId: restaurantIdToUse
+        }
       });
-    } else {
+
+      if (error) throw error;
+
+      if (data.valid && data.promotion) {
+        setAppliedPromotion(data.promotion);
+        toast({
+          title: "Promotion Applied!",
+          description: `${data.promotion.name} - ${data.promotion.discount_percentage ? `${data.promotion.discount_percentage}% off` : `₹${data.promotion.discount_amount} off`}`,
+        });
+      } else {
+        toast({
+          title: "Invalid Code",
+          description: data.error || "The promotion code you entered is not valid or has expired.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error validating promo code:', error);
       toast({
-        title: "Invalid Code",
-        description: "The promotion code you entered is not valid or has expired.",
+        title: "Validation Error",
+        description: "Failed to validate promotion code. Please try again.",
         variant: "destructive"
       });
     }
@@ -1019,6 +1037,8 @@ const PaymentDialog = ({
       
       await new Promise(resolve => setTimeout(resolve, 500));
       
+      const restaurantIdToUse = restaurantInfo?.restaurantId || restaurantInfo?.id;
+      
       // Update order status to completed in database if orderId is provided
       if (orderId) {
         const { error } = await supabase
@@ -1033,6 +1053,26 @@ const PaymentDialog = ({
             description: "Payment received but order status update failed.",
             variant: "destructive"
           });
+        }
+
+        // Log promotion usage if promotion was applied
+        if (appliedPromotion && restaurantIdToUse) {
+          try {
+            await supabase.functions.invoke('log-promotion-usage', {
+              body: {
+                orderId: orderId,
+                promotionId: appliedPromotion.id,
+                restaurantId: restaurantIdToUse,
+                customerName: customerName || 'Walk-in Customer',
+                customerPhone: customerMobile || null,
+                orderTotal: total,
+                discountAmount: promotionDiscountAmount
+              }
+            });
+          } catch (promoError) {
+            console.error('Error logging promotion usage:', promoError);
+            // Don't fail the payment if logging fails
+          }
         }
       }
       

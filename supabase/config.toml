@@ -82,3 +82,7 @@ url = ""
 [functions]
 [functions.record-clock-entry]
 verify_jwt = true
+[functions.validate-promo-code]
+verify_jwt = false
+[functions.log-promotion-usage]
+verify_jwt = false

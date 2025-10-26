@@ -30,6 +30,7 @@ import CheckoutSuccessDialog from './CheckoutSuccessDialog';
 import PrintBillButton from './PrintBillButton';
 import QRPaymentDialog from './QRPaymentDialog';
 import ServiceChargeSection from './ServiceChargeSection';
+import PromoCodeSection from './PromoCodeSection';
 
 interface RoomCheckoutPageProps {
   roomId: string;
@@ -87,6 +88,9 @@ const RoomCheckoutPage: React.FC<RoomCheckoutPageProps> = ({
   const [loading, setLoading] = useState(true);
   const [showQRPayment, setShowQRPayment] = useState(false);
   const [invoiceNumber, setInvoiceNumber] = useState<string>('');
+  const [promotionCode, setPromotionCode] = useState('');
+  const [appliedPromotion, setAppliedPromotion] = useState<any>(null);
+  const [promotionDiscountAmount, setPromotionDiscountAmount] = useState(0);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -176,15 +180,84 @@ const RoomCheckoutPage: React.FC<RoomCheckoutPageProps> = ({
   
   const additionalChargesTotal = additionalCharges.reduce((sum, charge) => sum + charge.amount, 0);
   
-  const calculatedDiscount = discountPercent > 0 
-    ? (roomTotal + foodOrdersTotal + additionalChargesTotal) * (discountPercent / 100)
+  const subtotalBeforeDiscount = roomTotal + foodOrdersTotal + additionalChargesTotal;
+  
+  // Calculate manual discount
+  const manualDiscount = discountPercent > 0 
+    ? (subtotalBeforeDiscount * discountPercent / 100)
     : discountAmount;
   
-  const serviceCharge = serviceChargeEnabled 
-    ? (roomTotal + foodOrdersTotal + additionalChargesTotal) * (serviceChargePercent / 100)
+  // Calculate promotion discount if applied
+  const calculatedPromotionDiscount = appliedPromotion 
+    ? (appliedPromotion.discount_percentage 
+      ? (subtotalBeforeDiscount * appliedPromotion.discount_percentage / 100)
+      : appliedPromotion.discount_amount || 0)
     : 0;
   
-  const grandTotal = roomTotal + foodOrdersTotal + additionalChargesTotal + serviceCharge - calculatedDiscount;
+  // Total discount combines both manual and promotion
+  const totalDiscount = manualDiscount + calculatedPromotionDiscount;
+  
+  const serviceCharge = serviceChargeEnabled 
+    ? ((subtotalBeforeDiscount - totalDiscount) * serviceChargePercent / 100)
+    : 0;
+  
+  const grandTotal = subtotalBeforeDiscount - totalDiscount + serviceCharge;
+
+  const handleApplyPromotion = async () => {
+    if (!promotionCode.trim()) {
+      toast({
+        title: "Enter Promotion Code",
+        description: "Please enter a promotion code to apply.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // Call backend validation function
+      const { data, error } = await supabase.functions.invoke('validate-promo-code', {
+        body: {
+          code: promotionCode.trim(),
+          orderSubtotal: subtotalBeforeDiscount,
+          restaurantId: room.restaurant_id
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.valid && data.promotion) {
+        setAppliedPromotion(data.promotion);
+        setPromotionDiscountAmount(data.promotion.calculated_discount || 0);
+        toast({
+          title: "Promotion Applied!",
+          description: `${data.promotion.name} - ${data.promotion.discount_percentage ? `${data.promotion.discount_percentage}% off` : `₹${data.promotion.discount_amount} off`}`,
+        });
+      } else {
+        toast({
+          title: "Invalid Code",
+          description: data.error || "The promotion code you entered is not valid or has expired.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error validating promo code:', error);
+      toast({
+        title: "Validation Error",
+        description: "Failed to validate promotion code. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleRemovePromotion = () => {
+    setAppliedPromotion(null);
+    setPromotionCode('');
+    setPromotionDiscountAmount(0);
+    toast({
+      title: "Promotion Removed",
+      description: "The promotion code has been removed from this checkout."
+    });
+  };
 
   const handleCheckout = async () => {
     setIsSubmitting(true);
@@ -206,6 +279,7 @@ const RoomCheckoutPage: React.FC<RoomCheckoutPageProps> = ({
           room_charges: roomTotal,
           service_charge: serviceCharge,
           additional_charges: formattedAdditionalCharges,
+          discount_amount: totalDiscount,
           total_amount: grandTotal,
           payment_method: paymentMethod,
           payment_status: 'completed',
@@ -219,6 +293,26 @@ const RoomCheckoutPage: React.FC<RoomCheckoutPageProps> = ({
         .single();
       
       if (billingError) throw billingError;
+      
+      // Log promotion usage if promotion was applied
+      if (appliedPromotion && billingData) {
+        try {
+          await supabase.functions.invoke('log-promotion-usage', {
+            body: {
+              orderId: billingData.id,
+              promotionId: appliedPromotion.id,
+              restaurantId: room.restaurant_id,
+              customerName: reservation.customer_name,
+              customerPhone: reservation.customer_phone || null,
+              orderTotal: grandTotal,
+              discountAmount: calculatedPromotionDiscount
+            }
+          });
+        } catch (promoError) {
+          console.error('Error logging promotion usage:', promoError);
+          // Don't fail the checkout if logging fails
+        }
+      }
       
       const { error: roomError } = await supabase
         .from('rooms')
@@ -386,6 +480,20 @@ const RoomCheckoutPage: React.FC<RoomCheckoutPageProps> = ({
         
         {/* Right Column - Payment & Summary */}
         <div className="space-y-6">
+          {/* Promo Code Section */}
+          <Card className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-2xl shadow-xl transition-colors duration-300">
+            <CardContent className="pt-6">
+              <PromoCodeSection 
+                promotionCode={promotionCode}
+                onPromotionCodeChange={setPromotionCode}
+                appliedPromotion={appliedPromotion}
+                onApplyPromotion={handleApplyPromotion}
+                onRemovePromotion={handleRemovePromotion}
+                promotionDiscountAmount={calculatedPromotionDiscount}
+              />
+            </CardContent>
+          </Card>
+
           {/* Discount Section */}
           <Card className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 rounded-2xl shadow-xl transition-colors duration-300">
             <CardContent className="pt-6">
@@ -461,10 +569,10 @@ const RoomCheckoutPage: React.FC<RoomCheckoutPageProps> = ({
                   </div>
                 )}
                 
-                {calculatedDiscount > 0 && (
+                {totalDiscount > 0 && (
                   <div className="flex justify-between items-center p-3 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-700 transition-colors duration-300">
                     <span className="text-green-700 dark:text-green-300">Discount:</span>
-                    <span className="font-semibold text-green-700 dark:text-green-300">-₹{calculatedDiscount.toFixed(2)}</span>
+                    <span className="font-semibold text-green-700 dark:text-green-300">-₹{totalDiscount.toFixed(2)}</span>
                   </div>
                 )}
               </div>
@@ -501,7 +609,7 @@ const RoomCheckoutPage: React.FC<RoomCheckoutPageProps> = ({
                   foodOrders={foodOrders}
                   additionalCharges={additionalCharges}
                   serviceCharge={serviceCharge}
-                  discount={calculatedDiscount}
+                  discount={totalDiscount}
                   grandTotal={grandTotal}
                   paymentMethod={paymentMethod}
                   billId={billingId || 'TEMP-' + new Date().getTime()}
