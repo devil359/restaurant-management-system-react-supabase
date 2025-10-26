@@ -14,6 +14,8 @@ import QRCode from 'qrcode';
 import jsPDF from 'jspdf';
 import type { OrderItem } from "@/types/orders";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 type PaymentStep = 'confirm' | 'method' | 'qr' | 'success' | 'edit';
 
@@ -1159,63 +1161,68 @@ const PaymentDialog = ({
           <h3 className="font-semibold text-sm">Apply Promotion</h3>
           
           {!appliedPromotion ? (
-            <>
-              {/* Show active promotions list */}
-              {activePromotions.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground font-medium">Available Promotions:</p>
-                  <div className="grid gap-2 max-h-32 overflow-y-auto">
-                    {activePromotions.map((promo) => (
-                      <div
-                        key={promo.id}
-                        onClick={() => {
-                          setPromotionCode(promo.promotion_code || '');
-                          setTimeout(() => handleApplyPromotion(), 50);
-                        }}
-                        className="p-2 border rounded-lg cursor-pointer hover:bg-accent hover:border-primary transition-all"
-                      >
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="secondary" className="text-xs">
-                                {promo.promotion_code}
-                              </Badge>
-                              <span className="text-xs font-medium">{promo.name}</span>
+            <div className="space-y-3">
+              <Label htmlFor="promo-select" className="text-xs">Select or Enter Promotion Code</Label>
+              <Select
+                value={promotionCode}
+                onValueChange={(value) => {
+                  setPromotionCode(value);
+                  if (value && value !== "manual") {
+                    // Auto-apply when selecting from dropdown
+                    setTimeout(() => handleApplyPromotion(), 100);
+                  }
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a promotion code" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[300px]">
+                  {activePromotions.length > 0 ? (
+                    <>
+                      {activePromotions.map((promo) => (
+                        <SelectItem key={promo.id} value={promo.promotion_code || ''}>
+                          <div className="flex items-center justify-between w-full gap-3 pr-2">
+                            <div className="flex flex-col min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-xs">{promo.promotion_code}</span>
+                                <span className="text-xs text-muted-foreground truncate">{promo.name}</span>
+                              </div>
                             </div>
-                            {promo.description && (
-                              <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{promo.description}</p>
-                            )}
+                            <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200 text-xs whitespace-nowrap">
+                              {promo.discount_percentage ? `${promo.discount_percentage}% off` : `₹${promo.discount_amount} off`}
+                            </Badge>
                           </div>
-                          <span className="text-xs font-semibold text-green-600">
-                            {promo.discount_percentage ? `${promo.discount_percentage}% off` : `₹${promo.discount_amount} off`}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <Separator className="my-2" />
-                  <p className="text-xs text-muted-foreground">Or enter manually:</p>
+                        </SelectItem>
+                      ))}
+                      <Separator className="my-1" />
+                      <SelectItem value="manual">✏️ Enter code manually...</SelectItem>
+                    </>
+                  ) : (
+                    <SelectItem value="manual">Enter code manually...</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+              
+              {/* Manual entry field - show when "manual" is selected or no promotions */}
+              {(promotionCode === "manual" || activePromotions.length === 0) && (
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={promotionCode === "manual" ? "" : promotionCode}
+                    onChange={(e) => setPromotionCode(e.target.value.toUpperCase())}
+                    placeholder="Enter promotion code"
+                    className="flex-1"
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        handleApplyPromotion();
+                      }
+                    }}
+                  />
+                  <Button onClick={handleApplyPromotion} size="sm">
+                    Apply
+                  </Button>
                 </div>
               )}
-              
-              {/* Manual code entry */}
-              <div className="flex items-center gap-2">
-                <Input
-                  placeholder="Enter promotion code"
-                  value={promotionCode}
-                  onChange={(e) => setPromotionCode(e.target.value.toUpperCase())}
-                  className="flex-1"
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      handleApplyPromotion();
-                    }
-                  }}
-                />
-                <Button onClick={handleApplyPromotion} size="sm">
-                  Apply
-                </Button>
-              </div>
-            </>
+            </div>
           ) : (
             <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700">
               <div className="flex items-center justify-between">
