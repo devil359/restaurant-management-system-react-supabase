@@ -154,6 +154,7 @@ const RoomCheckoutPage: React.FC<RoomCheckoutPageProps> = ({
             .select('*')
             .eq('restaurant_id', roomData.restaurant_id)
             .eq('is_active', true)
+            .not('promotion_code', 'is', null)
             .lte('start_date', today)
             .gte('end_date', today);
           

@@ -142,7 +142,8 @@ const PaymentDialog = ({
         .from('promotion_campaigns')
         .select('*')
         .eq('restaurant_id', restaurantIdToUse)
-        .eq('status', 'active')
+        .eq('is_active', true)
+        .not('promotion_code', 'is', null)
         .lte('start_date', today)
         .gte('end_date', today);
       
