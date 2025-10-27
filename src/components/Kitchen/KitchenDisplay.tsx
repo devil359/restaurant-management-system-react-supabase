@@ -260,7 +260,7 @@ const KitchenDisplay = () => {
       if (kitchenOrder?.order_id) {
         let orderStatus = 'pending';
         if (newStatus === 'preparing') orderStatus = 'preparing';
-        if (newStatus === 'ready') orderStatus = 'ready';
+        if (newStatus === 'ready') orderStatus = 'completed'; // Auto-complete when ready
         
         await supabase
           .from("orders")
