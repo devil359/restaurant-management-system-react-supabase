@@ -211,6 +211,41 @@ const KitchenDisplay = () => {
 
   const handleStatusUpdate = async (orderId: string, newStatus: KitchenOrder["status"]) => {
     try {
+      // If moving to "preparing", deduct inventory first
+      if (newStatus === "preparing") {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        const { data: deductResult, error: deductError } = await supabase.functions.invoke(
+          'deduct-inventory-on-prep',
+          {
+            body: { order_id: orderId },
+            headers: {
+              Authorization: `Bearer ${session?.access_token}`,
+            },
+          }
+        );
+
+        if (deductError) {
+          throw new Error(deductError.message);
+        }
+
+        if (!deductResult?.success) {
+          const errorMessage = deductResult?.errors 
+            ? deductResult.errors.join('\n') 
+            : deductResult?.error || 'Failed to deduct inventory';
+          
+          toast({
+            variant: "destructive",
+            title: "Insufficient Stock",
+            description: errorMessage,
+            duration: 8000,
+          });
+          return; // Don't update status if inventory deduction failed
+        }
+
+        console.log('Inventory deducted successfully:', deductResult);
+      }
+
       // Update kitchen order status
       const { data: kitchenOrder, error: kitchenError } = await supabase
         .from("kitchen_orders")
@@ -235,14 +270,14 @@ const KitchenDisplay = () => {
 
       toast({
         title: "Status Updated",
-        description: `Order marked as ${newStatus}`,
+        description: `Order marked as ${newStatus}${newStatus === 'preparing' ? ' - Inventory updated' : ''}`,
       });
     } catch (error) {
       console.error("Error updating status:", error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to update order status",
+        description: error instanceof Error ? error.message : "Failed to update order status",
       });
     }
   };

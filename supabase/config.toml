@@ -86,3 +86,5 @@ verify_jwt = true
 verify_jwt = false
 [functions.log-promotion-usage]
 verify_jwt = false
+[functions.deduct-inventory-on-prep]
+verify_jwt = true

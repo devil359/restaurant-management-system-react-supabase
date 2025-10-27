@@ -2864,6 +2864,7 @@ export type Database = {
           instructions: string | null
           is_active: boolean | null
           margin_percentage: number | null
+          menu_item_id: string | null
           name: string
           prep_time_minutes: number | null
           restaurant_id: string
@@ -2886,6 +2887,7 @@ export type Database = {
           instructions?: string | null
           is_active?: boolean | null
           margin_percentage?: number | null
+          menu_item_id?: string | null
           name: string
           prep_time_minutes?: number | null
           restaurant_id: string
@@ -2908,6 +2910,7 @@ export type Database = {
           instructions?: string | null
           is_active?: boolean | null
           margin_percentage?: number | null
+          menu_item_id?: string | null
           name?: string
           prep_time_minutes?: number | null
           restaurant_id?: string
@@ -2917,7 +2920,15 @@ export type Database = {
           total_cost?: number | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "recipes_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       reservations: {
         Row: {
