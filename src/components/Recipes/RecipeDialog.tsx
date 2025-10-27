@@ -79,6 +79,20 @@ export const RecipeDialog = ({ open, onOpenChange, recipe }: RecipeDialogProps) 
     enabled: !!restaurantId?.restaurantId && open,
   });
 
+  // Fetch recipe ingredients when editing
+  const { data: recipeIngredients = [] } = useQuery({
+    queryKey: ['recipe-ingredients', recipe?.id],
+    queryFn: async () => {
+      if (!recipe?.id) return [];
+      const { data } = await supabase
+        .from('recipe_ingredients')
+        .select('*')
+        .eq('recipe_id', recipe.id);
+      return data || [];
+    },
+    enabled: !!recipe?.id && open,
+  });
+
   // Load recipe data when editing
   useEffect(() => {
     if (recipe) {
@@ -96,7 +110,16 @@ export const RecipeDialog = ({ open, onOpenChange, recipe }: RecipeDialogProps) 
         selling_price: recipe.selling_price.toString(),
         is_active: recipe.is_active,
       });
-      // Load ingredients would require additional query
+      
+      // Load ingredients from fetched data
+      if (recipeIngredients.length > 0) {
+        setIngredients(recipeIngredients.map(ing => ({
+          inventory_item_id: ing.inventory_item_id,
+          quantity: ing.quantity,
+          unit: ing.unit,
+          notes: ing.notes || "",
+        })));
+      }
     } else {
       // Reset form
       setFormData({
@@ -115,7 +138,7 @@ export const RecipeDialog = ({ open, onOpenChange, recipe }: RecipeDialogProps) 
       });
       setIngredients([]);
     }
-  }, [recipe, open]);
+  }, [recipe, recipeIngredients, open]);
 
   const handleSubmit = async () => {
     if (!restaurantId) return;
@@ -144,7 +167,26 @@ export const RecipeDialog = ({ open, onOpenChange, recipe }: RecipeDialogProps) 
       };
 
       if (recipe) {
+        // Update recipe
         await updateRecipe.mutateAsync({ id: recipe.id, ...recipeData });
+        
+        // Delete existing ingredients
+        await supabase
+          .from('recipe_ingredients')
+          .delete()
+          .eq('recipe_id', recipe.id);
+        
+        // Insert updated ingredients
+        if (ingredients.length > 0) {
+          await Promise.all(
+            ingredients.map(ing =>
+              supabase.from('recipe_ingredients').insert({
+                recipe_id: recipe.id,
+                ...ing,
+              })
+            )
+          );
+        }
       } else {
         const newRecipe = await createRecipe.mutateAsync(recipeData);
         
