@@ -79,14 +79,35 @@ serve(async (req) => {
     const items = kitchenOrder.items as OrderItem[];
     const restaurantId = kitchenOrder.restaurant_id;
 
+    // Resolve missing menuItemIds by name lookup (case-insensitive)
+    let menuNameMap: Record<string, string> = {};
+    const needsResolution = items.some(i => !i.menuItemId);
+    if (needsResolution) {
+      const { data: menuItems, error: menuErr } = await supabaseClient
+        .from('menu_items')
+        .select('id, name')
+        .eq('restaurant_id', restaurantId);
+      if (menuErr) {
+        console.error('Failed to fetch menu items for resolution:', menuErr);
+      } else {
+        menuNameMap = Object.fromEntries((menuItems || []).map(mi => [String(mi.name).toLowerCase(), mi.id]));
+      }
+    }
+
     // Map to store aggregated ingredient quantities
     const ingredientMap = new Map<string, { quantity: number; unit: string; itemName: string }>();
 
     // Process each item in the order
     for (const item of items) {
       if (!item.menuItemId) {
-        console.log(`Skipping item ${item.name} - no menuItemId`);
-        continue;
+        const resolvedId = menuNameMap[(item.name || '').toLowerCase?.() ?? ''];
+        if (resolvedId) {
+          item.menuItemId = resolvedId;
+          console.log(`Resolved menuItemId for ${item.name}: ${resolvedId}`);
+        } else {
+          console.log(`Skipping item ${item.name} - no menuItemId`);
+          continue;
+        }
       }
 
       // Find recipe linked to this menu item
