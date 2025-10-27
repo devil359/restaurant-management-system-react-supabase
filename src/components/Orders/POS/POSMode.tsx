@@ -294,9 +294,19 @@ const POSMode = () => {
             status: "pending",
             source: "pos",
             order_type: orderType.toLowerCase()
-          });
+          })
+          .select()
+          .single();
 
         if (orderError) throw orderError;
+
+        // Link the kitchen order to the created orders record so status sync works
+        if (createdOrder?.id && kitchenOrder?.id) {
+          await supabase
+            .from("kitchen_orders")
+            .update({ order_id: createdOrder.id })
+            .eq("id", kitchenOrder.id);
+        }
       }
       
       toast({
