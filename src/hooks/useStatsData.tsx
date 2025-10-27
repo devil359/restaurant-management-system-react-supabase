@@ -1,7 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useRealtimeSubscription } from "./useRealtimeSubscription";
 
 export const useStatsData = () => {
+  // Setup real-time subscription for orders table
+  useRealtimeSubscription({
+    table: 'orders',
+    queryKey: 'dashboard-orders',
+    schema: 'public',
+  });
+
   return useQuery({
     queryKey: ["dashboard-orders"],
     queryFn: async () => {
