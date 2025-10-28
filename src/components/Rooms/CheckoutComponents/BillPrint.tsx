@@ -67,7 +67,7 @@ const BillPrint = forwardRef<HTMLDivElement, BillPrintProps>(({
   const finalTaxAmount = taxAmount || (taxRate > 0 ? (taxableAmount * taxRate / 100) : 0);
   const netTotal = taxableAmount + finalTaxAmount;
   return (
-    <div ref={ref} className="relative p-8 bg-white text-black" style={{ width: '210mm' }}>
+    <div ref={ref} className="relative p-4 bg-white text-black" style={{ width: '210mm' }}>
       {/* Watermark */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-5 z-0">
         <div className="text-8xl font-bold transform rotate-45 text-gray-400 select-none">
@@ -78,7 +78,7 @@ const BillPrint = forwardRef<HTMLDivElement, BillPrintProps>(({
       {/* Content Container */}
       <div className="relative z-10">
         {/* Header */}
-        <div className="text-center border-2 border-gray-800 rounded-lg pb-6 mb-8 pt-6 bg-gradient-to-r from-blue-50 to-indigo-50">
+        <div className="text-center border-2 border-gray-800 rounded-lg pb-3 mb-4 pt-3 bg-gradient-to-r from-blue-50 to-indigo-50">
           <h1 className="text-4xl font-bold mb-2 text-gray-800">
             {restaurantName || 'Hotel/Restaurant Name'}
           </h1>
@@ -93,14 +93,14 @@ const BillPrint = forwardRef<HTMLDivElement, BillPrintProps>(({
         </div>
 
         {/* Invoice Title */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-4">
           <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-gray-300 pb-2 inline-block">
             {gstNumber ? 'TAX INVOICE' : 'HOTEL BILL RECEIPT'}
           </h2>
         </div>
 
         {/* Bill Info */}
-        <div className="border-2 border-gray-400 rounded-lg p-6 mb-8">
+        <div className="border-2 border-gray-400 rounded-lg p-4 mb-4">
           <div className="grid grid-cols-2 gap-8 mb-6">
             <div>
               <h3 className="font-bold mb-3 text-lg border-b-2 border-gray-400 pb-2">Bill To:</h3>
@@ -150,7 +150,7 @@ const BillPrint = forwardRef<HTMLDivElement, BillPrintProps>(({
         </div>
 
         {/* Billing Details */}
-        <div className="mb-8">
+        <div className="mb-4">
           <table className="w-full border-2 border-gray-400 rounded-lg overflow-hidden">
             <thead>
               <tr className="bg-gray-200">
@@ -205,7 +205,7 @@ const BillPrint = forwardRef<HTMLDivElement, BillPrintProps>(({
         </div>
 
         {/* Bill Summary */}
-        <div className="mb-8">
+        <div className="mb-4">
           <table className="w-full border-2 border-gray-400 rounded-lg overflow-hidden">
             <tbody>
               <tr className="bg-gray-100">
@@ -250,7 +250,7 @@ const BillPrint = forwardRef<HTMLDivElement, BillPrintProps>(({
         </div>
 
         {/* Terms and Conditions */}
-        <div className="mb-6 p-4 border-2 border-gray-300 rounded-lg bg-gray-50">
+        <div className="mb-3 p-3 border-2 border-gray-300 rounded-lg bg-gray-50">
           <h3 className="font-bold mb-2">Terms & Conditions:</h3>
           <div className="text-xs space-y-1">
             <p>1. This is a computer-generated invoice and does not require a signature.</p>
@@ -262,7 +262,7 @@ const BillPrint = forwardRef<HTMLDivElement, BillPrintProps>(({
 
         {/* Footer */}
         <div className="text-center">
-          <div className="border-t-2 border-gray-400 pt-4 mb-4">
+          <div className="border-t-2 border-gray-400 pt-2 mb-2">
             <p className="text-lg font-bold text-gray-800">Thank you for choosing {restaurantName}!</p>
             <p className="text-sm text-gray-600">We look forward to serving you again.</p>
             {gstNumber && (
