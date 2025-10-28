@@ -67,7 +67,7 @@ const BillPrint = forwardRef<HTMLDivElement, BillPrintProps>(({
   const finalTaxAmount = taxAmount || (taxRate > 0 ? (taxableAmount * taxRate / 100) : 0);
   const netTotal = taxableAmount + finalTaxAmount;
   return (
-    <div ref={ref} className="relative p-4 bg-white text-black" style={{ width: '210mm' }}>
+    <div ref={ref} className="relative p-8 bg-white text-black" style={{ width: '210mm' }}>
       {/* Watermark */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-5 z-0">
         <div className="text-8xl font-bold transform rotate-45 text-gray-400 select-none">
@@ -78,7 +78,7 @@ const BillPrint = forwardRef<HTMLDivElement, BillPrintProps>(({
       {/* Content Container */}
       <div className="relative z-10">
         {/* Header */}
-        <div className="text-center border-2 border-gray-800 rounded-lg pb-3 mb-4 pt-3 bg-gradient-to-r from-blue-50 to-indigo-50">
+        <div className="text-center border-2 border-gray-800 rounded-lg pb-6 mb-8 pt-6 bg-gradient-to-r from-blue-50 to-indigo-50">
           <h1 className="text-4xl font-bold mb-2 text-gray-800">
             {restaurantName || 'Hotel/Restaurant Name'}
           </h1>
@@ -93,14 +93,14 @@ const BillPrint = forwardRef<HTMLDivElement, BillPrintProps>(({
         </div>
 
         {/* Invoice Title */}
-        <div className="text-center mb-4">
+        <div className="text-center mb-8">
           <h2 className="text-2xl font-bold text-gray-800 border-b-2 border-gray-300 pb-2 inline-block">
             {gstNumber ? 'TAX INVOICE' : 'HOTEL BILL RECEIPT'}
           </h2>
         </div>
 
         {/* Bill Info */}
-        <div className="border-2 border-gray-400 rounded-lg p-4 mb-4">
+        <div className="border-2 border-gray-400 rounded-lg p-6 mb-8">
           <div className="grid grid-cols-2 gap-8 mb-6">
             <div>
               <h3 className="font-bold mb-3 text-lg border-b-2 border-gray-400 pb-2">Bill To:</h3>
@@ -150,7 +150,7 @@ const BillPrint = forwardRef<HTMLDivElement, BillPrintProps>(({
         </div>
 
         {/* Billing Details */}
-        <div className="mb-4">
+        <div className="mb-8">
           <table className="w-full border-2 border-gray-400 rounded-lg overflow-hidden">
             <thead>
               <tr className="bg-gray-200">
@@ -205,7 +205,7 @@ const BillPrint = forwardRef<HTMLDivElement, BillPrintProps>(({
         </div>
 
         {/* Bill Summary */}
-        <div className="mb-4">
+        <div className="mb-8">
           <table className="w-full border-2 border-gray-400 rounded-lg overflow-hidden">
             <tbody>
               <tr className="bg-gray-100">
@@ -250,36 +250,37 @@ const BillPrint = forwardRef<HTMLDivElement, BillPrintProps>(({
         </div>
 
         {/* Terms and Conditions */}
-        <div className="mb-2 p-2 border border-gray-300 rounded-lg bg-gray-50">
-          <h3 className="font-bold mb-1 text-xs">Terms & Conditions:</h3>
-          <div className="text-xs space-y-0.5">
+        <div className="mb-6 p-4 border-2 border-gray-300 rounded-lg bg-gray-50">
+          <h3 className="font-bold mb-2">Terms & Conditions:</h3>
+          <div className="text-xs space-y-1">
             <p>1. This is a computer-generated invoice and does not require a signature.</p>
             <p>2. All taxes are included as applicable.</p>
             <p>3. Payment received in full. No refund for early checkout.</p>
+            <p>4. Any disputes should be settled within 7 days of checkout.</p>
           </div>
         </div>
 
         {/* Footer */}
         <div className="text-center">
-          <div className="border-t-2 border-gray-400 pt-1 mb-1">
+          <div className="border-t-2 border-gray-400 pt-4 mb-4">
             <p className="text-lg font-bold text-gray-800">Thank you for choosing {restaurantName}!</p>
             <p className="text-sm text-gray-600">We look forward to serving you again.</p>
             {gstNumber && (
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-gray-500 mt-2">
                 This is a computer generated invoice and authorized signature is not required.
               </p>
             )}
           </div>
           
-          <div className="flex justify-between items-end mt-2">
+          <div className="flex justify-between items-end">
             <div className="text-left text-xs text-gray-500">
-              <p>Generated: {format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
+              <p>Generated on: {format(new Date(), 'dd/MM/yyyy HH:mm:ss')}</p>
             </div>
             <div className="text-right">
-              <div className="border border-gray-400 h-16 w-28 flex items-center justify-center bg-gray-100">
+              <div className="border border-gray-400 h-20 w-32 flex items-center justify-center bg-gray-100">
                 <div className="text-center">
                   <p className="text-xs font-semibold">Authorized Signature</p>
-                  <p className="text-xs text-gray-500 mt-6">{restaurantName}</p>
+                  <p className="text-xs text-gray-500 mt-8">{restaurantName}</p>
                 </div>
               </div>
             </div>
