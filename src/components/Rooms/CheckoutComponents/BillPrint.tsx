@@ -250,37 +250,36 @@ const BillPrint = forwardRef<HTMLDivElement, BillPrintProps>(({
         </div>
 
         {/* Terms and Conditions */}
-        <div className="mb-3 p-3 border-2 border-gray-300 rounded-lg bg-gray-50">
-          <h3 className="font-bold mb-2">Terms & Conditions:</h3>
-          <div className="text-xs space-y-1">
+        <div className="mb-2 p-2 border border-gray-300 rounded-lg bg-gray-50">
+          <h3 className="font-bold mb-1 text-xs">Terms & Conditions:</h3>
+          <div className="text-xs space-y-0.5">
             <p>1. This is a computer-generated invoice and does not require a signature.</p>
             <p>2. All taxes are included as applicable.</p>
             <p>3. Payment received in full. No refund for early checkout.</p>
-            <p>4. Any disputes should be settled within 7 days of checkout.</p>
           </div>
         </div>
 
         {/* Footer */}
         <div className="text-center">
-          <div className="border-t-2 border-gray-400 pt-2 mb-2">
+          <div className="border-t-2 border-gray-400 pt-1 mb-1">
             <p className="text-lg font-bold text-gray-800">Thank you for choosing {restaurantName}!</p>
             <p className="text-sm text-gray-600">We look forward to serving you again.</p>
             {gstNumber && (
-              <p className="text-xs text-gray-500 mt-2">
+              <p className="text-xs text-gray-500 mt-1">
                 This is a computer generated invoice and authorized signature is not required.
               </p>
             )}
           </div>
           
-          <div className="flex justify-between items-end">
+          <div className="flex justify-between items-end mt-2">
             <div className="text-left text-xs text-gray-500">
-              <p>Generated on: {format(new Date(), 'dd/MM/yyyy HH:mm:ss')}</p>
+              <p>Generated: {format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
             </div>
             <div className="text-right">
-              <div className="border border-gray-400 h-20 w-32 flex items-center justify-center bg-gray-100">
+              <div className="border border-gray-400 h-16 w-28 flex items-center justify-center bg-gray-100">
                 <div className="text-center">
                   <p className="text-xs font-semibold">Authorized Signature</p>
-                  <p className="text-xs text-gray-500 mt-8">{restaurantName}</p>
+                  <p className="text-xs text-gray-500 mt-6">{restaurantName}</p>
                 </div>
               </div>
             </div>

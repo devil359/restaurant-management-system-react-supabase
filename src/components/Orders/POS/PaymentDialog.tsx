@@ -9,13 +9,15 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Receipt, CreditCard, Wallet, QrCode, Check, Printer, Trash2, Plus, X, Search } from 'lucide-react';
+import { ArrowLeft, Receipt, CreditCard, Wallet, QrCode, Check, Printer, Trash2, Plus, X, Search, Bluetooth } from 'lucide-react';
 import QRCode from 'qrcode';
 import jsPDF from 'jspdf';
 import type { OrderItem } from "@/types/orders";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { useBluetoothPrinter } from "@/hooks/useBluetoothPrinter";
+import { format } from 'date-fns';
 
 type PaymentStep = 'confirm' | 'method' | 'qr' | 'success' | 'edit';
 
@@ -51,6 +53,12 @@ const PaymentDialog = ({
   const [manualDiscountPercent, setManualDiscountPercent] = useState<number>(0);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { 
+    isBluetoothSupported, 
+    isConnected, 
+    isConnecting, 
+    printReceipt: bluetoothPrint 
+  } = useBluetoothPrinter();
 
   // Fetch restaurant info
   const { data: restaurantInfo } = useQuery({
@@ -961,6 +969,67 @@ const PaymentDialog = ({
     }
   };
 
+  const handleBluetoothPrint = async () => {
+    console.log('🔵 Bluetooth print clicked');
+    // Save customer details first
+    const saved = await saveCustomerDetails();
+    if (!saved) {
+      console.log('❌ Customer details not saved, aborting Bluetooth print');
+      return;
+    }
+    
+    console.log('✅ Proceeding with Bluetooth print');
+    
+    try {
+      const billNumber = `POS-${Date.now()}`;
+      const currentDate = format(new Date(), 'dd/MM/yyyy HH:mm');
+      
+      const printData = {
+        restaurantName: restaurantInfo?.name || 'Restaurant',
+        restaurantAddress: restaurantInfo?.address,
+        restaurantPhone: restaurantInfo?.contact_info,
+        customerName: customerName || undefined,
+        customerMobile: customerMobile || undefined,
+        orderItems: orderItems.map(item => ({
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity
+        })),
+        subtotal: subtotal,
+        discount: totalDiscountAmount > 0 ? totalDiscountAmount : undefined,
+        total: total,
+        paymentMethod: 'Cash', // Default to cash, can be enhanced
+        tableNumber: tableNumber || undefined,
+        billNumber: billNumber,
+        date: currentDate
+      };
+      
+      const success = await bluetoothPrint(printData);
+      
+      if (success) {
+        // Send bill via WhatsApp if checkbox is checked
+        if (sendBillToMobile && customerMobile) {
+          console.log('📱 Sending bill via WhatsApp');
+          await sendBillViaWhatsApp();
+        }
+        
+        toast({
+          title: "Bill Printed",
+          description: sendBillToMobile 
+            ? "Receipt printed and sent via WhatsApp."
+            : "Receipt printed successfully to thermal printer."
+        });
+      }
+    } catch (error) {
+      console.error('Error with Bluetooth printing:', error);
+      toast({
+        title: "Bluetooth Print Error",
+        description: "Failed to print via Bluetooth. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleApplyPromotion = async (passedCode?: string) => {
     const codeToValidate = (passedCode ?? promotionCode).trim();
     if (!codeToValidate) {
@@ -1294,7 +1363,14 @@ const PaymentDialog = ({
         </div>
       </Card>
 
-      <div className="grid grid-cols-2 gap-3">
+      {/* Print Options Help */}
+      {isBluetoothSupported && (
+        <div className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 p-2 rounded-lg border border-blue-200 dark:border-blue-800">
+          <span className="font-semibold">📱 Bluetooth Print:</span> Direct print to your thermal printer (Android Chrome only). No watermarks, no third-party apps needed!
+        </div>
+      )}
+
+      <div className={`grid ${isBluetoothSupported ? 'grid-cols-3' : 'grid-cols-2'} gap-3`}>
         <Button variant="outline" onClick={handleEditOrder} className="w-full">
           <Receipt className="w-4 h-4 mr-2" />
           Edit Order
@@ -1308,6 +1384,18 @@ const PaymentDialog = ({
           <Printer className="w-4 h-4 mr-2" />
           {isSaving ? "Saving..." : "Print Bill"}
         </Button>
+        {isBluetoothSupported && (
+          <Button 
+            variant="outline" 
+            onClick={handleBluetoothPrint} 
+            className="w-full bg-blue-50 hover:bg-blue-100 dark:bg-blue-950 dark:hover:bg-blue-900"
+            disabled={isSaving || isConnecting}
+            title="Print directly to Bluetooth thermal printer (Android only)"
+          >
+            <Bluetooth className="w-4 h-4 mr-2" />
+            {isConnecting ? "Connecting..." : isConnected ? "BT Print" : "BT Print"}
+          </Button>
+        )}
       </div>
 
       <Button 
