@@ -67,7 +67,7 @@ const BillPrint = forwardRef<HTMLDivElement, BillPrintProps>(({
   const finalTaxAmount = taxAmount || (taxRate > 0 ? (taxableAmount * taxRate / 100) : 0);
   const netTotal = taxableAmount + finalTaxAmount;
   return (
-    <div ref={ref} className="relative p-8 bg-white text-black" style={{ width: '210mm', minHeight: '297mm' }}>
+    <div ref={ref} className="relative p-8 bg-white text-black" style={{ width: '210mm' }}>
       {/* Watermark */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-5 z-0">
         <div className="text-8xl font-bold transform rotate-45 text-gray-400 select-none">
