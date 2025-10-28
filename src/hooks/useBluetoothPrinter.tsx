@@ -66,10 +66,10 @@ export const useBluetoothPrinter = () => {
     try {
       setIsConnecting(true);
       
-      // Request Bluetooth device
+      // Request Bluetooth device with standard ESC/POS printer service UUID
       const device = await navigator.bluetooth.requestDevice({
         filters: [
-          { services: ['0000ffe0-0000-1000-8000-00805f9b34fb'] }, // Common thermal printer service
+          { services: ['0000ffe0-0000-1000-8000-00805f9b34fb'] }, // Standard serial port service for thermal printers
         ],
         optionalServices: ['0000ffe0-0000-1000-8000-00805f9b34fb']
       });
@@ -91,10 +91,12 @@ export const useBluetoothPrinter = () => {
       console.error('Bluetooth connection error:', error);
       
       let errorMessage = "Failed to connect to printer";
-      if (error.message.includes('User cancelled')) {
-        errorMessage = "Connection cancelled by user";
-      } else if (error.message.includes('No device')) {
-        errorMessage = "No printer selected";
+      if (error.message.includes('User cancelled') || error.name === 'NotFoundError') {
+        errorMessage = "Connection cancelled - No printer selected";
+      } else if (error.name === 'SecurityError') {
+        errorMessage = "Bluetooth access denied - Check browser permissions";
+      } else if (error.name === 'NetworkError') {
+        errorMessage = "Could not connect to printer - Check if printer is on and in pairing mode";
       }
       
       toast({
@@ -128,15 +130,21 @@ export const useBluetoothPrinter = () => {
     }
 
     try {
+      console.log('📤 Starting Bluetooth print...');
+      
       // Connect to GATT server
       const server = await device!.gatt?.connect();
       if (!server) throw new Error('Failed to connect to GATT server');
-
-      // Get the printer service (Common ESC/POS thermal printer UUID)
-      const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
       
-      // Get the characteristic for writing (Common characteristic UUID)
+      console.log('✅ Connected to GATT server');
+
+      // Get the printer service (Standard serial port service UUID for thermal printers)
+      const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
+      console.log('✅ Got printer service');
+      
+      // Get the characteristic for writing (Standard TX characteristic UUID)
       const characteristic = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
+      console.log('✅ Got write characteristic');
 
       // Build receipt content
       let receipt = commands.INIT;
@@ -224,14 +232,26 @@ export const useBluetoothPrinter = () => {
       const encoder = new TextEncoder();
       const data_to_send = encoder.encode(receipt);
       
-      // Send to printer in chunks (max 512 bytes per chunk for BLE)
-      const chunkSize = 512;
+      console.log(`📄 Sending ${data_to_send.length} bytes to printer...`);
+      
+      // Send to printer in chunks (max 20 bytes per chunk for better compatibility)
+      const chunkSize = 20;
+      let sentBytes = 0;
+      
       for (let i = 0; i < data_to_send.length; i += chunkSize) {
         const chunk = data_to_send.slice(i, Math.min(i + chunkSize, data_to_send.length));
         await characteristic.writeValue(chunk);
-        // Small delay between chunks
-        await new Promise(resolve => setTimeout(resolve, 100));
+        sentBytes += chunk.length;
+        
+        // Small delay between chunks for printer buffer
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
+      
+      console.log(`✅ Successfully sent ${sentBytes} bytes to printer`);
+      
+      // Disconnect after printing
+      await server.disconnect();
+      console.log('🔌 Disconnected from printer');
       
       toast({
         title: "Print Successful",
@@ -240,11 +260,20 @@ export const useBluetoothPrinter = () => {
       
       return true;
     } catch (error: any) {
-      console.error('Print error:', error);
+      console.error('❌ Print error:', error);
+      
+      let errorMessage = "Failed to print receipt";
+      if (error.name === 'NetworkError') {
+        errorMessage = "Connection lost - Check if printer is still on";
+      } else if (error.name === 'InvalidStateError') {
+        errorMessage = "Printer not ready - Please try again";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
       
       toast({
         title: "Print Failed",
-        description: error.message || "Failed to print receipt",
+        description: errorMessage,
         variant: "destructive"
       });
       

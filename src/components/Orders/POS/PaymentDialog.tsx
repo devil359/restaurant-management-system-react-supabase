@@ -60,6 +60,10 @@ const PaymentDialog = ({
     printReceipt: bluetoothPrint 
   } = useBluetoothPrinter();
 
+  // Device & Feature Detection for Responsive Printing
+  const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+  const showBluetoothButton = isMobile && isBluetoothSupported;
+
   // Fetch restaurant info
   const { data: restaurantInfo } = useQuery({
     queryKey: ['restaurant-info'],
@@ -1364,36 +1368,40 @@ const PaymentDialog = ({
       </Card>
 
       {/* Print Options Help */}
-      {isBluetoothSupported && (
+      {showBluetoothButton && (
         <div className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 p-2 rounded-lg border border-blue-200 dark:border-blue-800">
-          <span className="font-semibold">📱 Bluetooth Print:</span> Direct print to your thermal printer (Android Chrome only). No watermarks, no third-party apps needed!
+          <span className="font-semibold">📱 Bluetooth Print:</span> Direct print to your thermal printer. No watermarks, no third-party apps needed!
         </div>
       )}
 
-      <div className={`grid ${isBluetoothSupported ? 'grid-cols-3' : 'grid-cols-2'} gap-3`}>
+      <div className="grid grid-cols-2 gap-3">
         <Button variant="outline" onClick={handleEditOrder} className="w-full">
           <Receipt className="w-4 h-4 mr-2" />
           Edit Order
         </Button>
-        <Button 
-          variant="outline" 
-          onClick={handlePrintBill} 
-          className="w-full"
-          disabled={isSaving}
-        >
-          <Printer className="w-4 h-4 mr-2" />
-          {isSaving ? "Saving..." : "Print Bill"}
-        </Button>
-        {isBluetoothSupported && (
+        
+        {/* Responsive Print Button: Bluetooth for Mobile Android, Standard for Desktop/iOS */}
+        {showBluetoothButton ? (
           <Button 
             variant="outline" 
             onClick={handleBluetoothPrint} 
             className="w-full bg-blue-50 hover:bg-blue-100 dark:bg-blue-950 dark:hover:bg-blue-900"
             disabled={isSaving || isConnecting}
-            title="Print directly to Bluetooth thermal printer (Android only)"
+            title="Print directly to Bluetooth thermal printer"
           >
             <Bluetooth className="w-4 h-4 mr-2" />
-            {isConnecting ? "Connecting..." : isConnected ? "BT Print" : "BT Print"}
+            {isConnecting ? "Connecting..." : isConnected ? "BT Print" : "Bluetooth Print"}
+          </Button>
+        ) : (
+          <Button 
+            variant="outline" 
+            onClick={handlePrintBill} 
+            className="w-full"
+            disabled={isSaving}
+            title="Standard print (works on all devices)"
+          >
+            <Printer className="w-4 h-4 mr-2" />
+            {isSaving ? "Saving..." : "Print Bill"}
           </Button>
         )}
       </div>
