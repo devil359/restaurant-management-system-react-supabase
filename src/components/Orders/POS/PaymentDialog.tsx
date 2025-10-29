@@ -219,7 +219,7 @@ const PaymentDialog = ({
               const phone = (order as any).Customer_MobileNumber || (order as any).customer_phone;
               if (name) setCustomerName(name);
               if (phone) {
-                setCustomerMobile(phone);
+                setCustomerMobile(String(phone));
                 setSendBillToMobile(true);
               }
             }
@@ -227,7 +227,7 @@ const PaymentDialog = ({
             // Fall back to details stored on the kitchen order
             if (kitchenOrder?.customer_name) setCustomerName(kitchenOrder.customer_name);
             if ((kitchenOrder as any)?.customer_phone) {
-              setCustomerMobile((kitchenOrder as any).customer_phone);
+              setCustomerMobile(String((kitchenOrder as any).customer_phone));
               setSendBillToMobile(true);
             } else {
               setSendBillToMobile(false);
@@ -519,7 +519,7 @@ const PaymentDialog = ({
       sendBillToMobile, 
       orderId, 
       customerName: customerName.substring(0, 10) + '...', 
-      customerMobile: customerMobile ? '***' + customerMobile.slice(-4) : 'empty'
+      customerMobile: customerMobile ? '***' + String(customerMobile).slice(-4) : 'empty'
     });
 
     // If checkbox not checked, return success
@@ -549,7 +549,8 @@ const PaymentDialog = ({
       return false;
     }
 
-    if (!customerMobile.trim()) {
+    const mobileStr = String(customerMobile);
+    if (!mobileStr.trim()) {
       console.log('❌ Mobile number empty');
       toast({
         title: "Mobile Number Required",
@@ -561,7 +562,7 @@ const PaymentDialog = ({
 
     // Validate mobile number (10 digits)
     const mobileRegex = /^[0-9]{10}$/;
-    if (!mobileRegex.test(customerMobile.trim())) {
+    if (!mobileRegex.test(mobileStr.trim())) {
       console.log('❌ Invalid mobile format:', customerMobile);
       toast({
         title: "Invalid Mobile Number",
@@ -611,14 +612,14 @@ const PaymentDialog = ({
         console.log('💾 Updating order with customer details:', {
           orderId: targetOrderId,
           name: customerName.trim(),
-          phone: customerMobile.trim()
+          phone: String(customerMobile).trim()
         });
 
         const { data: updateData, error: updateError } = await supabase
           .from('orders')
           .update({
             Customer_Name: customerName.trim(),
-            Customer_MobileNumber: customerMobile.trim()
+            Customer_MobileNumber: parseInt(String(customerMobile).trim())
           })
           .eq('id', targetOrderId)
           .select();
@@ -630,7 +631,7 @@ const PaymentDialog = ({
             .from('orders')
             .update({
               customer_name: customerName.trim(),
-              customer_phone: customerMobile.trim()
+              customer_phone: parseInt(String(customerMobile).trim())
             })
             .eq('id', targetOrderId)
             .select();
@@ -1028,16 +1029,17 @@ const PaymentDialog = ({
 
   const checkForActiveReservation = async () => {
     // Only check if mobile number is provided and valid
-    if (!customerMobile || customerMobile.length !== 10) {
+    const mobileStr = String(customerMobile || '');
+    if (!mobileStr || mobileStr.length !== 10) {
       setDetectedReservation(null);
       return;
     }
 
     try {
-      console.log('🔍 Checking for active reservation with mobile:', customerMobile);
+      console.log('🔍 Checking for active reservation with mobile:', mobileStr);
       
       const { data, error } = await supabase.functions.invoke('find-active-reservation', {
-        body: { mobileNumber: customerMobile }
+        body: { mobileNumber: mobileStr }
       });
 
       if (error) {
