@@ -2180,6 +2180,8 @@ export type Database = {
           id: string
           items: string[]
           order_type: string | null
+          payment_status: string | null
+          reservation_id: string | null
           restaurant_id: string
           source: string | null
           status: string
@@ -2195,6 +2197,8 @@ export type Database = {
           id?: string
           items: string[]
           order_type?: string | null
+          payment_status?: string | null
+          reservation_id?: string | null
           restaurant_id: string
           source?: string | null
           status?: string
@@ -2210,6 +2214,8 @@ export type Database = {
           id?: string
           items?: string[]
           order_type?: string | null
+          payment_status?: string | null
+          reservation_id?: string | null
           restaurant_id?: string
           source?: string | null
           status?: string
@@ -2217,6 +2223,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "orders_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_restaurant_id_fkey"
             columns: ["restaurant_id"]
@@ -3714,6 +3727,7 @@ export type Database = {
           customer_name: string
           id: string
           items: Json
+          order_id: string | null
           restaurant_id: string
           room_id: string
           status: string
@@ -3725,6 +3739,7 @@ export type Database = {
           customer_name: string
           id?: string
           items?: Json
+          order_id?: string | null
           restaurant_id: string
           room_id: string
           status?: string
@@ -3736,6 +3751,7 @@ export type Database = {
           customer_name?: string
           id?: string
           items?: Json
+          order_id?: string | null
           restaurant_id?: string
           room_id?: string
           status?: string
@@ -3743,6 +3759,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "room_food_orders_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "room_food_orders_restaurant_id_fkey"
             columns: ["restaurant_id"]

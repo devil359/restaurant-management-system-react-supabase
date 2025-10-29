@@ -49,6 +49,12 @@ const PaymentDialog = ({
   const [promotionCode, setPromotionCode] = useState('');
   const [appliedPromotion, setAppliedPromotion] = useState<any>(null);
   const [manualDiscountPercent, setManualDiscountPercent] = useState<number>(0);
+  const [detectedReservation, setDetectedReservation] = useState<{
+    reservation_id: string;
+    room_id: string;
+    roomName: string;
+    customerName: string;
+  } | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -247,6 +253,7 @@ const PaymentDialog = ({
       setMenuSearchQuery('');
       setNewItemsBuffer([]);
       setIsSaving(false);
+      setDetectedReservation(null);
     }
   }, [isOpen]);
 
@@ -1019,6 +1026,48 @@ const PaymentDialog = ({
     });
   };
 
+  const checkForActiveReservation = async () => {
+    // Only check if mobile number is provided and valid
+    if (!customerMobile || customerMobile.length !== 10) {
+      setDetectedReservation(null);
+      return;
+    }
+
+    try {
+      console.log('🔍 Checking for active reservation with mobile:', customerMobile);
+      
+      const { data, error } = await supabase.functions.invoke('find-active-reservation', {
+        body: { mobileNumber: customerMobile }
+      });
+
+      if (error) {
+        console.error('❌ Error checking reservation:', error);
+        return;
+      }
+
+      if (data?.found) {
+        console.log('✅ Found active reservation:', data);
+        setDetectedReservation({
+          reservation_id: data.reservation_id,
+          room_id: data.room_id,
+          roomName: data.roomName,
+          customerName: data.customerName
+        });
+        
+        toast({
+          title: "Guest Detected!",
+          description: `This customer has an active reservation in ${data.roomName}`,
+        });
+      } else {
+        console.log('ℹ️ No active reservation found');
+        setDetectedReservation(null);
+      }
+    } catch (error) {
+      console.error('❌ Error checking reservation:', error);
+      setDetectedReservation(null);
+    }
+  };
+
   const handleMethodSelect = (method: string) => {
     if (method === 'upi') {
       if (!paymentSettings?.upi_id) {
@@ -1030,9 +1079,92 @@ const PaymentDialog = ({
         return;
       }
       setCurrentStep('qr');
+    } else if (method === 'room') {
+      // Handle charge to room
+      handleChargeToRoom();
     } else {
       // For cash/card, mark as paid immediately
       handleMarkAsPaid(method);
+    }
+  };
+
+  const handleChargeToRoom = async () => {
+    if (!detectedReservation) {
+      toast({
+        title: "No Reservation Found",
+        description: "Unable to charge to room. No active reservation detected.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // Update order with reservation_id and payment status
+      if (orderId) {
+        // First get the order_id from kitchen_orders
+        const { data: kitchenOrder } = await supabase
+          .from('kitchen_orders')
+          .select('order_id')
+          .eq('id', orderId)
+          .single();
+
+        if (kitchenOrder?.order_id) {
+          // Update the order with reservation link and payment status
+          const { error: updateError } = await supabase
+            .from('orders')
+            .update({
+              reservation_id: detectedReservation.reservation_id,
+              payment_status: 'Pending - Room Charge',
+              status: 'completed'
+            })
+            .eq('id', kitchenOrder.order_id);
+
+          if (updateError) throw updateError;
+        }
+
+        // Update kitchen order status
+        const { error: kitchenError } = await supabase
+          .from('kitchen_orders')
+          .update({ status: 'completed' })
+          .eq('id', orderId);
+
+        if (kitchenError) throw kitchenError;
+
+        // Create room food order entry
+        const { error: roomOrderError } = await supabase
+          .from('room_food_orders')
+          .insert({
+            room_id: detectedReservation.room_id,
+            order_id: kitchenOrder?.order_id,
+            total: total,
+            status: 'pending'
+          });
+
+        if (roomOrderError) {
+          console.error('Error creating room food order:', roomOrderError);
+          // Don't fail the whole operation if this fails
+        }
+      }
+
+      toast({
+        title: "Charged to Room",
+        description: `Order charged to ${detectedReservation.roomName}. Will be settled at checkout.`,
+      });
+
+      setCurrentStep('success');
+
+      // Auto-close after 2 seconds
+      setTimeout(() => {
+        onSuccess();
+        onClose();
+      }, 2000);
+    } catch (error) {
+      console.error('Error charging to room:', error);
+      toast({
+        title: "Charge Failed",
+        description: "Failed to charge order to room. Please try another payment method.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -1372,7 +1504,11 @@ const PaymentDialog = ({
       <Button 
         onClick={async () => {
           const saved = await saveCustomerDetails();
-          if (saved) setCurrentStep('method');
+          if (saved) {
+            // Check for active reservation before proceeding to payment
+            await checkForActiveReservation();
+            setCurrentStep('method');
+          }
         }}
         className="w-full bg-green-600 hover:bg-green-700 text-white"
         size="lg"
@@ -1400,6 +1536,30 @@ const PaymentDialog = ({
           Total Amount: ₹{total.toFixed(2)}
         </p>
       </div>
+
+      {/* Show room charge option if guest is detected */}
+      {detectedReservation && (
+        <Card className="p-4 bg-green-50 dark:bg-green-950/20 border-2 border-green-500">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
+              <Check className="w-6 h-6 text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <p className="font-semibold text-green-700 dark:text-green-300">In-House Guest Detected</p>
+              <p className="text-sm text-green-600 dark:text-green-400">
+                {detectedReservation.customerName} - {detectedReservation.roomName}
+              </p>
+            </div>
+          </div>
+          <Button
+            onClick={() => handleMethodSelect('room')}
+            className="w-full h-16 text-lg bg-green-600 hover:bg-green-700 text-white"
+          >
+            <Receipt className="w-6 h-6 mr-3" />
+            Charge to {detectedReservation.roomName}
+          </Button>
+        </Card>
+      )}
 
       <div className="space-y-3">
         <Button

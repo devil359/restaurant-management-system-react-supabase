@@ -88,3 +88,5 @@ verify_jwt = false
 verify_jwt = false
 [functions.deduct-inventory-on-prep]
 verify_jwt = true
+[functions.find-active-reservation]
+verify_jwt = true
