@@ -49,8 +49,7 @@ Deno.serve(async (req) => {
         status,
         rooms:room_id (
           id,
-          name,
-          room_number
+          name
         )
       `)
       .eq('customer_phone', mobileNumber)
@@ -82,7 +81,7 @@ Deno.serve(async (req) => {
 
     // Extract room information
     const room = Array.isArray(reservation.rooms) ? reservation.rooms[0] : reservation.rooms;
-    const roomName = room?.room_number || room?.name || `Room ${room?.id?.slice(0, 8)}`;
+    const roomName = room?.name || `Room ${room?.id?.slice(0, 8)}`;
 
     return new Response(
       JSON.stringify({
