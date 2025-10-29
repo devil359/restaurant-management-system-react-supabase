@@ -82,6 +82,7 @@ const RoomCheckoutPage: React.FC<RoomCheckoutPageProps> = ({
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [billingId, setBillingId] = useState<string | null>(null);
   const [foodOrders, setFoodOrders] = useState<FoodOrder[]>([]);
+  const [posOrders, setPosOrders] = useState<{ id: string; total: number }[]>([]);
   const [restaurantPhone, setRestaurantPhone] = useState<string | null>(null);
   const [restaurantName, setRestaurantName] = useState<string>('');
   const [restaurantAddress, setRestaurantAddress] = useState<string>('');
@@ -126,6 +127,18 @@ const RoomCheckoutPage: React.FC<RoomCheckoutPageProps> = ({
         
         if (ordersError) throw ordersError;
         setFoodOrders(ordersData || []);
+
+        // Fetch POS orders charged to this reservation (Pending - Room Charge)
+        const { data: posData, error: posError } = await supabase
+          .from('orders')
+          .select('id, total, payment_status, reservation_id')
+          .eq('reservation_id', reservationId)
+          .eq('payment_status', 'Pending - Room Charge');
+        if (posError) {
+          console.error('Error fetching POS orders:', posError);
+        } else {
+          setPosOrders((posData || []).map((o: any) => ({ id: o.id, total: Number(o.total) || 0 })));
+        }
         
         if (roomData?.restaurant_id) {
           const { data: restaurantData, error: restaurantError } = await supabase
@@ -196,10 +209,11 @@ const RoomCheckoutPage: React.FC<RoomCheckoutPageProps> = ({
   const roomTotal = room.price * daysStayed;
   
   const foodOrdersTotal = foodOrders.reduce((sum, order) => sum + (order.total || 0), 0);
+  const posOrdersTotal = posOrders.reduce((sum, order) => sum + (order.total || 0), 0);
   
   const additionalChargesTotal = additionalCharges.reduce((sum, charge) => sum + charge.amount, 0);
   
-  const subtotalBeforeDiscount = roomTotal + foodOrdersTotal + additionalChargesTotal;
+  const subtotalBeforeDiscount = roomTotal + foodOrdersTotal + posOrdersTotal + additionalChargesTotal;
   
   // Calculate manual discount
   const manualDiscount = discountPercent > 0 
@@ -473,7 +487,7 @@ const RoomCheckoutPage: React.FC<RoomCheckoutPageProps> = ({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <RoomChargesTable roomPrice={room.price} daysStayed={daysStayed} />
+              <RoomChargesTable roomPrice={room.price} daysStayed={daysStayed} posTotal={posOrdersTotal} />
             </CardContent>
           </Card>
           
