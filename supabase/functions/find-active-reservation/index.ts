@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
     console.log('🔍 Searching for active reservation with sanitized phone:', sanitizedInput);
 
     // Query the reservations table for an active reservation with this phone number
-    // Status 'occupied' means the guest is currently checked in
+    // Check for multiple possible statuses: occupied, checked_in, or confirmed
     // We compare the last 10 digits of stored phone numbers with the sanitized input
     const { data: reservations, error } = await supabaseClient
       .from('reservations')
@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
           name
         )
       `)
-      .eq('status', 'occupied')
+      .in('status', ['occupied', 'checked_in', 'confirmed'])
       .order('created_at', { ascending: false });
 
     if (error) {

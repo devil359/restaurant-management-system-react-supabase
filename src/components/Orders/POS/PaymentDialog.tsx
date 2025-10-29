@@ -619,7 +619,7 @@ const PaymentDialog = ({
           .from('orders')
           .update({
             Customer_Name: customerName.trim(),
-            Customer_MobileNumber: parseInt(String(customerMobile).trim())
+            Customer_MobileNumber: String(customerMobile).trim()
           })
           .eq('id', targetOrderId)
           .select();
@@ -631,7 +631,7 @@ const PaymentDialog = ({
             .from('orders')
             .update({
               customer_name: customerName.trim(),
-              customer_phone: parseInt(String(customerMobile).trim())
+              customer_phone: String(customerMobile).trim()
             })
             .eq('id', targetOrderId)
             .select();
@@ -1034,6 +1034,7 @@ const PaymentDialog = ({
     
     // Only check if we have exactly 10 digits after sanitization
     if (!sanitizedMobile || sanitizedMobile.length !== 10) {
+      console.log('❌ Invalid mobile number for reservation check:', { original: customerMobile, sanitized: sanitizedMobile });
       setDetectedReservation(null);
       return;
     }
@@ -1050,6 +1051,8 @@ const PaymentDialog = ({
         return;
       }
 
+      console.log('📊 Reservation check result:', data);
+
       if (data?.found) {
         console.log('✅ Found active reservation:', data);
         setDetectedReservation({
@@ -1064,7 +1067,7 @@ const PaymentDialog = ({
           description: `This customer has an active reservation in ${data.roomName}`,
         });
       } else {
-        console.log('ℹ️ No active reservation found');
+        console.log('ℹ️ No active reservation found for mobile:', sanitizedMobile);
         setDetectedReservation(null);
       }
     } catch (error) {
