@@ -35,11 +35,23 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log('🔍 Searching for active reservation with phone:', mobileNumber);
+    // Sanitize input: extract last 10 digits
+    const sanitizedInput = String(mobileNumber).replace(/\D/g, '').slice(-10);
+    
+    if (sanitizedInput.length !== 10) {
+      console.log('❌ Invalid mobile number format after sanitization:', sanitizedInput);
+      return new Response(
+        JSON.stringify({ found: false }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('🔍 Searching for active reservation with sanitized phone:', sanitizedInput);
 
     // Query the reservations table for an active reservation with this phone number
     // Status 'occupied' means the guest is currently checked in
-    const { data: reservation, error } = await supabaseClient
+    // We compare the last 10 digits of stored phone numbers with the sanitized input
+    const { data: reservations, error } = await supabaseClient
       .from('reservations')
       .select(`
         id,
@@ -52,11 +64,8 @@ Deno.serve(async (req) => {
           name
         )
       `)
-      .eq('customer_phone', mobileNumber)
       .eq('status', 'occupied')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .order('created_at', { ascending: false });
 
     if (error) {
       console.error('❌ Error querying reservations:', error);
@@ -68,6 +77,12 @@ Deno.serve(async (req) => {
         }
       );
     }
+
+    // Find reservation by comparing last 10 digits
+    const reservation = reservations?.find((res: any) => {
+      const storedPhone = String(res.customer_phone || '').replace(/\D/g, '').slice(-10);
+      return storedPhone === sanitizedInput;
+    });
 
     if (!reservation) {
       console.log('ℹ️ No active reservation found for this mobile number');

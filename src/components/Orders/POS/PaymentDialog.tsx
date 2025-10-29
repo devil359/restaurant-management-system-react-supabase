@@ -1028,18 +1028,21 @@ const PaymentDialog = ({
   };
 
   const checkForActiveReservation = async () => {
-    // Only check if mobile number is provided and valid
-    const mobileStr = String(customerMobile || '');
-    if (!mobileStr || mobileStr.length !== 10) {
+    // Sanitize mobile number: extract last 10 digits
+    const mobileStr = String(customerMobile || '').replace(/\D/g, '');
+    const sanitizedMobile = mobileStr.slice(-10);
+    
+    // Only check if we have exactly 10 digits after sanitization
+    if (!sanitizedMobile || sanitizedMobile.length !== 10) {
       setDetectedReservation(null);
       return;
     }
 
     try {
-      console.log('🔍 Checking for active reservation with mobile:', mobileStr);
+      console.log('🔍 Checking for active reservation with sanitized mobile:', sanitizedMobile);
       
       const { data, error } = await supabase.functions.invoke('find-active-reservation', {
-        body: { mobileNumber: mobileStr }
+        body: { mobileNumber: sanitizedMobile }
       });
 
       if (error) {
