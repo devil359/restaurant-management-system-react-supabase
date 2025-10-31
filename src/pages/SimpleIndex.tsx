@@ -18,7 +18,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import Stats from "@/components/Dashboard/Stats";
 import WeeklySalesChart from "@/components/Dashboard/WeeklySalesChart";
-import PerformanceMetrics from "@/components/Dashboard/PerformanceMetrics";
+import RevenueBreakdown from "@/components/Dashboard/RevenueBreakdown";
 
 const SimpleIndex = () => {
   const { user } = useAuth();
@@ -108,7 +108,7 @@ const SimpleIndex = () => {
           <WeeklySalesChart />
         </StandardizedCard>
         
-        <PerformanceMetrics />
+        <RevenueBreakdown />
       </div>
     </div>
   );
