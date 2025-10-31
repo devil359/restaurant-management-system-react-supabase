@@ -5037,6 +5037,14 @@ export type Database = {
           time_slot: string
         }[]
       }
+      get_analytics_data: {
+        Args: {
+          p_end_date: string
+          p_restaurant_id: string
+          p_start_date: string
+        }
+        Returns: Json
+      }
       get_customer_activities: {
         Args: { customer_id_param: string }
         Returns: {
