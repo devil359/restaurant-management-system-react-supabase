@@ -47,8 +47,9 @@ const AdvancedAnalytics = () => {
 
       const { data, error } = await supabase
         .from("orders")
-        .select("items, total, created_at")
+        .select("items, total, created_at, status")
         .eq("restaurant_id", restaurantId)
+        .neq("status", "cancelled") // Exclude cancelled orders
         .gte("created_at", dateRange.from.toISOString())
         .lte("created_at", dateRange.to.toISOString());
 
@@ -86,8 +87,9 @@ const AdvancedAnalytics = () => {
 
       const { data, error } = await supabase
         .from("orders")
-        .select("customer_name, total, created_at")
+        .select("customer_name, total, created_at, status")
         .eq("restaurant_id", restaurantId)
+        .neq("status", "cancelled") // Exclude cancelled orders
         .gte("created_at", dateRange.from.toISOString())
         .lte("created_at", dateRange.to.toISOString());
 

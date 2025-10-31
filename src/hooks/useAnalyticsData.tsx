@@ -37,27 +37,30 @@ export const useAnalyticsData = () => {
         .order("total_spent", { ascending: false })
         .limit(100);
 
-      // Fetch recent orders from all sources (includes POS, table, takeaway, dine-in, delivery, etc.)
+      // Fetch recent orders from all sources - EXCLUDE cancelled orders
       const { data: regularOrders } = await supabase
         .from("orders")
         .select("*")
         .eq("restaurant_id", userProfile.restaurant_id)
+        .neq("status", "cancelled") // Exclude cancelled orders
         .order("created_at", { ascending: false })
         .limit(100);
 
-      // Room service orders
+      // Room service orders - EXCLUDE cancelled
       const { data: roomOrders } = await supabase
         .from("room_food_orders")
         .select("*")
         .eq("restaurant_id", userProfile.restaurant_id)
+        .neq("status", "cancelled") // Exclude cancelled orders
         .order("created_at", { ascending: false })
         .limit(50);
 
-      // Kitchen orders (for legacy data or specific kitchen-only orders)
+      // Kitchen orders - EXCLUDE cancelled
       const { data: kitchenOrders } = await supabase
         .from("kitchen_orders")
         .select("*")
         .eq("restaurant_id", userProfile.restaurant_id)
+        .neq("status", "cancelled") // Exclude cancelled orders
         .order("created_at", { ascending: false })
         .limit(50);
 
