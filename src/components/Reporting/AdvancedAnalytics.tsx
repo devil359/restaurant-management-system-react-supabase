@@ -7,7 +7,7 @@ import { DatePickerWithRange } from "@/components/ui/date-picker-with-range";
 import { useToast } from "@/hooks/use-toast";
 import { TrendingUp, Download, DollarSign, ShoppingCart, Users, Loader2 } from "lucide-react";
 import { useRestaurantId } from "@/hooks/useRestaurantId";
-import { subDays, format } from "date-fns";
+import { startOfWeek, endOfWeek, format } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { jsPDF } from "jspdf";
@@ -17,8 +17,8 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
 const AdvancedAnalytics = () => {
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
-    from: subDays(new Date(), 30),
-    to: new Date(),
+    from: startOfWeek(new Date()),
+    to: endOfWeek(new Date()),
   });
   const [isExporting, setIsExporting] = useState(false);
   const { toast } = useToast();
@@ -128,7 +128,10 @@ const AdvancedAnalytics = () => {
       </div>
 
       <div className="flex items-center gap-2">
-        <DatePickerWithRange onDateRangeChange={setDateRange} />
+        <DatePickerWithRange 
+          initialDateRange={dateRange}
+          onDateRangeChange={setDateRange} 
+        />
       </div>
 
       <div id="report-content-area" className="space-y-6">
