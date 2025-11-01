@@ -4,7 +4,9 @@ import {
   ShoppingCart,
   Menu as MenuIcon,
   Settings,
-  Package
+  Package,
+  ChefHat,
+  Users
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -15,18 +17,18 @@ export const BottomNav = () => {
   const navItems = [
     {
       icon: LayoutDashboard,
-      label: "Dashboard",
+      label: "Home",
       href: "/"
     },
     {
       icon: ShoppingCart,
-      label: "POS",
-      href: "/pos"
+      label: "Orders",
+      href: "/orders"
     },
     {
-      icon: Package,
-      label: "Inventory",
-      href: "/inventory"
+      icon: ChefHat,
+      label: "Kitchen",
+      href: "/kitchen"
     },
     {
       icon: MenuIcon,
@@ -34,15 +36,15 @@ export const BottomNav = () => {
       href: "/menu"
     },
     {
-      icon: Settings,
-      label: "Settings",
+      icon: Package,
+      label: "More",
       href: "/settings"
     }
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t md:hidden">
-      <nav className="flex justify-around items-center h-16">
+    <nav className="fixed bottom-0 left-0 right-0 bg-background border-t border-border shadow-lg z-50 md:hidden safe-area-inset-bottom">
+      <div className="flex justify-around items-center h-16 px-2">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.href;
@@ -51,22 +53,19 @@ export const BottomNav = () => {
             <button
               key={item.href}
               onClick={() => navigate(item.href)}
-              className="flex flex-col items-center justify-center w-full h-full"
+              className={cn(
+                "flex flex-col items-center justify-center flex-1 h-full transition-all duration-200 rounded-lg active:scale-95 no-tap-highlight touch-target",
+                isActive 
+                  ? "text-primary font-semibold" 
+                  : "text-muted-foreground hover:text-foreground"
+              )}
             >
-              <Icon className={cn(
-                "h-5 w-5",
-                isActive ? "text-sidebar-purple" : "text-gray-500"
-              )} />
-              <span className={cn(
-                "text-xs mt-1",
-                isActive ? "text-sidebar-purple" : "text-gray-500"
-              )}>
-                {item.label}
-              </span>
+              <Icon className={cn("h-6 w-6 mb-1", isActive && "animate-scale-in")} />
+              <span className="text-[10px] leading-tight">{item.label}</span>
             </button>
           );
         })}
-      </nav>
-    </div>
+      </div>
+    </nav>
   );
 };
