@@ -18,29 +18,52 @@ interface LowStockItem {
 
 const LowInventoryAlert = () => {
   const navigate = useNavigate();
-  const restaurantId = useRestaurantId();
+  const { restaurantId } = useRestaurantId();
 
-  const { data: lowStockItems = [], isLoading } = useQuery({
+  console.log("LowInventoryAlert: Component rendering with restaurantId:", restaurantId);
+
+  const { data: lowStockItems = [], isLoading, error } = useQuery({
     queryKey: ["low-stock-dashboard", restaurantId],
     queryFn: async () => {
-      if (!restaurantId) return [];
+      console.log("LowInventoryAlert: Fetching inventory for restaurant:", restaurantId);
+      
+      if (!restaurantId) {
+        console.log("LowInventoryAlert: No restaurant ID available");
+        return [];
+      }
 
       const { data, error } = await supabase
         .from("inventory_items")
         .select("id, name, quantity, reorder_level, unit, category")
         .eq("restaurant_id", restaurantId)
         .not("reorder_level", "is", null)
-        .order("quantity", { ascending: true })
-        .limit(5);
+        .order("quantity", { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error("LowInventoryAlert: Error fetching inventory:", error);
+        throw error;
+      }
+
+      console.log("LowInventoryAlert: Fetched inventory items:", data?.length || 0);
 
       // Filter items where quantity <= reorder_level
-      return (data || []).filter(
+      const lowStock = (data || []).filter(
         (item) => item.quantity <= item.reorder_level
       ) as LowStockItem[];
+      
+      console.log("LowInventoryAlert: Low stock items found:", lowStock.length, lowStock);
+      
+      return lowStock.slice(0, 5); // Limit to 5 items
     },
     enabled: !!restaurantId,
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
+
+  console.log("LowInventoryAlert: Render state -", { 
+    isLoading, 
+    error: error?.message, 
+    itemsCount: lowStockItems.length,
+    restaurantId 
   });
 
   if (isLoading) {
