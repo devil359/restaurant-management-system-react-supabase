@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,9 +33,18 @@ interface CreateUserDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUserCreated: () => void;
+  restaurantId?: string;
 }
 
-export const CreateUserDialog = ({ open, onOpenChange, onUserCreated }: CreateUserDialogProps) => {
+export const CreateUserDialog = ({ 
+  open, 
+  onOpenChange, 
+  onUserCreated,
+  restaurantId: propRestaurantId 
+}: CreateUserDialogProps) => {
+  const { user: currentUser } = useAuth();
+  const targetRestaurantId = propRestaurantId || currentUser?.restaurant_id;
+
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -42,43 +52,61 @@ export const CreateUserDialog = ({ open, onOpenChange, onUserCreated }: CreateUs
     lastName: "",
     roleId: "staff",
     roleName: "staff",
+    restaurantId: targetRestaurantId || "",
   });
   const [loading, setLoading] = useState(false);
-  const [roles, setRoles] = useState<Role[]>([]);
   const [systemRoles] = useState<UserRole[]>(['staff', 'waiter', 'chef', 'manager', 'admin', 'owner']);
-  const { user: currentUser } = useAuth();
+
+  // Fetch restaurants for admin
+  const { data: restaurants = [] } = useQuery({
+    queryKey: ["restaurants-for-user-creation"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("restaurants")
+        .select("id, name")
+        .eq("is_active", true)
+        .order("name");
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: currentUser?.role === 'admin' && !propRestaurantId,
+  });
+
+  // Fetch roles for selected restaurant
+  const { data: roles = [] } = useQuery({
+    queryKey: ["roles-for-user", formData.restaurantId],
+    queryFn: async () => {
+      if (!formData.restaurantId) return [];
+      
+      const { data, error } = await supabase
+        .from("roles")
+        .select("*")
+        .eq("restaurant_id", formData.restaurantId)
+        .order("name");
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!formData.restaurantId && open,
+  });
 
   useEffect(() => {
-    const fetchRoles = async () => {
-      if (!currentUser?.restaurant_id) return;
-      
-      try {
-        const { data, error } = await supabase
-          .from('roles')
-          .select('*')
-          .eq('restaurant_id', currentUser.restaurant_id)
-          .order('name');
-        
-        if (error) throw error;
-        setRoles(data || []);
-      } catch (error) {
-        console.error('Error fetching roles:', error);
-      }
-    };
-
-    fetchRoles();
-  }, [currentUser?.restaurant_id, open]);
+    if (targetRestaurantId) {
+      setFormData(prev => ({ ...prev, restaurantId: targetRestaurantId }));
+    }
+  }, [targetRestaurantId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser?.restaurant_id) {
-      toast.error("No restaurant associated with your account");
+    
+    if (!formData.restaurantId) {
+      toast.error("Please select a restaurant");
       return;
     }
 
     setLoading(true);
     try {
-      // Determine if it's a system role or custom role
       const isSystemRole = systemRoles.includes(formData.roleId as UserRole);
       const customRole = roles.find(r => r.id === formData.roleId);
 
@@ -93,7 +121,7 @@ export const CreateUserDialog = ({ open, onOpenChange, onUserCreated }: CreateUs
           role: isSystemRole ? formData.roleId : 'staff',
           role_id: isSystemRole ? null : formData.roleId,
           role_name_text: isSystemRole ? null : (customRole?.name || formData.roleName),
-          restaurant_id: currentUser.restaurant_id,
+          restaurant_id: formData.restaurantId,
         }
       });
 
@@ -110,8 +138,7 @@ export const CreateUserDialog = ({ open, onOpenChange, onUserCreated }: CreateUs
             role: isSystemRole ? (formData.roleId as UserRole) : 'staff',
             role_id: isSystemRole ? null : formData.roleId,
             role_name_text: isSystemRole ? null : (customRole?.name || formData.roleName),
-            restaurant_id: currentUser.restaurant_id,
-            is_active: true,
+            restaurant_id: formData.restaurantId,
           });
 
         if (profileError) throw profileError;
@@ -127,6 +154,7 @@ export const CreateUserDialog = ({ open, onOpenChange, onUserCreated }: CreateUs
         lastName: "",
         roleId: "staff",
         roleName: "staff",
+        restaurantId: targetRestaurantId || "",
       });
     } catch (error: any) {
       console.error('Error creating user:', error);
@@ -136,17 +164,42 @@ export const CreateUserDialog = ({ open, onOpenChange, onUserCreated }: CreateUs
     }
   };
 
+  const isAdmin = currentUser?.role === 'admin';
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Create New User</DialogTitle>
           <DialogDescription>
-            Add a new user to your organization with specific role and permissions.
+            Add a new user to the organization with specific role and permissions.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
+            {isAdmin && !propRestaurantId && (
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="restaurant" className="text-right">
+                  Restaurant
+                </Label>
+                <Select
+                  value={formData.restaurantId}
+                  onValueChange={(value) => setFormData({ ...formData, restaurantId: value })}
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select restaurant" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {restaurants.map((restaurant) => (
+                      <SelectItem key={restaurant.id} value={restaurant.id}>
+                        {restaurant.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="email" className="text-right">
                 Email

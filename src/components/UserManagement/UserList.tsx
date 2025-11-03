@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -34,33 +35,46 @@ interface User {
   created_at: string;
   updated_at: string;
   email?: string;
+  restaurants?: {
+    name: string;
+  };
 }
 
 interface UserListProps {
   onUserUpdated: () => void;
+  restaurantFilter?: string;
 }
 
-export const UserList = ({ onUserUpdated }: UserListProps) => {
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
+export const UserList = ({ onUserUpdated, restaurantFilter }: UserListProps) => {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const { user: currentUser } = useAuth();
 
-  const fetchUsers = async () => {
-    try {
-      // First get profiles
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
+  const { data: users = [], isLoading, refetch } = useQuery({
+    queryKey: ["users", restaurantFilter, currentUser?.restaurant_id],
+    queryFn: async () => {
+      let query = supabase
+        .from("profiles")
         .select(`
           *,
-          roles:role_id(name)
+          restaurants (
+            name
+          )
         `)
-        .eq('restaurant_id', currentUser?.restaurant_id)
-        .order('created_at', { ascending: false });
+        .order("created_at", { ascending: false });
+
+      // If restaurantFilter is provided (from admin), filter by that restaurant
+      // Otherwise, filter by current user's restaurant (regular user management)
+      if (restaurantFilter) {
+        query = query.eq("restaurant_id", restaurantFilter);
+      } else if (currentUser?.restaurant_id) {
+        query = query.eq("restaurant_id", currentUser.restaurant_id);
+      }
+
+      const { data: profilesData, error: profilesError } = await query;
 
       if (profilesError) throw profilesError;
 
-      // Then get emails from auth.users for each profile
+      // Get emails from auth.users for each profile
       const usersWithEmails = await Promise.all(
         (profilesData || []).map(async (profile) => {
           try {
@@ -78,30 +92,23 @@ export const UserList = ({ onUserUpdated }: UserListProps) => {
         })
       );
 
-      setUsers(usersWithEmails);
-    } catch (error) {
-      console.error('Error fetching users:', error);
-      toast.error('Failed to fetch users');
-    } finally {
-      setLoading(false);
-    }
-  };
+      return usersWithEmails as User[];
+    },
+    enabled: !!(restaurantFilter || currentUser?.restaurant_id),
+  });
 
   useEffect(() => {
-    if (currentUser?.restaurant_id) {
-      fetchUsers();
-    }
-  }, [currentUser?.restaurant_id]);
+    refetch();
+  }, [restaurantFilter, refetch]);
 
   const handleDeleteUser = async (userId: string) => {
     try {
-      // First delete from auth.users (this will cascade to profiles)
       const { error: authError } = await supabase.auth.admin.deleteUser(userId);
       
       if (authError) throw authError;
       
       toast.success('User deleted successfully');
-      fetchUsers();
+      refetch();
       onUserUpdated();
     } catch (error) {
       console.error('Error deleting user:', error);
@@ -128,7 +135,7 @@ export const UserList = ({ onUserUpdated }: UserListProps) => {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return <div className="flex justify-center p-4">Loading users...</div>;
   }
 
@@ -141,6 +148,7 @@ export const UserList = ({ onUserUpdated }: UserListProps) => {
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Role</TableHead>
+              {restaurantFilter === "" && <TableHead>Restaurant</TableHead>}
               <TableHead>Created</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -159,6 +167,9 @@ export const UserList = ({ onUserUpdated }: UserListProps) => {
                     {user.role_name_text || (user.role.charAt(0).toUpperCase() + user.role.slice(1))}
                   </Badge>
                 </TableCell>
+                {restaurantFilter === "" && (
+                  <TableCell>{user.restaurants?.name || 'No restaurant'}</TableCell>
+                )}
                 <TableCell>
                   {new Date(user.created_at).toLocaleDateString()}
                 </TableCell>
@@ -214,7 +225,7 @@ export const UserList = ({ onUserUpdated }: UserListProps) => {
           open={!!editingUser}
           onOpenChange={(open) => !open && setEditingUser(null)}
           onUserUpdated={() => {
-            fetchUsers();
+            refetch();
             onUserUpdated();
             setEditingUser(null);
           }}

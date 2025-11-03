@@ -25,6 +25,7 @@ import Kitchen from "@/pages/Kitchen";
 import Financial from "@/pages/Financial";
 import Security from "@/pages/Security";
 import UserManagement from "@/pages/UserManagement";
+import AdminPanel from "@/pages/AdminPanel";
 import RecipeManagement from "@/pages/RecipeManagement";
 import RoleManagement from "@/pages/RoleManagement";
 import Marketing from "@/pages/Marketing";
@@ -190,6 +191,7 @@ export const AppRoutes = () => {
               <UserManagement />
             </PermissionGuard>
           } />
+          <Route path="/admin" element={<AdminPanel />} />
           <Route path="/role-management" element={
             <PermissionGuard permission="users.manage">
               <RoleManagement />

@@ -3,11 +3,13 @@ import React from "react";
 import { useLocation, Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAccessControl } from "@/hooks/useAccessControl";
+import { useAuth } from "@/hooks/useAuth";
 import {
   LayoutDashboard,
   UtensilsCrossed,
   BookOpen,
   Users,
+  Shield,
   Package,
   Calendar,
   TrendingUp,
@@ -32,6 +34,7 @@ interface SidebarNavigationProps {
 const SidebarNavigation = ({ allowedComponents = [] }: SidebarNavigationProps) => {
   const location = useLocation();
   const { hasAccess, loading } = useAccessControl();
+  const { user } = useAuth();
   
   // Map routes to component names
   const routeToComponentMap: Record<string, string> = {
@@ -58,6 +61,7 @@ const SidebarNavigation = ({ allowedComponents = [] }: SidebarNavigationProps) =
     '/housekeeping': 'housekeeping',
     '/settings': 'settings',
     '/reports': 'reports',
+    '/admin': 'admin-panel',
   };
   
   const navigationItems = [
@@ -82,6 +86,7 @@ const SidebarNavigation = ({ allowedComponents = [] }: SidebarNavigationProps) =
     { icon: Sparkles, label: "AI Assistant", path: "/ai" },
     { icon: Sparkles, label: "Housekeeping", path: "/housekeeping" },
     { icon: FileText, label: "Reports", path: "/reports" },
+    { icon: Shield, label: "Admin Panel", path: "/admin", adminOnly: true },
     { icon: Settings, label: "Settings", path: "/settings" },
   ];
 
@@ -92,6 +97,11 @@ const SidebarNavigation = ({ allowedComponents = [] }: SidebarNavigationProps) =
   return (
     <div className="flex flex-col space-y-1">
       {navigationItems.filter(item => {
+        // Filter by adminOnly first
+        if (item.adminOnly && user?.role !== 'admin') {
+          return false;
+        }
+        
         const componentName = routeToComponentMap[item.path];
         return componentName ? hasAccess(componentName) : true;
       }).map((item) => (
