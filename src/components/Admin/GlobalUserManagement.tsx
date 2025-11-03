@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label";
 
 export const GlobalUserManagement = () => {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>("");
+  const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>("all");
   const [refreshKey, setRefreshKey] = useState(0);
 
   const { data: restaurants = [] } = useQuery({
@@ -66,7 +66,7 @@ export const GlobalUserManagement = () => {
                     <SelectValue placeholder="All Restaurants" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Restaurants</SelectItem>
+                    <SelectItem value="all">All Restaurants</SelectItem>
                     {restaurants.map((restaurant) => (
                       <SelectItem key={restaurant.id} value={restaurant.id}>
                         {restaurant.name}

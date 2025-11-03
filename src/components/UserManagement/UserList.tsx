@@ -64,11 +64,12 @@ export const UserList = ({ onUserUpdated, restaurantFilter }: UserListProps) => 
 
       // If restaurantFilter is provided (from admin), filter by that restaurant
       // Otherwise, filter by current user's restaurant (regular user management)
-      if (restaurantFilter) {
+      if (restaurantFilter && restaurantFilter !== "all") {
         query = query.eq("restaurant_id", restaurantFilter);
-      } else if (currentUser?.restaurant_id) {
+      } else if (!restaurantFilter && currentUser?.restaurant_id) {
         query = query.eq("restaurant_id", currentUser.restaurant_id);
       }
+      // If restaurantFilter is "all", don't add any filter (show all users)
 
       const { data: profilesData, error: profilesError } = await query;
 
@@ -148,7 +149,7 @@ export const UserList = ({ onUserUpdated, restaurantFilter }: UserListProps) => 
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Role</TableHead>
-              {restaurantFilter === "" && <TableHead>Restaurant</TableHead>}
+              {restaurantFilter === "all" && <TableHead>Restaurant</TableHead>}
               <TableHead>Created</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -167,7 +168,7 @@ export const UserList = ({ onUserUpdated, restaurantFilter }: UserListProps) => 
                     {user.role_name_text || (user.role.charAt(0).toUpperCase() + user.role.slice(1))}
                   </Badge>
                 </TableCell>
-                {restaurantFilter === "" && (
+                {restaurantFilter === "all" && (
                   <TableCell>{user.restaurants?.name || 'No restaurant'}</TableCell>
                 )}
                 <TableCell>
