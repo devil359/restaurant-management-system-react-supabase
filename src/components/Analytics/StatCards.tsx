@@ -9,19 +9,32 @@ interface StatCardsProps {
   totalOrders: number;
   averageOrderValue: number;
   ordersToday: number;
+  restaurantRevenue?: number;
+  hotelRevenue?: number;
 }
 
-const StatCards = ({ totalRevenue, totalOrders, averageOrderValue, ordersToday }: StatCardsProps) => {
+const StatCards = ({ 
+  totalRevenue, 
+  totalOrders, 
+  averageOrderValue, 
+  ordersToday,
+  restaurantRevenue = 0,
+  hotelRevenue = 0
+}: StatCardsProps) => {
+  const hasHotelData = hotelRevenue > 0;
+  
   const stats = [
     {
       title: "Total Revenue",
-      subtitle: "30 days",
+      subtitle: hasHotelData ? "Restaurant + Hotel" : "30 days",
       value: totalRevenue,
       icon: BarChart3,
       gradient: "from-purple-500 to-indigo-600",
       bgGradient: "from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20",
       trend: "+12.5%",
-      description: "Based on all sales in the last 30 days"
+      description: hasHotelData 
+        ? `Restaurant: ${(restaurantRevenue / totalRevenue * 100).toFixed(1)}% | Hotel: ${(hotelRevenue / totalRevenue * 100).toFixed(1)}%`
+        : "Based on all sales in the last 30 days"
     },
     {
       title: "Total Orders",
