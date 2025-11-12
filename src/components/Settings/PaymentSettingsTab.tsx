@@ -70,18 +70,32 @@ const PaymentSettingsTab = () => {
 
     setLoading(true);
     try {
-      // Always insert a new record instead of trying to update
-      const { error: insertError } = await supabase
-        .from('payment_settings')
-        .insert({
-          restaurant_id: restaurantId,
-          upi_id: formData.upiId.trim(),
-          upi_name: formData.upiName.trim() || null,
-          is_active: formData.isActive,
-        });
+      if (paymentSettings?.id) {
+        // Update existing settings for this restaurant
+        const { error: updateError } = await supabase
+          .from('payment_settings')
+          .update({
+            upi_id: formData.upiId.trim(),
+            upi_name: formData.upiName.trim() || null,
+            is_active: formData.isActive,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', paymentSettings.id)
+          .eq('restaurant_id', restaurantId);
 
-      if (insertError) {
-        throw insertError;
+        if (updateError) throw updateError;
+      } else {
+        // Insert a new settings row for this restaurant
+        const { error: insertError } = await supabase
+          .from('payment_settings')
+          .insert({
+            restaurant_id: restaurantId,
+            upi_id: formData.upiId.trim(),
+            upi_name: formData.upiName.trim() || null,
+            is_active: formData.isActive,
+          });
+
+        if (insertError) throw insertError;
       }
 
       // Also update restaurant table for backward compatibility
