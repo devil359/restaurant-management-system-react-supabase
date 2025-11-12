@@ -227,14 +227,22 @@ serve(async (req) => {
     }
 
   } catch (error) {
-    console.error('User management error:', error)
+    // Generate a unique error ID for tracking
+    const errorId = crypto.randomUUID();
     
-    // Handle validation errors
+    // Log detailed error server-side only
+    console.error(`[Error ID: ${errorId}] User management error:`, {
+      message: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Handle validation errors with generic messages
     if (error instanceof z.ZodError) {
       return new Response(
         JSON.stringify({ 
-          error: 'Validation failed',
-          details: error.errors.map(e => e.message).join(', ')
+          error: 'Invalid request data',
+          errorId: errorId
         }),
         { 
           status: 400,
@@ -243,10 +251,14 @@ serve(async (req) => {
       )
     }
     
+    // Return generic error to client
     return new Response(
-      JSON.stringify({ error: error.message || 'Internal server error' }),
+      JSON.stringify({ 
+        error: 'An error occurred processing your request',
+        errorId: errorId
+      }),
       { 
-        status: 400,
+        status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     )
