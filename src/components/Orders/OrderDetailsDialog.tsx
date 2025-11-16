@@ -84,6 +84,30 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
   
   if (!order) return null;
 
+  // Fetch the order details including discount info from orders table
+  const { data: orderDetails } = useQuery({
+    queryKey: ['order-details', order.id],
+    queryFn: async () => {
+      const { data: kitchenOrder } = await supabase
+        .from('kitchen_orders')
+        .select('order_id')
+        .eq('id', order.id)
+        .single();
+
+      if (kitchenOrder?.order_id) {
+        const { data } = await supabase
+          .from('orders')
+          .select('discount_amount, discount_percentage')
+          .eq('id', kitchenOrder.order_id)
+          .single();
+        
+        return data;
+      }
+      return null;
+    },
+    enabled: isOpen
+  });
+
   // Calculate total - use the provided price from the item itself
   const subtotal = order.items.reduce((sum, item) => {
     // Make sure we're using the actual price from the menu item
@@ -91,8 +115,13 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
     return sum + (item.quantity * price);
   }, 0);
   
-  const discountAmount = (subtotal * discountPercent) / 100;
-  const total = subtotal - discountAmount;
+  // Use saved discount if available, otherwise use manual discount
+  const savedDiscountAmount = orderDetails?.discount_amount || 0;
+  const savedDiscountPercent = orderDetails?.discount_percentage || 0;
+  const effectiveDiscountPercent = savedDiscountAmount > 0 ? savedDiscountPercent : discountPercent;
+  const effectiveDiscountAmount = savedDiscountAmount > 0 ? savedDiscountAmount : (subtotal * discountPercent) / 100;
+  
+  const total = subtotal - effectiveDiscountAmount;
   const tax = total * 0.08; // 8% tax
   const grandTotal = total + tax;
   const handleQRPayment = () => {
@@ -369,10 +398,10 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
                     <span>₹{subtotal.toFixed(2)}</span>
                   </div>
                   
-                  {discountPercent > 0 && (
+                  {effectiveDiscountPercent > 0 && (
                     <div className="flex justify-between text-sm text-green-600">
-                      <span>Discount ({discountPercent}%)</span>
-                      <span>-₹{discountAmount.toFixed(2)}</span>
+                      <span>Discount ({effectiveDiscountPercent}%)</span>
+                      <span>-₹{effectiveDiscountAmount.toFixed(2)}</span>
                     </div>
                   )}
                   

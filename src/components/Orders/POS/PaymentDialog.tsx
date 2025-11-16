@@ -1151,13 +1151,15 @@ const PaymentDialog = ({
           .single();
 
         if (kitchenOrder?.order_id) {
-          // Update the order with reservation link and payment status
+          // Update the order with reservation link, payment status, and discount info
           const { error: updateError } = await supabase
             .from('orders')
             .update({
               reservation_id: detectedReservation.reservation_id,
               payment_status: 'Pending - Room Charge',
-              status: 'completed'
+              status: 'completed',
+              discount_amount: totalDiscountAmount,
+              discount_percentage: manualDiscountPercent > 0 ? manualDiscountPercent : (appliedPromotion?.discount_percentage || 0)
             })
             .eq('id', kitchenOrder.order_id);
 
@@ -1221,6 +1223,14 @@ const PaymentDialog = ({
       
       // Update order status to completed in database if orderId is provided
       if (orderId) {
+        // First get the kitchen order to find linked order_id
+        const { data: kitchenOrder } = await supabase
+          .from('kitchen_orders')
+          .select('order_id')
+          .eq('id', orderId)
+          .single();
+
+        // Update kitchen order status
         const { error } = await supabase
           .from('kitchen_orders')
           .update({ status: 'completed' })
@@ -1233,6 +1243,23 @@ const PaymentDialog = ({
             description: "Payment received but order status update failed.",
             variant: "destructive"
           });
+        }
+
+        // Update the linked order with payment status and discount info
+        if (kitchenOrder?.order_id) {
+          const { error: orderError } = await supabase
+            .from('orders')
+            .update({
+              payment_status: 'paid',
+              status: 'completed',
+              discount_amount: totalDiscountAmount,
+              discount_percentage: manualDiscountPercent > 0 ? manualDiscountPercent : (appliedPromotion?.discount_percentage || 0)
+            })
+            .eq('id', kitchenOrder.order_id);
+
+          if (orderError) {
+            console.error('Error updating order payment status:', orderError);
+          }
         }
 
         // Log promotion usage if promotion was applied
