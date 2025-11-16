@@ -398,9 +398,23 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
                     <span>₹{subtotal.toFixed(2)}</span>
                   </div>
                   
-                  {effectiveDiscountPercent > 0 && (
+                  {effectiveDiscountPercent > 0 && selectedPromotion && (
+                    <div className="flex justify-between text-sm text-green-600">
+                      <span>Promo Discount ({promotions.find(p => p.id === selectedPromotion)?.name || 'Applied'})</span>
+                      <span>-₹{effectiveDiscountAmount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  
+                  {effectiveDiscountPercent > 0 && !selectedPromotion && savedDiscountAmount > 0 && (
                     <div className="flex justify-between text-sm text-green-600">
                       <span>Discount ({effectiveDiscountPercent}%)</span>
+                      <span>-₹{effectiveDiscountAmount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  
+                  {effectiveDiscountPercent > 0 && (
+                    <div className="flex justify-between text-sm font-medium text-green-600">
+                      <span>Total Discount</span>
                       <span>-₹{effectiveDiscountAmount.toFixed(2)}</span>
                     </div>
                   )}
@@ -411,7 +425,7 @@ const OrderDetailsDialog = ({ isOpen, onClose, order, onPrintBill, onEditOrder }
                   </div> */}
                   
                   <div className="flex justify-between font-bold text-lg border-t pt-2">
-                    <span>Total</span>
+                    <span>Total Due</span>
                     <span className="text-purple-600">₹{grandTotal.toFixed(2)}</span>
                   </div>
                 </div>
