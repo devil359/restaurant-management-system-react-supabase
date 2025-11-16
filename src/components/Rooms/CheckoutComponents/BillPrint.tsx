@@ -26,6 +26,7 @@ interface BillPrintProps {
   additionalCharges: { name: string; amount: number; }[];
   serviceCharge: number;
   discount: number;
+  discountPercentage?: number;
   grandTotal: number;
   paymentMethod: string;
   billId: string;
@@ -54,6 +55,7 @@ const BillPrint = forwardRef<HTMLDivElement, BillPrintProps>(({
   additionalCharges,
   serviceCharge,
   discount,
+  discountPercentage,
   grandTotal,
   paymentMethod,
   billId,
@@ -182,7 +184,7 @@ const BillPrint = forwardRef<HTMLDivElement, BillPrintProps>(({
         )}
         {discount > 0 && (
           <div className="flex justify-between">
-            <span>Discount:</span>
+            <span>Discount{discountPercentage ? ` (${discountPercentage}%)` : ''}:</span>
             <span>-{discount.toFixed(2)}</span>
           </div>
         )}

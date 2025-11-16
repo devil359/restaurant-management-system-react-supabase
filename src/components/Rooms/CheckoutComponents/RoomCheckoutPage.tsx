@@ -230,7 +230,16 @@ const RoomCheckoutPage: React.FC<RoomCheckoutPageProps> = ({
   // Total discount combines both manual and promotion
   const totalDiscount = manualDiscount + calculatedPromotionDiscount;
   
-  const serviceCharge = serviceChargeEnabled 
+  // Calculate effective discount percentage for display
+  const effectiveDiscountPercentage = discountPercent > 0 
+    ? discountPercent 
+    : (appliedPromotion?.discount_percentage 
+      ? appliedPromotion.discount_percentage 
+      : (totalDiscount > 0 && subtotalBeforeDiscount > 0 
+        ? Math.round((totalDiscount / subtotalBeforeDiscount) * 100 * 100) / 100 
+        : 0));
+  
+  const serviceCharge = serviceChargeEnabled
     ? ((subtotalBeforeDiscount - totalDiscount) * serviceChargePercent / 100)
     : 0;
   
@@ -644,6 +653,7 @@ const RoomCheckoutPage: React.FC<RoomCheckoutPageProps> = ({
                   additionalCharges={additionalCharges}
                   serviceCharge={serviceCharge}
                   discount={totalDiscount}
+                  discountPercentage={totalDiscount > 0 ? effectiveDiscountPercentage : undefined}
                   grandTotal={grandTotal}
                   paymentMethod={paymentMethod}
                   billId={billingId || 'TEMP-' + new Date().getTime()}
