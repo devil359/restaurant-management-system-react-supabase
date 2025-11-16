@@ -25,6 +25,8 @@ interface ActiveOrder {
   status: "new" | "preparing" | "ready" | "completed" | "held";
   items: OrderItem[];
   created_at: string;
+  discount_amount?: number;
+  discount_percentage?: number;
 }
 
 interface ActiveOrdersListProps {
@@ -52,7 +54,13 @@ const ActiveOrdersList = ({ onRecallOrder }: ActiveOrdersListProps = {}) => {
       // Build query based on status filter
       let query = supabase
         .from("kitchen_orders")
-        .select("*")
+        .select(`
+          *,
+          orders!kitchen_orders_order_id_fkey (
+            discount_amount,
+            discount_percentage
+          )
+        `)
         .eq("restaurant_id", profile.restaurant_id);
 
       // Only filter out completed orders if status filter is not "all"
@@ -70,13 +78,18 @@ const ActiveOrdersList = ({ onRecallOrder }: ActiveOrdersListProps = {}) => {
       const { data: orders } = await query.order("created_at", { ascending: false });
 
       if (orders) {
-        const formattedOrders: ActiveOrder[] = orders.map(order => ({
-          id: order.id,
-          source: order.source,
-          status: order.status as "new" | "preparing" | "ready" | "completed" | "held",
-          items: parseOrderItems(order.items),
-          created_at: order.created_at
-        }));
+        const formattedOrders: ActiveOrder[] = orders.map(order => {
+          const orderData = order.orders as any;
+          return {
+            id: order.id,
+            source: order.source,
+            status: order.status as "new" | "preparing" | "ready" | "completed" | "held",
+            items: parseOrderItems(order.items),
+            created_at: order.created_at,
+            discount_amount: orderData?.discount_amount || 0,
+            discount_percentage: orderData?.discount_percentage || 0,
+          };
+        });
         
         setActiveOrders(formattedOrders);
       }
@@ -133,15 +146,26 @@ const ActiveOrdersList = ({ onRecallOrder }: ActiveOrdersListProps = {}) => {
         (payload) => {
           if (payload.eventType === "INSERT") {
             const newOrder = payload.new;
-            const formattedOrder: ActiveOrder = {
-              id: newOrder.id,
-              source: newOrder.source,
-              status: newOrder.status as "new" | "preparing" | "ready" | "completed" | "held",
-              items: parseOrderItems(newOrder.items),
-              created_at: newOrder.created_at
-            };
             
-            setActiveOrders((prev) => [formattedOrder, ...prev]);
+            // Fetch the discount information from orders table
+            supabase
+              .from("orders")
+              .select("discount_amount, discount_percentage")
+              .eq("id", newOrder.order_id)
+              .single()
+              .then(({ data: orderData }) => {
+                const formattedOrder: ActiveOrder = {
+                  id: newOrder.id,
+                  source: newOrder.source,
+                  status: newOrder.status as "new" | "preparing" | "ready" | "completed" | "held",
+                  items: parseOrderItems(newOrder.items),
+                  created_at: newOrder.created_at,
+                  discount_amount: orderData?.discount_amount || 0,
+                  discount_percentage: orderData?.discount_percentage || 0,
+                };
+                
+                setActiveOrders((prev) => [formattedOrder, ...prev]);
+              });
           } else if (payload.eventType === "UPDATE") {
             const updatedOrder = payload.new;
             
@@ -241,6 +265,13 @@ const ActiveOrdersList = ({ onRecallOrder }: ActiveOrdersListProps = {}) => {
       const price = typeof item.price === 'number' ? item.price : 0;
       return sum + (price * item.quantity);
     }, 0);
+  };
+
+  // Calculate final total after discount
+  const calculateFinalTotal = (items: OrderItem[], discountAmount?: number): number => {
+    const subtotal = calculateOrderTotal(items);
+    const discount = discountAmount || 0;
+    return subtotal - discount;
   };
 
   const getCardStyleByStatus = (status: string) => {
@@ -348,7 +379,7 @@ const ActiveOrdersList = ({ onRecallOrder }: ActiveOrdersListProps = {}) => {
 
                 <div className="mt-2 pt-2 border-t flex justify-between items-center">
                   <div className="font-semibold text-sm">
-                    Total: ₹{calculateOrderTotal(order.items).toFixed(2)}
+                    Total: ₹{calculateFinalTotal(order.items, order.discount_amount).toFixed(2)}
                   </div>
                   <div className="flex gap-1">
                     <Button 
