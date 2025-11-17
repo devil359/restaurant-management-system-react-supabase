@@ -29,14 +29,106 @@ const AdvancedAnalytics = () => {
     queryFn: async () => {
       if (!restaurantId || !dateRange?.from || !dateRange?.to) return null;
 
-      const { data, error } = await supabase.rpc("get_analytics_data", {
-        p_restaurant_id: restaurantId,
-        p_start_date: format(dateRange.from, "yyyy-MM-dd"),
-        p_end_date: format(dateRange.to, "yyyy-MM-dd"),
-      });
+      const startDate = format(dateRange.from, "yyyy-MM-dd");
+      const endDate = format(dateRange.to, "yyyy-MM-dd");
 
-      if (error) throw error;
-      return data;
+      // Fetch orders within date range
+      const { data: orders, error: ordersError } = await supabase
+        .from("orders")
+        .select("*, items:order_items(*)")
+        .eq("restaurant_id", restaurantId)
+        .gte("created_at", startDate)
+        .lte("created_at", endDate)
+        .neq("status", "cancelled");
+
+      if (ordersError) throw ordersError;
+
+      // Fetch menu items for category mapping
+      const { data: menuItems, error: menuError } = await supabase
+        .from("menu_items")
+        .select("id, name, category")
+        .eq("restaurant_id", restaurantId);
+
+      if (menuError) throw menuError;
+
+      // Fetch customers created in this period
+      const { data: newCustomers, error: customersError } = await supabase
+        .from("customers")
+        .select("id")
+        .eq("restaurant_id", restaurantId)
+        .gte("created_at", startDate)
+        .lte("created_at", endDate);
+
+      if (customersError) throw customersError;
+
+      // Calculate KPIs
+      const totalRevenue = orders?.reduce((sum, order) => sum + (order.total || 0), 0) || 0;
+      const totalOrders = orders?.length || 0;
+      const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+      const newCustomersCount = newCustomers?.length || 0;
+
+      // Daily revenue trend
+      const dailyRevenue = orders?.reduce((acc: any, order) => {
+        const date = format(new Date(order.created_at), "MMM dd");
+        if (!acc[date]) acc[date] = 0;
+        acc[date] += order.total || 0;
+        return acc;
+      }, {});
+
+      const revenueChartData = Object.entries(dailyRevenue || {}).map(([date, revenue]) => ({
+        date,
+        revenue,
+      }));
+
+      // Sales by category
+      const categoryRevenue = orders?.reduce((acc: any, order) => {
+        const items = order.items || [];
+        items.forEach((item: any) => {
+          const menuItem = menuItems?.find((mi) => mi.id === item.menu_item_id);
+          const category = menuItem?.category || "Other";
+          if (!acc[category]) acc[category] = 0;
+          acc[category] += (item.price || 0) * (item.quantity || 1);
+        });
+        return acc;
+      }, {});
+
+      const categoryChartData = Object.entries(categoryRevenue || {}).map(([name, value]) => ({
+        name,
+        value,
+      }));
+
+      // Top performing products
+      const productRevenue = orders?.reduce((acc: any, order) => {
+        const items = order.items || [];
+        items.forEach((item: any) => {
+          const menuItem = menuItems?.find((mi) => mi.id === item.menu_item_id);
+          const name = menuItem?.name || "Unknown";
+          if (!acc[name]) {
+            acc[name] = { name, revenue: 0, quantity: 0 };
+          }
+          acc[name].revenue += (item.price || 0) * (item.quantity || 1);
+          acc[name].quantity += item.quantity || 1;
+        });
+        return acc;
+      }, {});
+
+      const topProductsData = Object.values(productRevenue || {})
+        .sort((a: any, b: any) => b.revenue - a.revenue)
+        .slice(0, 10);
+
+      return {
+        kpis: {
+          totalRevenue: totalRevenue,
+          totalOrders: totalOrders,
+          avgOrderValue: avgOrderValue,
+          newCustomers: newCustomersCount,
+        },
+        charts: {
+          dailyRevenue: revenueChartData,
+          salesByCategory: categoryChartData,
+          topProducts: topProductsData,
+        },
+      };
     },
     enabled: !!restaurantId && !!dateRange?.from && !!dateRange?.to,
   });
@@ -104,8 +196,17 @@ const AdvancedAnalytics = () => {
     );
   }
 
-  const kpis = analyticsData?.kpis || {};
-  const charts = analyticsData?.charts || {};
+  const kpis = analyticsData?.kpis || {
+    totalRevenue: 0,
+    totalOrders: 0,
+    avgOrderValue: 0,
+    newCustomers: 0,
+  };
+  const charts = analyticsData?.charts || {
+    dailyRevenue: [],
+    salesByCategory: [],
+    topProducts: [],
+  };
 
   return (
     <div className="space-y-6">
