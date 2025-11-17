@@ -751,132 +751,132 @@ const PaymentDialog = ({
       });
       
       const pageWidth = doc.internal.pageSize.getWidth();
-      let yPos = 3; // Reduced top margin
+      let yPos = 2; // Reduced top margin
       
       // Restaurant Header
-      doc.setFontSize(12); // Larger font for restaurant name
+      doc.setFontSize(14); // Larger font for restaurant name
       doc.setFont('helvetica', 'bold');
       doc.text(restaurantInfo?.name || 'Restaurant', pageWidth / 2, yPos, { align: 'center' });
-      yPos += 4; // Reduced spacing
+      yPos += 5; // Increased spacing
       
-      doc.setFontSize(7); // Smaller font for address
+      doc.setFontSize(9); // Larger font for address
       doc.setFont('helvetica', 'normal');
       if (restaurantInfo?.address) {
-        const addressLines = doc.splitTextToSize(restaurantInfo.address, pageWidth - 4);
+        const addressLines = doc.splitTextToSize(restaurantInfo.address, pageWidth - 2);
         doc.text(addressLines, pageWidth / 2, yPos, { align: 'center' });
-        yPos += addressLines.length * 3;
+        yPos += addressLines.length * 3.5;
       }
       if (restaurantInfo?.phone) {
         doc.text(`Ph: ${restaurantInfo.phone}`, pageWidth / 2, yPos, { align: 'center' });
-        yPos += 3;
+        yPos += 3.5;
       }
       if (restaurantInfo?.gstin) {
         doc.text(`GSTIN: ${restaurantInfo.gstin}`, pageWidth / 2, yPos, { align: 'center' });
-        yPos += 3;
+        yPos += 3.5;
       }
       
       // Dashed line
       yPos += 1;
-      for (let i = 2; i < pageWidth - 2; i += 2) {
+      for (let i = 1; i < pageWidth - 1; i += 2) {
         doc.line(i, yPos, i + 1, yPos);
       }
       yPos += 3;
       
       // Invoice Title
-      doc.setFontSize(9);
+      doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
       doc.text(restaurantInfo?.gstin ? 'TAX INVOICE' : 'BILL RECEIPT', pageWidth / 2, yPos, { align: 'center' });
       yPos += 3;
       
       // Dashed line
-      for (let i = 2; i < pageWidth - 2; i += 2) {
+      for (let i = 1; i < pageWidth - 1; i += 2) {
         doc.line(i, yPos, i + 1, yPos);
       }
       yPos += 3;
       
       // Bill details
-      doc.setFontSize(7.5);
+      doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
       const billNumber = `#${Date.now().toString().slice(-6)}`;
       const currentDate = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
       const currentTime = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
       
-      doc.text(`Bill#: ${billNumber}`, 2, yPos);
-      yPos += 3;
+      doc.text(`Bill#: ${billNumber}`, 1, yPos);
+      yPos += 3.5;
       
       if (tableNumber) {
-        doc.text(`To: Table ${tableNumber}`, 2, yPos);
+        doc.text(`To: Table ${tableNumber}`, 1, yPos);
       } else if (customerName) {
-        doc.text(`To: ${customerName}`, 2, yPos);
+        doc.text(`To: ${customerName}`, 1, yPos);
       } else {
-        doc.text('To: POS Order', 2, yPos);
+        doc.text('To: POS Order', 1, yPos);
       }
-      yPos += 3;
+      yPos += 3.5;
       
-      doc.text(`Date: ${currentDate}`, 2, yPos);
-      yPos += 3;
+      doc.text(`Date: ${currentDate}`, 1, yPos);
+      yPos += 3.5;
       
-      doc.text(`Time: ${currentTime}`, 2, yPos);
-      yPos += 3;
+      doc.text(`Time: ${currentTime}`, 1, yPos);
+      yPos += 3.5;
       
       // Guest details if available
       if (customerName) {
-        doc.text(`Guest: ${customerName}`, 2, yPos);
-        yPos += 3;
+        doc.text(`Guest: ${customerName}`, 1, yPos);
+        yPos += 3.5;
       }
       if (customerMobile) {
-        doc.text(`Phone: ${customerMobile}`, 2, yPos);
-        yPos += 3;
+        doc.text(`Phone: ${customerMobile}`, 1, yPos);
+        yPos += 3.5;
       }
       
       // Dashed line
-      for (let i = 2; i < pageWidth - 2; i += 2) {
+      for (let i = 1; i < pageWidth - 1; i += 2) {
         doc.line(i, yPos, i + 1, yPos);
       }
       yPos += 3;
       
       // Items header
-      doc.setFontSize(8.5);
+      doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
       doc.text('Particulars', pageWidth / 2, yPos, { align: 'center' });
-      yPos += 3;
+      yPos += 3.5;
       
       // Column headers
-      doc.setFontSize(7);
-      doc.text('Item', 2, yPos);
+      doc.setFontSize(8.5);
+      doc.text('Item', 1, yPos);
       doc.text('Qty', pageWidth - 28, yPos, { align: 'center' });
       doc.text('Rate', pageWidth - 18, yPos, { align: 'right' });
-      doc.text('Amount', pageWidth - 2, yPos, { align: 'right' });
+      doc.text('Amount', pageWidth - 1, yPos, { align: 'right' });
       yPos += 1;
       
       // Line under headers
-      doc.line(2, yPos, pageWidth - 2, yPos);
-      yPos += 2.5;
+      doc.line(1, yPos, pageWidth - 1, yPos);
+      yPos += 3;
       
       // Items
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.5);
+      doc.setFontSize(9);
       orderItems.forEach(item => {
         const itemName = doc.splitTextToSize(item.name, 28);
-        doc.text(itemName, 2, yPos);
+        doc.text(itemName, 1, yPos);
         doc.text(item.quantity.toString(), pageWidth - 28, yPos, { align: 'center' });
         doc.text(item.price.toFixed(2), pageWidth - 18, yPos, { align: 'right' });
-        doc.text((item.price * item.quantity).toFixed(2), pageWidth - 2, yPos, { align: 'right' });
-        yPos += Math.max(itemName.length * 3, 3);
+        doc.text((item.price * item.quantity).toFixed(2), pageWidth - 1, yPos, { align: 'right' });
+        yPos += Math.max(itemName.length * 3.5, 3.5);
       });
       
       // Dashed line
       yPos += 1;
-      for (let i = 2; i < pageWidth - 2; i += 2) {
+      for (let i = 1; i < pageWidth - 1; i += 2) {
         doc.line(i, yPos, i + 1, yPos);
       }
       yPos += 3;
       
       // Totals
-      doc.setFontSize(7.5);
-      doc.text('Sub Total:', 2, yPos);
-      doc.text(subtotal.toFixed(2), pageWidth - 2, yPos, { align: 'right' });
-      yPos += 3;
+      doc.setFontSize(9);
+      doc.text('Sub Total:', 1, yPos);
+      doc.text(subtotal.toFixed(2), pageWidth - 1, yPos, { align: 'right' });
+      yPos += 3.5;
       
       const cgstRate = 0;
       const sgstRate = 0;
@@ -884,61 +884,61 @@ const PaymentDialog = ({
       const sgst = 0;
       
       if (cgst > 0 || sgst > 0) {
-        doc.text(`CGST @ ${(cgstRate * 100).toFixed(1)}%:`, 2, yPos);
-        doc.text(cgst.toFixed(2), pageWidth - 2, yPos, { align: 'right' });
-        yPos += 3;
+        doc.text(`CGST @ ${(cgstRate * 100).toFixed(1)}%:`, 1, yPos);
+        doc.text(cgst.toFixed(2), pageWidth - 1, yPos, { align: 'right' });
+        yPos += 3.5;
         
-        doc.text(`SGST @ ${(sgstRate * 100).toFixed(1)}%:`, 2, yPos);
-        doc.text(sgst.toFixed(2), pageWidth - 2, yPos, { align: 'right' });
-        yPos += 3;
+        doc.text(`SGST @ ${(sgstRate * 100).toFixed(1)}%:`, 1, yPos);
+        doc.text(sgst.toFixed(2), pageWidth - 1, yPos, { align: 'right' });
+        yPos += 3.5;
       }
       
       // Promotion discount if applied
       if (appliedPromotion && promotionDiscountAmount > 0) {
         doc.setFont('helvetica', 'normal');
-        doc.text(`Promo Discount (${appliedPromotion.name}):`, 2, yPos);
-        doc.text(`-${promotionDiscountAmount.toFixed(2)}`, pageWidth - 2, yPos, { align: 'right' });
-        yPos += 3;
+        doc.text(`Promo Discount (${appliedPromotion.name}):`, 1, yPos);
+        doc.text(`-${promotionDiscountAmount.toFixed(2)}`, pageWidth - 1, yPos, { align: 'right' });
+        yPos += 3.5;
         if (appliedPromotion.promotion_code) {
-          doc.setFontSize(6.5);
-          doc.text(`Code: ${appliedPromotion.promotion_code}`, 2, yPos);
-          yPos += 2.5;
-          doc.setFontSize(7.5);
+          doc.setFontSize(8);
+          doc.text(`Code: ${appliedPromotion.promotion_code}`, 1, yPos);
+          yPos += 3;
+          doc.setFontSize(9);
         }
       }
       
       // Manual discount if applied
       if (manualDiscountPercent > 0) {
         doc.setFont('helvetica', 'normal');
-        doc.text(`Discount (${manualDiscountPercent}%):`, 2, yPos);
-        doc.text(`-${manualDiscountAmount.toFixed(2)}`, pageWidth - 2, yPos, { align: 'right' });
-        yPos += 3;
+        doc.text(`Discount (${manualDiscountPercent}%):`, 1, yPos);
+        doc.text(`-${manualDiscountAmount.toFixed(2)}`, pageWidth - 1, yPos, { align: 'right' });
+        yPos += 3.5;
       }
       
       // Total discount
       if (totalDiscountAmount > 0) {
         doc.setFont('helvetica', 'bold');
-        doc.text('Total Discount:', 2, yPos);
-        doc.text(`-${totalDiscountAmount.toFixed(2)}`, pageWidth - 2, yPos, { align: 'right' });
-        yPos += 3;
+        doc.text('Total Discount:', 1, yPos);
+        doc.text(`-${totalDiscountAmount.toFixed(2)}`, pageWidth - 1, yPos, { align: 'right' });
+        yPos += 3.5;
       }
       
       // Dashed line
-      for (let i = 2; i < pageWidth - 2; i += 2) {
+      for (let i = 1; i < pageWidth - 1; i += 2) {
         doc.line(i, yPos, i + 1, yPos);
       }
       yPos += 3;
       
       // Net Amount
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(10);
-      doc.text('Net Amount:', 2, yPos);
-      doc.text(`₹${total.toFixed(2)}`, pageWidth - 2, yPos, { align: 'right' });
+      doc.setFontSize(12);
+      doc.text('Net Amount:', 1, yPos);
+      doc.text(`₹${total.toFixed(2)}`, pageWidth - 1, yPos, { align: 'right' });
       yPos += 5;
       
       // Add QR code if UPI is configured and we're in QR step
       if (qrCodeUrl && paymentSettings?.upi_id) {
-        for (let i = 2; i < pageWidth - 2; i += 2) {
+        for (let i = 1; i < pageWidth - 1; i += 2) {
           doc.line(i, yPos, i + 1, yPos);
         }
         yPos += 3;
@@ -947,24 +947,24 @@ const PaymentDialog = ({
         doc.addImage(qrCodeUrl, 'PNG', (pageWidth - qrSize) / 2, yPos, qrSize, qrSize);
         yPos += qrSize + 2;
         
-        doc.setFontSize(6.5);
+        doc.setFontSize(8);
         doc.setFont('helvetica', 'normal');
         doc.text('Scan QR to pay', pageWidth / 2, yPos, { align: 'center' });
         yPos += 3;
       }
       
       // Dashed line
-      for (let i = 2; i < pageWidth - 2; i += 2) {
+      for (let i = 1; i < pageWidth - 1; i += 2) {
         doc.line(i, yPos, i + 1, yPos);
       }
       yPos += 3;
       
       // Footer
-      doc.setFontSize(8.5);
+      doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
       doc.text('Thank You!', pageWidth / 2, yPos, { align: 'center' });
-      yPos += 3;
-      doc.setFontSize(6);
+      yPos += 3.5;
+      doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
       doc.text('Please visit again', pageWidth / 2, yPos, { align: 'center' });
       
