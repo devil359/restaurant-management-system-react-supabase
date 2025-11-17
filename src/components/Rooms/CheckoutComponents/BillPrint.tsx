@@ -69,20 +69,20 @@ const BillPrint = forwardRef<HTMLDivElement, BillPrintProps>(({
   const netTotal = taxableAmount + finalTaxAmount;
 
   return (
-    <div ref={ref} className="bg-white text-black" style={{ width: '58mm', padding: '2mm', fontSize: '11px', fontFamily: 'monospace' }}>
+    <div ref={ref} className="bg-white text-black" style={{ width: '58mm', padding: '0.5mm', fontSize: '13px', fontFamily: 'monospace' }}>
       {/* Header */}
       <div className="text-center mb-1">
-        <h1 className="font-bold mb-0.5" style={{ fontSize: '16px', lineHeight: '1.2' }}>
+        <h1 className="font-bold mb-0.5" style={{ fontSize: '18px', lineHeight: '1.2' }}>
           {restaurantName || 'Hotel/Restaurant Name'}
         </h1>
-        <p className="mb-0.5" style={{ fontSize: '9px', lineHeight: '1.3' }}>
+        <p className="mb-0.5" style={{ fontSize: '11px', lineHeight: '1.3' }}>
           {restaurantAddress || 'Address, City, State, PIN'}
         </p>
         {restaurantPhone && (
-          <p className="mb-0.5" style={{ fontSize: '9px' }}>Ph: {restaurantPhone}</p>
+          <p className="mb-0.5" style={{ fontSize: '11px' }}>Ph: {restaurantPhone}</p>
         )}
         {gstNumber && (
-          <p className="font-semibold" style={{ fontSize: '9px' }}>GSTIN: {gstNumber}</p>
+          <p className="font-semibold" style={{ fontSize: '11px' }}>GSTIN: {gstNumber}</p>
         )}
       </div>
       
@@ -91,7 +91,7 @@ const BillPrint = forwardRef<HTMLDivElement, BillPrintProps>(({
 
       {/* Invoice Title */}
       <div className="text-center mb-1">
-        <h2 className="font-bold" style={{ fontSize: '12px' }}>
+        <h2 className="font-bold" style={{ fontSize: '14px' }}>
           {gstNumber ? 'TAX INVOICE' : 'BILL RECEIPT'}
         </h2>
       </div>
@@ -101,10 +101,10 @@ const BillPrint = forwardRef<HTMLDivElement, BillPrintProps>(({
 
       {/* Bill Info */}
       <div className="mb-1">
-        <p style={{ fontSize: '10px' }}><span className="font-semibold">Bill#:</span> {billId}</p>
-        <p style={{ fontSize: '10px' }}><span className="font-semibold">To:</span> {roomName}</p>
-        <p style={{ fontSize: '10px' }}><span className="font-semibold">Date:</span> {format(new Date(billDate), 'dd MMM yyyy')}</p>
-        <p style={{ fontSize: '10px' }}><span className="font-semibold">Time:</span> {format(new Date(billDate), 'hh:mm a')}</p>
+        <p style={{ fontSize: '12px' }}><span className="font-semibold">Bill#:</span> {billId}</p>
+        <p style={{ fontSize: '12px' }}><span className="font-semibold">To:</span> {roomName}</p>
+        <p style={{ fontSize: '12px' }}><span className="font-semibold">Date:</span> {format(new Date(billDate), 'dd MMM yyyy')}</p>
+        <p style={{ fontSize: '12px' }}><span className="font-semibold">Time:</span> {format(new Date(billDate), 'hh:mm a')}</p>
       </div>
       
       {/* Divider */}
@@ -112,9 +112,9 @@ const BillPrint = forwardRef<HTMLDivElement, BillPrintProps>(({
       
       {/* Guest Details */}
       <div className="mb-1">
-        <p style={{ fontSize: '10px' }}><span className="font-semibold">Guest:</span> {customerName}</p>
-        {customerPhone && <p style={{ fontSize: '10px' }}><span className="font-semibold">Phone:</span> {customerPhone}</p>}
-        <p style={{ fontSize: '10px' }}>
+        <p style={{ fontSize: '12px' }}><span className="font-semibold">Guest:</span> {customerName}</p>
+        {customerPhone && <p style={{ fontSize: '12px' }}><span className="font-semibold">Phone:</span> {customerPhone}</p>}
+        <p style={{ fontSize: '12px' }}>
           <span className="font-semibold">Stay:</span> {format(new Date(checkInDate), 'dd MMM')} - {format(new Date(checkOutDate), 'dd MMM')} ({daysStayed}d)
         </p>
       </div>
@@ -124,11 +124,11 @@ const BillPrint = forwardRef<HTMLDivElement, BillPrintProps>(({
 
       {/* Billing Details Header */}
       <div className="mb-1">
-        <h3 className="font-bold text-center mb-1" style={{ fontSize: '11px' }}>Particulars</h3>
+        <h3 className="font-bold text-center mb-1" style={{ fontSize: '13px' }}>Particulars</h3>
       </div>
       
       {/* Items Table Header */}
-      <div className="flex justify-between border-t border-b border-gray-400 py-0.5" style={{ fontSize: '9px' }}>
+      <div className="flex justify-between border-t border-b border-gray-400 py-0.5" style={{ fontSize: '11px' }}>
         <span className="font-semibold flex-1">Item</span>
         <span className="font-semibold w-8 text-center">Qty</span>
         <span className="font-semibold w-16 text-right">Rate</span>
@@ -136,7 +136,7 @@ const BillPrint = forwardRef<HTMLDivElement, BillPrintProps>(({
       </div>
       
       {/* Room Charges */}
-      <div className="flex justify-between py-0.5" style={{ fontSize: '10px' }}>
+      <div className="flex justify-between py-0.5" style={{ fontSize: '12px' }}>
         <span className="flex-1">{roomName}</span>
         <span className="w-8 text-center">{daysStayed}</span>
         <span className="w-16 text-right">{roomPrice.toFixed(2)}</span>
@@ -147,7 +147,7 @@ const BillPrint = forwardRef<HTMLDivElement, BillPrintProps>(({
       {foodOrders.map((order) => (
         <React.Fragment key={order.id}>
           {order.items.map((item: any, idx: number) => (
-            <div key={idx} className="flex justify-between py-0.5" style={{ fontSize: '10px' }}>
+            <div key={idx} className="flex justify-between py-0.5" style={{ fontSize: '12px' }}>
               <span className="flex-1">{item.name}</span>
               <span className="w-8 text-center">{item.quantity}</span>
               <span className="w-16 text-right">{item.price.toFixed(2)}</span>
@@ -159,7 +159,7 @@ const BillPrint = forwardRef<HTMLDivElement, BillPrintProps>(({
 
       {/* Additional Charges */}
       {additionalCharges.map((charge, index) => (
-        <div key={`charge-${index}`} className="flex justify-between py-0.5" style={{ fontSize: '10px' }}>
+        <div key={`charge-${index}`} className="flex justify-between py-0.5" style={{ fontSize: '12px' }}>
           <span className="flex-1">{charge.name}</span>
           <span className="w-8 text-center">1</span>
           <span className="w-16 text-right">{charge.amount.toFixed(2)}</span>
@@ -171,7 +171,7 @@ const BillPrint = forwardRef<HTMLDivElement, BillPrintProps>(({
       <div className="border-t border-dashed border-gray-400 my-1"></div>
 
       {/* Bill Summary */}
-      <div className="space-y-0.5" style={{ fontSize: '10px' }}>
+      <div className="space-y-0.5" style={{ fontSize: '12px' }}>
         <div className="flex justify-between">
           <span>Sub Total:</span>
           <span>{subtotal.toFixed(2)}</span>
