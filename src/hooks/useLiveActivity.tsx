@@ -14,7 +14,7 @@ export interface LiveActivityData {
 }
 
 export const useLiveActivity = () => {
-  const restaurantId = useRestaurantId();
+  const { restaurantId } = useRestaurantId();
 
   return useQuery({
     queryKey: ["liveActivity", restaurantId],
