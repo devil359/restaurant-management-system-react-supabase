@@ -21,7 +21,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import Stats from "@/components/Dashboard/Stats";
 import WeeklySalesChart from "@/components/Dashboard/WeeklySalesChart";
-import PerformanceMetrics from "@/components/Dashboard/PerformanceMetrics";
+import LiveActivity from "@/components/Dashboard/LiveActivity";
 
 const Index = () => {
   const { user, hasPermission } = useAuth();
@@ -232,8 +232,8 @@ const Index = () => {
             </div>
           </div>
           
-          {/* Performance Metrics */}
-          <PerformanceMetrics />
+          {/* Live Activity */}
+          <LiveActivity />
         </div>
       </div>
 
