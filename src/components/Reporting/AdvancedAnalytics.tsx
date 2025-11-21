@@ -4,8 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { StandardizedCard } from "@/components/ui/standardized-card";
 import { StandardizedButton } from "@/components/ui/standardized-button";
 import { DatePickerWithRange } from "@/components/ui/date-picker-with-range";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { TrendingUp, Download, DollarSign, ShoppingCart, Users, Loader2 } from "lucide-react";
+import { TrendingUp, Download, DollarSign, ShoppingCart, Users, Loader2, RefreshCw } from "lucide-react";
 import { useRestaurantId } from "@/hooks/useRestaurantId";
 import { startOfWeek, endOfWeek, format } from "date-fns";
 import { DateRange } from "react-day-picker";
@@ -24,7 +25,7 @@ const AdvancedAnalytics = () => {
   const { toast } = useToast();
   const { restaurantId } = useRestaurantId();
 
-  const { data: analyticsData, isLoading } = useQuery({
+  const { data: analyticsData, isLoading, error, refetch } = useQuery({
     queryKey: ["analytics-data", restaurantId, dateRange],
     queryFn: async () => {
       if (!restaurantId || !dateRange?.from || !dateRange?.to) return null;
@@ -39,6 +40,7 @@ const AdvancedAnalytics = () => {
       return data;
     },
     enabled: !!restaurantId && !!dateRange?.from && !!dateRange?.to,
+    staleTime: 30000, // Cache for 30 seconds
   });
 
   const handleExportPDF = async () => {
@@ -98,9 +100,46 @@ const AdvancedAnalytics = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <StandardizedCard key={i} className="p-6">
+              <Skeleton className="h-4 w-24 mb-2" />
+              <Skeleton className="h-8 w-32 mb-1" />
+              <Skeleton className="h-3 w-20" />
+            </StandardizedCard>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {[1, 2, 3].map((i) => (
+            <StandardizedCard key={i} className="p-6">
+              <Skeleton className="h-6 w-48 mb-4" />
+              <Skeleton className="h-[300px] w-full" />
+            </StandardizedCard>
+          ))}
+        </div>
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <StandardizedCard className="p-8 text-center">
+        <div className="space-y-4">
+          <p className="text-destructive text-lg font-semibold">Failed to load analytics data</p>
+          <p className="text-muted-foreground">
+            {error instanceof Error ? error.message : "An unknown error occurred"}
+          </p>
+          <StandardizedButton 
+            onClick={() => refetch()} 
+            variant="secondary"
+            className="mx-auto"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Retry
+          </StandardizedButton>
+        </div>
+      </StandardizedCard>
     );
   }
 

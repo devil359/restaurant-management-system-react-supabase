@@ -23,17 +23,19 @@ export const useLiveActivity = () => {
         throw new Error("Restaurant ID not found");
       }
 
-      // Get active orders count (new, preparing, ready)
+      // Get active orders from ORDERS table (not kitchen_orders)
+      // Active = pending, confirmed, preparing, ready (exclude cancelled/completed)
       const { data: ordersData, error: ordersError } = await supabase
-        .from("kitchen_orders")
+        .from("orders")
         .select("status", { count: "exact" })
         .eq("restaurant_id", restaurantId)
-        .in("status", ["new", "preparing", "ready"]);
+        .in("status", ["pending", "confirmed", "preparing", "ready"])
+        .neq("status", "cancelled");
 
       if (ordersError) throw ordersError;
 
       const activeOrders = ordersData?.length || 0;
-      const pendingOrders = ordersData?.filter(o => o.status === "new").length || 0;
+      const pendingOrders = ordersData?.filter(o => o.status === "pending").length || 0;
 
       // Get checked-in guests count
       const { data: guestsData, error: guestsError } = await supabase
@@ -54,12 +56,12 @@ export const useLiveActivity = () => {
         return checkoutDate <= today;
       }).length || 0;
 
-      // Get kitchen queue (orders in new or preparing status)
+      // Get kitchen queue (orders being prepared)
       const { data: kitchenData, error: kitchenError } = await supabase
-        .from("kitchen_orders")
+        .from("orders")
         .select("status, created_at")
         .eq("restaurant_id", restaurantId)
-        .in("status", ["new", "preparing"])
+        .eq("status", "preparing")
         .order("created_at", { ascending: true });
 
       if (kitchenError) throw kitchenError;
@@ -68,7 +70,7 @@ export const useLiveActivity = () => {
 
       // Calculate average prep time (time from created to completed for last 10 orders)
       const { data: completedOrders, error: completedError } = await supabase
-        .from("kitchen_orders")
+        .from("orders")
         .select("created_at, updated_at")
         .eq("restaurant_id", restaurantId)
         .eq("status", "completed")

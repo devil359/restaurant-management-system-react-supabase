@@ -9,6 +9,7 @@ import { ErrorBoundary } from "./components/ui/error-boundary";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AccessProvider } from "@/contexts/AccessContext";
+import { useRealtimeAnalytics } from "@/hooks/useRealtimeAnalytics";
 import Routes from "./components/Auth/Routes";
 
 // Create a client
@@ -22,6 +23,18 @@ const queryClient = new QueryClient({
   },
 });
 
+// Real-time analytics wrapper component
+function AppWithRealtime() {
+  useRealtimeAnalytics(); // Initialize real-time subscriptions
+  
+  return (
+    <div className="h-screen w-full overflow-hidden bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
+      <Routes />
+      <Toaster />
+    </div>
+  );
+}
+
 function App() {
   console.log("App: Rendering application");
   
@@ -33,10 +46,7 @@ function App() {
             <AccessProvider>
               <ErrorBoundary>
                 <Router>
-                  <div className="h-screen w-full overflow-hidden bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
-                    <Routes />
-                    <Toaster />
-                  </div>
+                  <AppWithRealtime />
                 </Router>
               </ErrorBoundary>
             </AccessProvider>
