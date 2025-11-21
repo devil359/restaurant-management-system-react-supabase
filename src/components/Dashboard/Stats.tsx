@@ -3,12 +3,28 @@ import { useState } from "react";
 import { TrendingUp, Users, ShoppingBag, DollarSign } from "lucide-react";
 import { useStatsData } from "@/hooks/useStatsData";
 import { formatIndianCurrency } from "@/utils/formatters";
+import { Skeleton } from "@/components/ui/skeleton";
 import StatCard from "./StatCard";
 import StatDetails from "./StatDetails";
 
 const Stats = () => {
   const [selectedStat, setSelectedStat] = useState<string | null>(null);
-  const { data: statsData } = useStatsData();
+  const { data: statsData, isLoading } = useStatsData();
+
+  // Show loading skeleton
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="p-6 bg-card rounded-lg border">
+            <Skeleton className="h-4 w-24 mb-2" />
+            <Skeleton className="h-8 w-32 mb-1" />
+            <Skeleton className="h-3 w-20" />
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   // Get all revenue sources
   const allRevenueSources = statsData?.allRevenueSources || [];
