@@ -12,7 +12,7 @@ import { startOfWeek, endOfWeek, format } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { jsPDF } from "jspdf";
-import html2canvas from "html2canvas";
+import autoTable from "jspdf-autotable";
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
@@ -43,54 +43,180 @@ const AdvancedAnalytics = () => {
     staleTime: 30000, // Cache for 30 seconds
   });
 
+  const { restaurantName } = useRestaurantId();
+
   const handleExportPDF = async () => {
-    const reportElement = document.getElementById("report-content-area");
-    if (!reportElement) return;
+    if (!analyticsData) return;
 
     setIsExporting(true);
     toast({ title: "Generating PDF...", description: "Please wait" });
 
     try {
-      const canvas = await html2canvas(reportElement, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
+      const kpis = analyticsData?.kpis || {
+        totalRevenue: 0,
+        totalOrders: 0,
+        avgOrderValue: 0,
+        newCustomers: 0,
+      };
+      const charts = analyticsData?.charts || {
+        dailyRevenue: [],
+        salesByCategory: [],
+        topProducts: [],
+      };
+
+      const doc = new jsPDF();
+      
+      // Set up document properties
+      doc.setProperties({
+        title: 'Business Analytics Report',
+        author: restaurantName || 'Restaurant Management System',
+        creator: 'Swadeshi Solutions',
+        subject: 'Analytics Report',
       });
-      const imgData = canvas.toDataURL("image/png");
-
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "pt",
-        format: "a4",
+      
+      // Add header with teal background
+      doc.setFillColor(0, 179, 167);
+      doc.rect(0, 0, 210, 25, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(18);
+      doc.setFont('helvetica', 'bold');
+      doc.text("BUSINESS ANALYTICS REPORT", 105, 16, { align: 'center' });
+      
+      // Add restaurant name
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text(restaurantName || 'Restaurant Management System', 14, 38);
+      
+      // Add date range
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      const dateRangeText = dateRange?.from && dateRange?.to 
+        ? `Report Period: ${format(dateRange.from, 'MMM dd, yyyy')} - ${format(dateRange.to, 'MMM dd, yyyy')}`
+        : 'Report Period: All Time';
+      doc.text(dateRangeText, 14, 48);
+      doc.text(`Generated on: ${format(new Date(), 'MMM dd, yyyy')}`, 14, 56);
+      
+      // Add Performance Summary section
+      doc.setFillColor(240, 240, 240);
+      doc.rect(14, 64, 182, 35, 'F');
+      doc.setFontSize(13);
+      doc.setFont('helvetica', 'bold');
+      doc.text("Performance Summary", 18, 74);
+      
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text(`Total Revenue: ₹${Number(kpis.totalRevenue || 0).toFixed(2)}`, 18, 84);
+      doc.text(`Total Orders: ${kpis.totalOrders || 0}`, 110, 84);
+      doc.text(`Average Order Value: ₹${Number(kpis.avgOrderValue || 0).toFixed(2)}`, 18, 92);
+      doc.text(`Active Customers: ${kpis.newCustomers || 0}`, 110, 92);
+      
+      // Add Revenue Data table
+      let startY = 108;
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text("Revenue Data (Last 30 days)", 14, startY);
+      
+      const revenueTableData = (charts.dailyRevenue || []).map((day: any) => [
+        format(new Date(day.date), 'MMM dd, yyyy'),
+        `₹${Number(day.revenue || 0).toFixed(2)}`,
+        day.orders || 0,
+        `₹${(day.revenue / (day.orders || 1)).toFixed(2)}`
+      ]);
+      
+      autoTable(doc, {
+        head: [['Date', 'Revenue', 'Orders', 'Avg Order Value']],
+        body: revenueTableData,
+        startY: startY + 6,
+        theme: 'grid',
+        styles: { fontSize: 9, cellPadding: 2 },
+        headStyles: { fillColor: [0, 179, 167], textColor: 255, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [245, 245, 245] },
       });
-
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const canvasWidth = canvas.width;
-      const canvasHeight = canvas.height;
-
-      const ratio = canvasWidth / pdfWidth;
-      const imgHeight = canvasHeight / ratio;
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, "PNG", 0, position, pdfWidth, imgHeight);
-      heightLeft -= pdfHeight;
-
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, pdfWidth, imgHeight);
-        heightLeft -= pdfHeight;
+      
+      // Add Sales by Category table on new page if needed
+      const finalY = (doc as any).lastAutoTable.finalY || startY + 60;
+      
+      if (finalY > 240) {
+        doc.addPage();
+        startY = 20;
+      } else {
+        startY = finalY + 15;
       }
-
-      pdf.save(`RMS_Report_${format(new Date(), "yyyy-MM-dd")}.pdf`);
-      toast({ title: "PDF exported successfully!" });
+      
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text("Sales by Category", 14, startY);
+      
+      const categoryTableData = (charts.salesByCategory || []).map((cat: any) => [
+        cat.name,
+        `₹${Number(cat.value || 0).toFixed(2)}`,
+        `${((cat.value / kpis.totalRevenue) * 100).toFixed(1)}%`
+      ]);
+      
+      autoTable(doc, {
+        head: [['Category', 'Revenue', 'Percentage']],
+        body: categoryTableData,
+        startY: startY + 6,
+        theme: 'grid',
+        styles: { fontSize: 9, cellPadding: 2 },
+        headStyles: { fillColor: [0, 179, 167], textColor: 255, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [245, 245, 245] },
+      });
+      
+      // Add Top Products table
+      const finalY2 = (doc as any).lastAutoTable.finalY || startY + 40;
+      
+      if (finalY2 > 240) {
+        doc.addPage();
+        startY = 20;
+      } else {
+        startY = finalY2 + 15;
+      }
+      
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text("Top Performing Products", 14, startY);
+      
+      const productsTableData = (charts.topProducts || []).map((prod: any) => [
+        prod.name,
+        `₹${Number(prod.revenue || 0).toFixed(2)}`,
+        prod.quantity || 0
+      ]);
+      
+      autoTable(doc, {
+        head: [['Product Name', 'Revenue', 'Quantity Sold']],
+        body: productsTableData,
+        startY: startY + 6,
+        theme: 'grid',
+        styles: { fontSize: 9, cellPadding: 2 },
+        headStyles: { fillColor: [0, 179, 167], textColor: 255, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [245, 245, 245] },
+      });
+      
+      // Add watermark to all pages
+      const pageCount = doc.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(150, 150, 150);
+        doc.text("Powered by Swadeshi Solutions", 160, 285, { align: 'right' });
+        doc.setFontSize(10);
+        doc.text(`Page ${i} of ${pageCount}`, 105, 285, { align: 'center' });
+      }
+      
+      const fileName = `Analytics_Report_${format(new Date(), 'yyyy-MM-dd')}.pdf`;
+      doc.save(fileName);
+      
+      toast({ 
+        title: "PDF Export Successful",
+        description: `Report saved as ${fileName}` 
+      });
     } catch (error) {
       console.error("PDF export error:", error);
       toast({ 
-        title: "Export failed", 
-        description: "There was an error generating the PDF",
+        title: "Export Failed", 
+        description: "Could not export to PDF. Please try again.",
         variant: "destructive" 
       });
     } finally {
