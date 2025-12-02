@@ -751,132 +751,136 @@ const PaymentDialog = ({
       });
       
       const pageWidth = doc.internal.pageSize.getWidth();
-      let yPos = 2; // Reduced top margin
+      const margin = 0.5; // Reduced side margins for better readability
+      const contentWidth = pageWidth - (margin * 2);
+      let yPos = 5; // Increased top margin to prevent cutting
       
-      // Restaurant Header
-      doc.setFontSize(14); // Larger font for restaurant name
+      // Restaurant Header - Larger and prominent
+      doc.setFontSize(16); // Increased from 14
       doc.setFont('helvetica', 'bold');
-      doc.text(restaurantInfo?.name || 'Restaurant', pageWidth / 2, yPos, { align: 'center' });
-      yPos += 5; // Increased spacing
+      const restaurantName = restaurantInfo?.name || 'Restaurant';
+      const nameLines = doc.splitTextToSize(restaurantName, contentWidth);
+      doc.text(nameLines, pageWidth / 2, yPos, { align: 'center' });
+      yPos += nameLines.length * 5 + 2;
       
-      doc.setFontSize(9); // Larger font for address
+      doc.setFontSize(10); // Increased from 9
       doc.setFont('helvetica', 'normal');
       if (restaurantInfo?.address) {
-        const addressLines = doc.splitTextToSize(restaurantInfo.address, pageWidth - 2);
+        const addressLines = doc.splitTextToSize(restaurantInfo.address, contentWidth);
         doc.text(addressLines, pageWidth / 2, yPos, { align: 'center' });
-        yPos += addressLines.length * 3.5;
+        yPos += addressLines.length * 4;
       }
       if (restaurantInfo?.phone) {
         doc.text(`Ph: ${restaurantInfo.phone}`, pageWidth / 2, yPos, { align: 'center' });
-        yPos += 3.5;
+        yPos += 4;
       }
       if (restaurantInfo?.gstin) {
         doc.text(`GSTIN: ${restaurantInfo.gstin}`, pageWidth / 2, yPos, { align: 'center' });
-        yPos += 3.5;
+        yPos += 4;
       }
       
       // Dashed line
       yPos += 1;
-      for (let i = 1; i < pageWidth - 1; i += 2) {
+      for (let i = margin; i < pageWidth - margin; i += 2) {
         doc.line(i, yPos, i + 1, yPos);
       }
-      yPos += 3;
+      yPos += 4;
       
       // Invoice Title
-      doc.setFontSize(11);
+      doc.setFontSize(13); // Increased from 11
       doc.setFont('helvetica', 'bold');
       doc.text(restaurantInfo?.gstin ? 'TAX INVOICE' : 'BILL RECEIPT', pageWidth / 2, yPos, { align: 'center' });
-      yPos += 3;
+      yPos += 4;
       
       // Dashed line
-      for (let i = 1; i < pageWidth - 1; i += 2) {
+      for (let i = margin; i < pageWidth - margin; i += 2) {
         doc.line(i, yPos, i + 1, yPos);
       }
-      yPos += 3;
+      yPos += 4;
       
-      // Bill details
-      doc.setFontSize(9);
+      // Bill details - increased font size
+      doc.setFontSize(10); // Increased from 9
       doc.setFont('helvetica', 'normal');
       const billNumber = `#${Date.now().toString().slice(-6)}`;
       const currentDate = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
       const currentTime = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
       
-      doc.text(`Bill#: ${billNumber}`, 1, yPos);
-      yPos += 3.5;
+      doc.text(`Bill#: ${billNumber}`, margin, yPos);
+      yPos += 4;
       
       if (tableNumber) {
-        doc.text(`To: Table ${tableNumber}`, 1, yPos);
+        doc.text(`To: Table ${tableNumber}`, margin, yPos);
       } else if (customerName) {
-        doc.text(`To: ${customerName}`, 1, yPos);
+        doc.text(`To: ${customerName}`, margin, yPos);
       } else {
-        doc.text('To: POS Order', 1, yPos);
+        doc.text('To: POS Order', margin, yPos);
       }
-      yPos += 3.5;
+      yPos += 4;
       
-      doc.text(`Date: ${currentDate}`, 1, yPos);
-      yPos += 3.5;
+      doc.text(`Date: ${currentDate}`, margin, yPos);
+      yPos += 4;
       
-      doc.text(`Time: ${currentTime}`, 1, yPos);
-      yPos += 3.5;
+      doc.text(`Time: ${currentTime}`, margin, yPos);
+      yPos += 4;
       
       // Guest details if available
       if (customerName) {
-        doc.text(`Guest: ${customerName}`, 1, yPos);
-        yPos += 3.5;
+        doc.text(`Guest: ${customerName}`, margin, yPos);
+        yPos += 4;
       }
       if (customerMobile) {
-        doc.text(`Phone: ${customerMobile}`, 1, yPos);
-        yPos += 3.5;
+        doc.text(`Phone: ${customerMobile}`, margin, yPos);
+        yPos += 4;
       }
       
       // Dashed line
-      for (let i = 1; i < pageWidth - 1; i += 2) {
+      for (let i = margin; i < pageWidth - margin; i += 2) {
         doc.line(i, yPos, i + 1, yPos);
       }
-      yPos += 3;
+      yPos += 4;
       
       // Items header
-      doc.setFontSize(10);
+      doc.setFontSize(11); // Increased from 10
       doc.setFont('helvetica', 'bold');
       doc.text('Particulars', pageWidth / 2, yPos, { align: 'center' });
-      yPos += 3.5;
+      yPos += 4;
       
-      // Column headers
-      doc.setFontSize(8.5);
-      doc.text('Item', 1, yPos);
-      doc.text('Qty', pageWidth - 28, yPos, { align: 'center' });
-      doc.text('Rate', pageWidth - 18, yPos, { align: 'right' });
-      doc.text('Amount', pageWidth - 1, yPos, { align: 'right' });
+      // Column headers - increased font
+      doc.setFontSize(9.5); // Increased from 8.5
+      doc.text('Item', margin, yPos);
+      doc.text('Qty', pageWidth - 26, yPos, { align: 'center' });
+      doc.text('Rate', pageWidth - 16, yPos, { align: 'right' });
+      doc.text('Amount', pageWidth - margin, yPos, { align: 'right' });
       yPos += 1;
       
       // Line under headers
-      doc.line(1, yPos, pageWidth - 1, yPos);
-      yPos += 3;
+      doc.line(margin, yPos, pageWidth - margin, yPos);
+      yPos += 3.5;
       
-      // Items
+      // Items - increased font
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
+      doc.setFontSize(10); // Increased from 9
       orderItems.forEach(item => {
-        const itemName = doc.splitTextToSize(item.name, 28);
-        doc.text(itemName, 1, yPos);
-        doc.text(item.quantity.toString(), pageWidth - 28, yPos, { align: 'center' });
-        doc.text(item.price.toFixed(2), pageWidth - 18, yPos, { align: 'right' });
-        doc.text((item.price * item.quantity).toFixed(2), pageWidth - 1, yPos, { align: 'right' });
-        yPos += Math.max(itemName.length * 3.5, 3.5);
+        const itemName = doc.splitTextToSize(item.name, 26);
+        doc.text(itemName, margin, yPos);
+        doc.text(item.quantity.toString(), pageWidth - 26, yPos, { align: 'center' });
+        doc.text(item.price.toFixed(2), pageWidth - 16, yPos, { align: 'right' });
+        doc.text((item.price * item.quantity).toFixed(2), pageWidth - margin, yPos, { align: 'right' });
+        yPos += Math.max(itemName.length * 4, 4);
       });
       
       // Dashed line
       yPos += 1;
-      for (let i = 1; i < pageWidth - 1; i += 2) {
+      for (let i = margin; i < pageWidth - margin; i += 2) {
         doc.line(i, yPos, i + 1, yPos);
       }
-      yPos += 3;
+      yPos += 4;
       
-      // Totals
-      doc.setFontSize(9);
-      doc.text('Sub Total:', 1, yPos);
-      doc.text(subtotal.toFixed(2), pageWidth - 1, yPos, { align: 'right' });
-      yPos += 3.5;
+      // Totals - increased font
+      doc.setFontSize(10); // Increased from 9
+      doc.text('Sub Total:', margin, yPos);
+      doc.text(subtotal.toFixed(2), pageWidth - margin, yPos, { align: 'right' });
+      yPos += 4;
       
       const cgstRate = 0;
       const sgstRate = 0;
@@ -884,87 +888,87 @@ const PaymentDialog = ({
       const sgst = 0;
       
       if (cgst > 0 || sgst > 0) {
-        doc.text(`CGST @ ${(cgstRate * 100).toFixed(1)}%:`, 1, yPos);
-        doc.text(cgst.toFixed(2), pageWidth - 1, yPos, { align: 'right' });
-        yPos += 3.5;
+        doc.text(`CGST @ ${(cgstRate * 100).toFixed(1)}%:`, margin, yPos);
+        doc.text(cgst.toFixed(2), pageWidth - margin, yPos, { align: 'right' });
+        yPos += 4;
         
-        doc.text(`SGST @ ${(sgstRate * 100).toFixed(1)}%:`, 1, yPos);
-        doc.text(sgst.toFixed(2), pageWidth - 1, yPos, { align: 'right' });
-        yPos += 3.5;
+        doc.text(`SGST @ ${(sgstRate * 100).toFixed(1)}%:`, margin, yPos);
+        doc.text(sgst.toFixed(2), pageWidth - margin, yPos, { align: 'right' });
+        yPos += 4;
       }
       
       // Promotion discount if applied
       if (appliedPromotion && promotionDiscountAmount > 0) {
         doc.setFont('helvetica', 'normal');
-        doc.text(`Promo Discount (${appliedPromotion.name}):`, 1, yPos);
-        doc.text(`-${promotionDiscountAmount.toFixed(2)}`, pageWidth - 1, yPos, { align: 'right' });
-        yPos += 3.5;
+        doc.text(`Promo Discount (${appliedPromotion.name}):`, margin, yPos);
+        doc.text(`-${promotionDiscountAmount.toFixed(2)}`, pageWidth - margin, yPos, { align: 'right' });
+        yPos += 4;
         if (appliedPromotion.promotion_code) {
-          doc.setFontSize(8);
-          doc.text(`Code: ${appliedPromotion.promotion_code}`, 1, yPos);
-          yPos += 3;
           doc.setFontSize(9);
+          doc.text(`Code: ${appliedPromotion.promotion_code}`, margin, yPos);
+          yPos += 3.5;
+          doc.setFontSize(10);
         }
       }
       
       // Manual discount if applied
       if (manualDiscountPercent > 0) {
         doc.setFont('helvetica', 'normal');
-        doc.text(`Discount (${manualDiscountPercent}%):`, 1, yPos);
-        doc.text(`-${manualDiscountAmount.toFixed(2)}`, pageWidth - 1, yPos, { align: 'right' });
-        yPos += 3.5;
+        doc.text(`Discount (${manualDiscountPercent}%):`, margin, yPos);
+        doc.text(`-${manualDiscountAmount.toFixed(2)}`, pageWidth - margin, yPos, { align: 'right' });
+        yPos += 4;
       }
       
       // Total discount
       if (totalDiscountAmount > 0) {
         doc.setFont('helvetica', 'bold');
-        doc.text('Total Discount:', 1, yPos);
-        doc.text(`-${totalDiscountAmount.toFixed(2)}`, pageWidth - 1, yPos, { align: 'right' });
-        yPos += 3.5;
+        doc.text('Total Discount:', margin, yPos);
+        doc.text(`-${totalDiscountAmount.toFixed(2)}`, pageWidth - margin, yPos, { align: 'right' });
+        yPos += 4;
       }
       
       // Dashed line
-      for (let i = 1; i < pageWidth - 1; i += 2) {
+      for (let i = margin; i < pageWidth - margin; i += 2) {
         doc.line(i, yPos, i + 1, yPos);
       }
-      yPos += 3;
+      yPos += 4;
       
-      // Net Amount
+      // Net Amount - larger font
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(12);
-      doc.text('Net Amount:', 1, yPos);
-      doc.text(`₹${total.toFixed(2)}`, pageWidth - 1, yPos, { align: 'right' });
-      yPos += 5;
+      doc.setFontSize(14); // Increased from 12
+      doc.text('Net Amount:', margin, yPos);
+      doc.text(`₹${total.toFixed(2)}`, pageWidth - margin, yPos, { align: 'right' });
+      yPos += 6;
       
       // Add QR code if UPI is configured and we're in QR step
       if (qrCodeUrl && paymentSettings?.upi_id) {
-        for (let i = 1; i < pageWidth - 1; i += 2) {
+        for (let i = margin; i < pageWidth - margin; i += 2) {
           doc.line(i, yPos, i + 1, yPos);
         }
         yPos += 3;
         
-        const qrSize = 30;
+        const qrSize = 32; // Slightly larger QR code
         doc.addImage(qrCodeUrl, 'PNG', (pageWidth - qrSize) / 2, yPos, qrSize, qrSize);
-        yPos += qrSize + 2;
+        yPos += qrSize + 3;
         
-        doc.setFontSize(8);
+        doc.setFontSize(9); // Increased from 8
         doc.setFont('helvetica', 'normal');
         doc.text('Scan QR to pay', pageWidth / 2, yPos, { align: 'center' });
-        yPos += 3;
+        yPos += 4;
       }
       
       // Dashed line
-      for (let i = 1; i < pageWidth - 1; i += 2) {
+      for (let i = margin; i < pageWidth - margin; i += 2) {
         doc.line(i, yPos, i + 1, yPos);
       }
-      yPos += 3;
+      yPos += 4;
       
-      // Footer
-      doc.setFontSize(10);
+      // Footer - larger font
+      doc.setFontSize(12); // Increased from 10
       doc.setFont('helvetica', 'bold');
       doc.text('Thank You!', pageWidth / 2, yPos, { align: 'center' });
-      yPos += 3.5;
-      doc.setFontSize(8);
+      yPos += 4;
+      doc.setFontSize(10); // Increased from 8
       doc.setFont('helvetica', 'normal');
       doc.text('Please visit again', pageWidth / 2, yPos, { align: 'center' });
       
