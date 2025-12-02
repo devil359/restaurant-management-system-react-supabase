@@ -195,7 +195,7 @@ const PaymentDialog = ({
     }
   }, [currentStep, paymentSettings, total, restaurantInfo, tableNumber]);
 
-  // Fetch existing customer details if orderId exists
+  // Fetch existing customer details and discount if orderId exists
   useEffect(() => {
     const fetchCustomerDetails = async () => {
       if (orderId && isOpen) {
@@ -207,10 +207,10 @@ const PaymentDialog = ({
             .single();
 
           if (kitchenOrder?.order_id) {
-            // Try fetching from orders with both naming conventions
+            // Try fetching from orders with both naming conventions AND discount fields
             const { data: order } = await supabase
               .from('orders')
-              .select('Customer_Name, Customer_MobileNumber, customer_name, customer_phone')
+              .select('Customer_Name, Customer_MobileNumber, customer_name, customer_phone, discount_percentage, discount_amount')
               .eq('id', kitchenOrder.order_id)
               .maybeSingle();
 
@@ -221,6 +221,12 @@ const PaymentDialog = ({
               if (phone) {
                 setCustomerMobile(String(phone));
                 setSendBillToMobile(true);
+              }
+              
+              // Load existing discount percentage if available
+              const discountPercent = parseFloat((order as any).discount_percentage) || 0;
+              if (discountPercent > 0) {
+                setManualDiscountPercent(discountPercent);
               }
             }
           } else {
