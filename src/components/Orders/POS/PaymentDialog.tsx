@@ -792,11 +792,13 @@ const PaymentDialog = ({
       }
       yPos += 4;
       
-      // Invoice Title
-      doc.setFontSize(13); // Increased from 11
-      doc.setFont('helvetica', 'bold');
-      doc.text(restaurantInfo?.gstin ? 'TAX INVOICE' : 'BILL RECEIPT', pageWidth / 2, yPos, { align: 'center' });
-      yPos += 4;
+      // Invoice Title - Only show if GSTIN is present
+      if (restaurantInfo?.gstin) {
+        doc.setFontSize(13);
+        doc.setFont('helvetica', 'bold');
+        doc.text('TAX INVOICE', pageWidth / 2, yPos, { align: 'center' });
+        yPos += 4;
+      }
       
       // Dashed line
       for (let i = margin; i < pageWidth - margin; i += 2) {
