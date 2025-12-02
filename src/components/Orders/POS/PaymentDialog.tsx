@@ -817,10 +817,7 @@ const PaymentDialog = ({
       }
       yPos += 4;
       
-      doc.text(`Date: ${currentDate}`, margin, yPos);
-      yPos += 4;
-      
-      doc.text(`Time: ${currentTime}`, margin, yPos);
+      doc.text(`Date: ${currentDate}  Time: ${currentTime}`, margin, yPos);
       yPos += 4;
       
       // Guest details if available
@@ -860,13 +857,17 @@ const PaymentDialog = ({
       // Items - increased font with better column spacing
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
-      orderItems.forEach(item => {
+      orderItems.forEach((item, index) => {
         const itemName = doc.splitTextToSize(item.name, 22);
         doc.text(itemName, margin, yPos);
         doc.text(item.quantity.toString(), pageWidth - 32, yPos, { align: 'right' });
         doc.text(item.price.toFixed(0), pageWidth - 18, yPos, { align: 'right' });
         doc.text((item.price * item.quantity).toFixed(0), pageWidth - margin, yPos, { align: 'right' });
         yPos += Math.max(itemName.length * 4, 4);
+        // Add space between items for better readability
+        if (index < orderItems.length - 1) {
+          yPos += 2;
+        }
       });
       
       // Dashed line
