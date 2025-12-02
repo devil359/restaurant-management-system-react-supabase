@@ -845,27 +845,27 @@ const PaymentDialog = ({
       doc.text('Particulars', pageWidth / 2, yPos, { align: 'center' });
       yPos += 4;
       
-      // Column headers - increased font
-      doc.setFontSize(9.5); // Increased from 8.5
+      // Column headers - increased font with better spacing
+      doc.setFontSize(9.5);
       doc.text('Item', margin, yPos);
-      doc.text('Qty', pageWidth - 26, yPos, { align: 'center' });
-      doc.text('Rate', pageWidth - 16, yPos, { align: 'right' });
-      doc.text('Amount', pageWidth - margin, yPos, { align: 'right' });
+      doc.text('Qty', pageWidth - 32, yPos, { align: 'right' });
+      doc.text('Rate', pageWidth - 18, yPos, { align: 'right' });
+      doc.text('Amt', pageWidth - margin, yPos, { align: 'right' });
       yPos += 1;
       
       // Line under headers
       doc.line(margin, yPos, pageWidth - margin, yPos);
       yPos += 3.5;
       
-      // Items - increased font
+      // Items - increased font with better column spacing
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10); // Increased from 9
+      doc.setFontSize(10);
       orderItems.forEach(item => {
-        const itemName = doc.splitTextToSize(item.name, 26);
+        const itemName = doc.splitTextToSize(item.name, 22);
         doc.text(itemName, margin, yPos);
-        doc.text(item.quantity.toString(), pageWidth - 26, yPos, { align: 'center' });
-        doc.text(item.price.toFixed(2), pageWidth - 16, yPos, { align: 'right' });
-        doc.text((item.price * item.quantity).toFixed(2), pageWidth - margin, yPos, { align: 'right' });
+        doc.text(item.quantity.toString(), pageWidth - 32, yPos, { align: 'right' });
+        doc.text(item.price.toFixed(0), pageWidth - 18, yPos, { align: 'right' });
+        doc.text((item.price * item.quantity).toFixed(0), pageWidth - margin, yPos, { align: 'right' });
         yPos += Math.max(itemName.length * 4, 4);
       });
       
