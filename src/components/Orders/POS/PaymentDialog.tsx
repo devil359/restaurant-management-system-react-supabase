@@ -764,7 +764,7 @@ const PaymentDialog = ({
       // Restaurant Header - Larger and prominent
       doc.setFontSize(16); // Increased from 14
       doc.setFont('helvetica', 'bold');
-      const restaurantName = restaurantInfo?.name || 'Restaurant';
+      const restaurantName = restaurantInfo?.name||restaurantInfo?.restaurantName || 'Restaurant';
       const nameLines = doc.splitTextToSize(restaurantName, contentWidth);
       doc.text(nameLines, pageWidth / 2, yPos, { align: 'center' });
       yPos += nameLines.length * 5 + 2;
@@ -785,12 +785,12 @@ const PaymentDialog = ({
         yPos += 4;
       }
       
-      // Dashed line
-      yPos += 1;
-      for (let i = margin; i < pageWidth - margin; i += 2) {
-        doc.line(i, yPos, i + 1, yPos);
-      }
-      yPos += 4;
+      // // Dashed line
+      // yPos += 1;
+      // for (let i = margin; i < pageWidth - margin; i += 2) {
+      //   doc.line(i, yPos, i + 1, yPos);
+      // }
+      // yPos += 4;
       
       // Invoice Title - Only show if GSTIN is present
       if (restaurantInfo?.gstin) {
@@ -817,7 +817,7 @@ const PaymentDialog = ({
       yPos += 4;
       
       if (tableNumber) {
-        doc.text(`To: Table ${tableNumber}`, margin, yPos);
+        doc.text(`To: ${tableNumber}`, margin, yPos);
       } else if (customerName) {
         doc.text(`To: ${customerName}`, margin, yPos);
       } else {
