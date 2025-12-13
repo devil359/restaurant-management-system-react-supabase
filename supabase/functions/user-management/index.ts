@@ -66,15 +66,27 @@ serve(async (req) => {
       throw new Error('Unauthorized')
     }
 
-    // Check if user has admin permissions
+    // Check if user has admin/owner permissions using secure DB function
+    const { data: isAdminOrOwner, error: roleCheckError } = await supabaseClient
+      .rpc('user_is_admin_or_owner', { user_id: user.id });
+
+    if (roleCheckError) {
+      throw new Error('Failed to verify permissions');
+    }
+
+    if (!isAdminOrOwner) {
+      throw new Error('Insufficient permissions');
+    }
+
+    // Fetch profile to get restaurant_id (needed for assigning new users)
     const { data: profile } = await supabaseClient
       .from('profiles')
-      .select('role, restaurant_id')
+      .select('restaurant_id')
       .eq('id', user.id)
       .single()
 
-    if (!profile || !['admin', 'owner'].includes(profile.role)) {
-      throw new Error('Insufficient permissions')
+    if (!profile?.restaurant_id) {
+      throw new Error('No restaurant assigned to current user');
     }
 
     const requestBody = await req.json()
