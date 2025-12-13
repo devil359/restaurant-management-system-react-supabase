@@ -122,13 +122,15 @@ export const CreateUserDialog = ({
             role: isSystemRole ? formData.roleId : 'staff',
             role_id: isSystemRole ? undefined : formData.roleId,
             role_name_text: isSystemRole ? undefined : (customRole?.name || formData.roleName),
-            restaurant_id: formData.restaurantId,
           }
-        })
+        }
       });
 
       if (error) throw error;
-      if (!data.success && data.error) throw new Error(data.error);
+      
+      if (!data?.success) {
+        throw new Error(data?.error || 'Failed to create user');
+      }
 
       toast.success("User created successfully");
       onUserCreated();
@@ -200,19 +202,19 @@ export const CreateUserDialog = ({
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="password" className="text-right">
-                Password
-              </Label>
-              <Input
-                id="password"
-                type="password"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="col-span-3"
-                required
-                minLength={6}
-              />
-            </div>
+               <Label htmlFor="password" className="text-right">
+                 Password
+               </Label>
+               <Input
+                 id="password"
+                 type="password"
+                 value={formData.password}
+                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                 className="col-span-3"
+                 required
+                 minLength={8}
+               />
+             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="firstName" className="text-right">
                 First Name
