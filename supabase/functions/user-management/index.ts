@@ -78,12 +78,31 @@ serve(async (req) => {
     // Fetch profile to get restaurant_id (needed for assigning new users)
     const { data: profile } = await supabaseClient
       .from('profiles')
-      .select('restaurant_id')
+      .select('role, role_id, restaurant_id')
       .eq('id', user.id)
       .single()
 
-    if (!profile?.restaurant_id) {
-      throw new Error('No restaurant assigned to current user');
+    if (!profile) {
+      throw new Error('Profile not found')
+    }
+
+    let hasPermission = ['admin', 'owner'].includes(profile.role);
+
+    // If not system admin, check if custom role is admin/owner
+    if (!hasPermission && profile.role_id) {
+       const { data: roleData } = await supabaseClient
+        .from('roles')
+        .select('name')
+        .eq('id', profile.role_id)
+        .single();
+        
+       if (roleData && ['admin', 'owner'].includes(roleData.name.toLowerCase())) {
+         hasPermission = true;
+       }
+    }
+
+    if (!hasPermission) {
+      throw new Error('Insufficient permissions')
     }
 
     const requestBody = await req.json()

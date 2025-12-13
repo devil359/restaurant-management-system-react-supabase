@@ -110,9 +110,9 @@ export const CreateUserDialog = ({
       const isSystemRole = systemRoles.includes(formData.roleId as UserRole);
       const customRole = roles.find(r => r.id === formData.roleId);
 
-      // Call the user-management edge function to create the user
+      // Call the user-management edge function
       const { data, error } = await supabase.functions.invoke('user-management', {
-        body: {
+        body: JSON.stringify({
           action: 'create_user',
           userData: {
             email: formData.email,
@@ -122,8 +122,9 @@ export const CreateUserDialog = ({
             role: isSystemRole ? formData.roleId : 'staff',
             role_id: isSystemRole ? undefined : formData.roleId,
             role_name_text: isSystemRole ? undefined : (customRole?.name || formData.roleName),
+            restaurant_id: formData.restaurantId,
           }
-        }
+        })
       });
 
       if (error) throw error;

@@ -167,13 +167,13 @@ const navigationGroups: NavigationGroup[] = [
         description: "Customer database",
         requiredPermissions: ["customers.view"]
       },
-      {
-        title: "CRM",
-        icon: MessageSquare,
-        href: "/crm",
-        description: "Customer relationship",
-        requiredPermissions: ["customers.view"]
-      },
+      // {
+      //   title: "CRM",
+      //   icon: MessageSquare,
+      //   href: "/crm",
+      //   description: "Customer relationship",
+      //   requiredPermissions: ["customers.view"]
+      // },
       {
         title: "Marketing",
         icon: Target,

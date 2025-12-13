@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { UserRole } from "@/types/auth";
+import { UserRole, UserWithMetadata } from "@/types/auth";
 
 interface Role {
   id: string;
@@ -28,22 +28,8 @@ interface Role {
   description?: string;
 }
 
-interface User {
-  id: string;
-  first_name?: string;
-  last_name?: string;
-  role: string;
-  role_id?: string;
-  role_name_text?: string;
-  restaurant_id?: string;
-  is_active?: boolean;
-  created_at: string;
-  updated_at: string;
-  email?: string;
-}
-
 interface EditUserDialogProps {
-  user: User;
+  user: UserWithMetadata;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUserUpdated: () => void;

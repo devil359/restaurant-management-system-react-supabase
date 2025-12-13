@@ -220,6 +220,12 @@ export interface UserProfile {
   updated_at?: string;
 }
 
+export interface UserWithMetadata extends UserProfile {
+  restaurants?: {
+    name: string;
+  };
+}
+
 export interface AuthContextType {
   user: UserProfile | null;
   loading: boolean;
