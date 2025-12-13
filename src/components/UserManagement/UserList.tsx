@@ -19,8 +19,9 @@ import {
   DropdownMenuItem, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Edit, Trash2 } from "lucide-react";
+import { MoreHorizontal, Edit, Trash2, Shield, Lock } from "lucide-react";
 import { EditUserDialog } from "./EditUserDialog";
+import { PermissionManager } from "./PermissionManager";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 interface User {
@@ -47,6 +48,7 @@ interface UserListProps {
 
 export const UserList = ({ onUserUpdated, restaurantFilter }: UserListProps) => {
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [permissionUser, setPermissionUser] = useState<User | null>(null);
   const { user: currentUser } = useAuth();
 
   const { data: users = [], isLoading, refetch } = useQuery({
@@ -75,25 +77,13 @@ export const UserList = ({ onUserUpdated, restaurantFilter }: UserListProps) => 
 
       if (profilesError) throw profilesError;
 
-      // Get emails from auth.users for each profile
-      const usersWithEmails = await Promise.all(
-        (profilesData || []).map(async (profile) => {
-          try {
-            const { data: { user } } = await supabase.auth.admin.getUserById(profile.id);
-            return {
-              ...profile,
-              email: user?.email || 'No email'
-            };
-          } catch (error) {
-            return {
-              ...profile,
-              email: 'No email'
-            };
-          }
-        })
-      );
-
-      return usersWithEmails as User[];
+      // We cannot fetch emails client-side as it requires admin permissions provided only to service_role.
+      // The profiles table should ideally have an email column synced via triggers if needed.
+      // For now, we returns profiles without email or with a placeholder.
+      return (profilesData || []).map(profile => ({
+        ...profile,
+        email: 'Email hidden (Admin only)'
+      })) as User[];
     },
     enabled: !!(restaurantFilter || currentUser?.restaurant_id),
   });
@@ -186,6 +176,10 @@ export const UserList = ({ onUserUpdated, restaurantFilter }: UserListProps) => 
                         <Edit className="mr-2 h-4 w-4" />
                         Edit
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setPermissionUser(user)}>
+                        <Shield className="mr-2 h-4 w-4" />
+                        Permissions
+                      </DropdownMenuItem>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
@@ -229,6 +223,19 @@ export const UserList = ({ onUserUpdated, restaurantFilter }: UserListProps) => 
             refetch();
             onUserUpdated();
             setEditingUser(null);
+          }}
+        />
+      )}
+
+      {permissionUser && (
+        <PermissionManager
+          userId={permissionUser.id}
+          userName={`${permissionUser.first_name || ''} ${permissionUser.last_name || ''}`.trim() || permissionUser.email || 'User'}
+          open={!!permissionUser}
+          onOpenChange={(open) => !open && setPermissionUser(null)}
+          onSuccess={() => {
+            refetch();
+            onUserUpdated();
           }}
         />
       )}

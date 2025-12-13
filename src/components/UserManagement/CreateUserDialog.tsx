@@ -110,39 +110,25 @@ export const CreateUserDialog = ({
       const isSystemRole = systemRoles.includes(formData.roleId as UserRole);
       const customRole = roles.find(r => r.id === formData.roleId);
 
-      // Create user in Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: formData.email,
-        password: formData.password,
-        email_confirm: true,
-        user_metadata: {
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          role: isSystemRole ? formData.roleId : 'staff',
-          role_id: isSystemRole ? null : formData.roleId,
-          role_name_text: isSystemRole ? null : (customRole?.name || formData.roleName),
-          restaurant_id: formData.restaurantId,
-        }
-      });
-
-      if (authError) throw authError;
-
-      if (authData.user) {
-        // Create profile
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: authData.user.id,
+      // Call the user-management edge function
+      const { data, error } = await supabase.functions.invoke('user-management', {
+        body: JSON.stringify({
+          action: 'create_user',
+          userData: {
+            email: formData.email,
+            password: formData.password,
             first_name: formData.firstName,
             last_name: formData.lastName,
-            role: isSystemRole ? (formData.roleId as UserRole) : 'staff',
-            role_id: isSystemRole ? null : formData.roleId,
-            role_name_text: isSystemRole ? null : (customRole?.name || formData.roleName),
+            role: isSystemRole ? formData.roleId : 'staff',
+            role_id: isSystemRole ? undefined : formData.roleId,
+            role_name_text: isSystemRole ? undefined : (customRole?.name || formData.roleName),
             restaurant_id: formData.restaurantId,
-          });
+          }
+        })
+      });
 
-        if (profileError) throw profileError;
-      }
+      if (error) throw error;
+      if (!data.success && data.error) throw new Error(data.error);
 
       toast.success("User created successfully");
       onUserCreated();
