@@ -69,11 +69,30 @@ serve(async (req) => {
     // Check if user has admin permissions
     const { data: profile } = await supabaseClient
       .from('profiles')
-      .select('role, restaurant_id')
+      .select('role, role_id, restaurant_id')
       .eq('id', user.id)
       .single()
 
-    if (!profile || !['admin', 'owner'].includes(profile.role)) {
+    if (!profile) {
+      throw new Error('Profile not found')
+    }
+
+    let hasPermission = ['admin', 'owner'].includes(profile.role);
+
+    // If not system admin, check if custom role is admin/owner
+    if (!hasPermission && profile.role_id) {
+       const { data: roleData } = await supabaseClient
+        .from('roles')
+        .select('name')
+        .eq('id', profile.role_id)
+        .single();
+        
+       if (roleData && ['admin', 'owner'].includes(roleData.name.toLowerCase())) {
+         hasPermission = true;
+       }
+    }
+
+    if (!hasPermission) {
       throw new Error('Insufficient permissions')
     }
 

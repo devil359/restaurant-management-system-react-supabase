@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { GoogleGenAI } from "npm:@google/genai";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -352,47 +353,39 @@ ALWAYS base your answers on this specific data. When asked for MTD, QTD, or YTD,
       systemPrompt += " When asked for predictions, forecasts, or future insights, use statistical methods on the historical data to provide informed predictions. Consider trends, seasonality, and day-of-week patterns.";
     }
 
-    const payload = {
-      contents: [],
-      systemInstruction: {
-        role: "system",
-        parts: [{ text: systemPrompt + (restaurantDataContext ? "\n\n" + restaurantDataContext : "") }]
+    const ai = new GoogleGenAI({ apiKey });
+
+    // Construct contents for SDK
+    const contents = messages.map(msg => ({
+      role: msg.role === "assistant" ? "model" : "user",
+      parts: [{ text: msg.content }]
+    }));
+
+    const systemInstructionContent = systemPrompt + (restaurantDataContext ? "\n\n" + restaurantDataContext : "");
+
+    console.log("Sending request to Gemini API via SDK");
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: contents,
+      config: {
+        systemInstruction: {
+          parts: [{ text: systemInstructionContent }]
+        }
       }
-    };
-
-    for (const message of messages) {
-      payload.contents.push({
-        role: message.role === "assistant" ? "model" : "user",
-        parts: [{ text: message.content }]
-      });
-    }
-
-    console.log("Sending request to Gemini API with proper format");
-
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": apiKey
-      },
-      body: JSON.stringify(payload)
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Gemini API error: Status ${response.status}`, errorText);
-      throw new Error(`Gemini API returned error: ${response.status} ${errorText}`);
-    }
-
-    const data = await response.json();
-    console.log("Received successful Gemini API response");
+    console.log("Received successful Gemini API SDK response");
     
+    // access response text safely
+    const generatedText = response.text();
+
     const formattedResponse = {
       choices: [
         {
           message: {
             role: "assistant",
-            content: data.candidates[0].content.parts[0].text
+            content: generatedText
           }
         }
       ]
@@ -459,50 +452,34 @@ Base your forecast on trends, patterns, seasonality, and day-of-week effects vis
 For each prediction, include a confidence level (0-100) and the key factors that influenced the prediction.
 `;
 
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": apiKey
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: prompt }]
-          }
-        ],
-        generationConfig: {
-          temperature: 0.2,
-          topP: 0.8,
-          topK: 40
+    const ai = new GoogleGenAI({ apiKey });
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: prompt }]
         }
-      })
+      ],
+      config: {
+        temperature: 0.2,
+        topP: 0.8,
+        topK: 40
+      }
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Gemini API error for sales forecast: Status ${response.status}`, errorText);
-      throw new Error(`Gemini API returned error: ${response.status} ${errorText}`);
-    }
-
-    const data = await response.json();
     console.log("Received successful Gemini API forecast response");
     
-    try {
-      const textContent = data.candidates[0].content.parts[0].text;
-      const jsonContent = textContent.replace(/```json|```/g, '').trim();
-      const forecastData = JSON.parse(jsonContent);
-      
-      return new Response(
-        JSON.stringify(forecastData),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    } catch (jsonError) {
-      console.error("Error parsing forecast JSON:", jsonError);
-      console.log("Raw response:", data.candidates[0].content.parts[0].text);
-      throw new Error("Could not parse forecast data from API response");
-    }
+    // access response text safely
+    const textContent = response.text();
+    const jsonContent = textContent.replace(/```json|```/g, '').trim();
+    const forecastData = JSON.parse(jsonContent);
+    
+    return new Response(
+      JSON.stringify(forecastData),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   } catch (error) {
     console.error('Error generating sales forecast:', error);
     
@@ -566,50 +543,33 @@ Sort the recommendations by urgency (items closest to stockout first).
 Only include items that need attention - don't include items with sufficient stock.
 `;
 
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": apiKey
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: prompt }]
-          }
-        ],
-        generationConfig: {
-          temperature: 0.2,
-          topP: 0.8,
-          topK: 40
+    const ai = new GoogleGenAI({ apiKey });
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: prompt }]
         }
-      })
+      ],
+      config: {
+        temperature: 0.2,
+        topP: 0.8,
+        topK: 40
+      }
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Gemini API error for inventory recommendations: Status ${response.status}`, errorText);
-      throw new Error(`Gemini API returned error: ${response.status} ${errorText}`);
-    }
-
-    const data = await response.json();
     console.log("Received successful Gemini API inventory recommendations response");
     
-    try {
-      const textContent = data.candidates[0].content.parts[0].text;
-      const jsonContent = textContent.replace(/```json|```/g, '').trim();
-      const recommendationsData = JSON.parse(jsonContent);
-      
-      return new Response(
-        JSON.stringify(recommendationsData),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    } catch (jsonError) {
-      console.error("Error parsing inventory recommendations JSON:", jsonError);
-      console.log("Raw response:", data.candidates[0].content.parts[0].text);
-      throw new Error("Could not parse inventory recommendations from API response");
-    }
+    const textContent = response.text();
+    const jsonContent = textContent.replace(/```json|```/g, '').trim();
+    const recommendationsData = JSON.parse(jsonContent);
+    
+    return new Response(
+      JSON.stringify(recommendationsData),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   } catch (error) {
     console.error('Error generating inventory recommendations:', error);
     

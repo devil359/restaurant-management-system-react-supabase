@@ -49,7 +49,7 @@ export const SimpleAppRoutes = () => {
           <Route path="/housekeeping" element={<Housekeeping />} />
           <Route path="/reservations" element={<Reservations />} />
           <Route path="/customers" element={<Customers />} />
-          <Route path="/crm" element={<CRM />} />
+          {/* <Route path="/crm" element={<CRM />} /> */}
           <Route path="/suppliers" element={<Suppliers />} />
           <Route path="/expenses" element={<Expenses />} />
           <Route path="/ai" element={<AI />} />

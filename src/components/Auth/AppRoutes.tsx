@@ -151,11 +151,7 @@ export const AppRoutes = () => {
               <Customers />
             </PermissionGuard>
           } />
-          <Route path="/crm" element={
-            <PermissionGuard permission="customers.view">
-              <CRM />
-            </PermissionGuard>
-          } />
+          
           <Route path="/suppliers" element={
             <PermissionGuard permission="inventory.view">
               <Suppliers />
