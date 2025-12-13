@@ -19,7 +19,6 @@ const createUserSchema = z.object({
   role: z.enum(systemRoles).optional().default('staff'),
   role_id: z.string().uuid('Invalid role id').optional(),
   role_name_text: z.string().trim().max(100).optional(),
-  phone: z.string().regex(/^\+?[1-9]\d{1,14}$/, 'Invalid phone number format').optional()
 })
 
 const updateUserSchema = z.object({
@@ -30,9 +29,7 @@ const updateUserSchema = z.object({
   role: z.enum(systemRoles).optional(),
   role_id: z.string().uuid('Invalid role id').optional(),
   role_name_text: z.string().trim().max(100).optional(),
-  new_password: z.string().min(8, 'Password must be at least 8 characters').max(100, 'Password too long').optional(),
-  phone: z.string().regex(/^\+?[1-9]\d{1,14}$/, 'Invalid phone number format').optional(),
-  is_active: z.boolean().optional()
+  new_password: z.string().min(8, 'Password must be at least 8 characters').max(100, 'Password too long').optional()
 })
 
 const actionSchema = z.enum(['create_user', 'update_user', 'delete_user', 'reset_password'], {
@@ -132,8 +129,7 @@ serve(async (req) => {
             role: isSystemRole ? (validated.role ?? 'staff') : 'staff',
             role_id: isSystemRole ? null : validated.role_id,
             role_name_text: isSystemRole ? null : (validated.role_name_text ?? null),
-            restaurant_id: profile.restaurant_id,
-            phone: validated.phone || null
+            restaurant_id: profile.restaurant_id
           })
 
         if (profileError) throw profileError
@@ -178,8 +174,6 @@ serve(async (req) => {
           profileUpdate.role_id = isSystemRole ? null : (validated.role_id ?? null)
           profileUpdate.role_name_text = isSystemRole ? null : (validated.role_name_text ?? null)
         }
-        if (validated.phone !== undefined) profileUpdate.phone = validated.phone
-        if (validated.is_active !== undefined) profileUpdate.is_active = validated.is_active
 
         if (Object.keys(profileUpdate).length > 0) {
           const { error: profileError } = await supabaseClient
@@ -200,13 +194,17 @@ serve(async (req) => {
         const userIdSchema = z.object({ id: z.string().uuid('Invalid user ID') })
         const { id: validatedId } = userIdSchema.parse(userData)
         
-        // Deactivate user instead of deleting
+        // Actually delete the user from auth (using service role key)
+        const { error: deleteError } = await supabaseClient.auth.admin.deleteUser(validatedId)
+        if (deleteError) throw deleteError
+
+        // Profile will be deleted via cascade or we delete it explicitly
         const { error: profileError } = await supabaseClient
           .from('profiles')
-          .update({ is_active: false })
+          .delete()
           .eq('id', validatedId)
 
-        if (profileError) throw profileError
+        if (profileError) console.warn('Profile deletion warning:', profileError)
 
         return new Response(
           JSON.stringify({ success: true }),
