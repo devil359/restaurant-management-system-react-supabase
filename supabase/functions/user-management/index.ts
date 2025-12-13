@@ -133,8 +133,7 @@ serve(async (req) => {
             role_id: isSystemRole ? null : validated.role_id,
             role_name_text: isSystemRole ? null : (validated.role_name_text ?? null),
             restaurant_id: profile.restaurant_id,
-            phone: validated.phone || null,
-            is_active: true
+            phone: validated.phone || null
           })
 
         if (profileError) throw profileError
