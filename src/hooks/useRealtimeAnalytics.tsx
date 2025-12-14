@@ -18,10 +18,12 @@ export const useRealtimeAnalytics = () => {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'orders' },
         () => {
-          console.log('🔄 Orders changed - invalidating analytics');
+          console.log('🔄 Orders changed - invalidating all dashboard queries');
           queryClient.invalidateQueries({ queryKey: ['analytics-data'] });
           queryClient.invalidateQueries({ queryKey: ['dashboard-orders'] });
           queryClient.invalidateQueries({ queryKey: ['liveActivity'] });
+          queryClient.invalidateQueries({ queryKey: ['realtime-business-data'] });
+          queryClient.invalidateQueries({ queryKey: ['business-dashboard-data'] });
         }
       )
       .on(
@@ -37,9 +39,11 @@ export const useRealtimeAnalytics = () => {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'kitchen_orders' },
         () => {
-          console.log('🔄 Kitchen orders changed - invalidating analytics');
+          console.log('🔄 Kitchen orders changed - invalidating all dashboard queries');
           queryClient.invalidateQueries({ queryKey: ['liveActivity'] });
           queryClient.invalidateQueries({ queryKey: ['analytics-data'] });
+          queryClient.invalidateQueries({ queryKey: ['kitchen-orders'] });
+          queryClient.invalidateQueries({ queryKey: ['realtime-business-data'] });
         }
       )
       .on(
