@@ -103,7 +103,7 @@ serve(async (req) => {
       sendStatus = 'sent';
     } catch (twilioError) {
       console.error("Twilio error:", twilioError);
-      errorDetails = twilioError.message;
+      errorDetails = twilioError instanceof Error ? twilioError.message : 'Unknown error';
       sendStatus = 'error';
     }
     
@@ -171,7 +171,7 @@ serve(async (req) => {
     } catch (dbError) {
       console.error("Database error:", dbError);
       if (!errorDetails) {
-        errorDetails = dbError.message;
+        errorDetails = dbError instanceof Error ? dbError.message : 'Unknown error';
         sendStatus = 'error';
       }
     }
@@ -193,9 +193,10 @@ serve(async (req) => {
     
   } catch (error) {
     console.error("Error processing request:", error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     
     return new Response(
-      JSON.stringify({ error: "Internal server error", details: error.message }),
+      JSON.stringify({ error: "Internal server error", details: errorMessage }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
