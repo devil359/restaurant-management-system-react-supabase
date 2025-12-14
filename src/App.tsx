@@ -36,7 +36,7 @@ function AppWithRealtime() {
 }
 
 function App() {
-  console.log("App: Rendering application");
+
   
   return (
     <QueryClientProvider client={queryClient}>

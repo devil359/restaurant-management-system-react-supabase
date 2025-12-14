@@ -87,7 +87,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         const componentNames = components?.map((row: any) => row.component_name) || [];
         setUserComponents(componentNames);
-        console.log('User components loaded:', componentNames);
+
       } else {
         // Create default profile if doesn't exist
         const { data: newProfile } = await supabase

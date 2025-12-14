@@ -521,16 +521,11 @@ const PaymentDialog = ({
   );
 
   const saveCustomerDetails = async (): Promise<boolean> => {
-    console.log('🔄 saveCustomerDetails called', { 
-      sendBillToMobile, 
-      orderId, 
-      customerName: customerName.substring(0, 10) + '...', 
-      customerMobile: customerMobile ? '***' + String(customerMobile).slice(-4) : 'empty'
-    });
+
 
     // If checkbox not checked, return success
     if (!sendBillToMobile) {
-      console.log('✅ Checkbox not checked, skipping save');
+
       return true;
     }
 
@@ -546,7 +541,7 @@ const PaymentDialog = ({
 
     // Validate inputs
     if (!customerName.trim()) {
-      console.log('❌ Customer name empty');
+
       toast({
         title: "Customer Name Required",
         description: "Please enter customer name to send bill.",
@@ -557,7 +552,7 @@ const PaymentDialog = ({
 
     const mobileStr = String(customerMobile);
     if (!mobileStr.trim()) {
-      console.log('❌ Mobile number empty');
+
       toast({
         title: "Mobile Number Required",
         description: "Please enter mobile number to send bill.",
@@ -569,7 +564,7 @@ const PaymentDialog = ({
     // Validate mobile number (10 digits)
     const mobileRegex = /^[0-9]{10}$/;
     if (!mobileRegex.test(mobileStr.trim())) {
-      console.log('❌ Invalid mobile format:', customerMobile);
+
       toast({
         title: "Invalid Mobile Number",
         description: "Please enter a valid 10-digit mobile number.",
@@ -581,7 +576,7 @@ const PaymentDialog = ({
     setIsSaving(true);
 
     try {
-      console.log('🔍 Looking up kitchen order:', orderId);
+
       // Try to find the order_id from kitchen_orders
       const { data: kitchenOrder, error: kitchenError } = await supabase
         .from('kitchen_orders')
@@ -589,17 +584,17 @@ const PaymentDialog = ({
         .eq('id', orderId)
         .maybeSingle();
 
-      console.log('📋 Kitchen order lookup result:', { kitchenOrder, kitchenError });
+
 
       let targetOrderId = null;
 
       if (kitchenOrder?.order_id) {
         // Found a linked order_id
         targetOrderId = kitchenOrder.order_id;
-        console.log('✅ Found linked order_id:', targetOrderId);
+
       } else {
         // Maybe orderId is directly the orders table ID
-        console.log('⚠️ No kitchen order found, checking if orderId is direct orders ID');
+
         const { data: directOrder, error: directError } = await supabase
           .from('orders')
           .select('id')
@@ -608,18 +603,13 @@ const PaymentDialog = ({
 
         if (directOrder) {
           targetOrderId = orderId;
-          console.log('✅ orderId is direct orders table ID:', targetOrderId);
+
         } else {
           console.error('❌ No order found with ID:', orderId, { directError });
         }
       }
 
       if (targetOrderId) {
-        console.log('💾 Updating order with customer details:', {
-          orderId: targetOrderId,
-          name: customerName.trim(),
-          phone: String(customerMobile).trim()
-        });
 
         const { data: updateData, error: updateError } = await supabase
           .from('orders')
@@ -647,13 +637,13 @@ const PaymentDialog = ({
             throw updateError2;
           }
 
-          console.log('✅ Customer details saved successfully (snake_case):', updateData2);
+
           toast({
             title: "Details Saved",
             description: "Customer details saved successfully."
           });
         } else {
-          console.log('✅ Customer details saved successfully:', updateData);
+
           toast({
             title: "Details Saved",
             description: "Customer details saved successfully."
@@ -742,14 +732,14 @@ const PaymentDialog = ({
   };
 
   const handlePrintBill = async () => {
-    console.log('🖨️ Print bill clicked');
+
     // Save customer details first
     const saved = await saveCustomerDetails();
     if (!saved) {
-      console.log('❌ Customer details not saved, aborting print');
+
       return;
     }
-    console.log('✅ Proceeding with print');
+
     try {
       const doc = new jsPDF({
         format: [58, 297], // 58mm thermal printer width
@@ -1452,7 +1442,7 @@ const PaymentDialog = ({
                       {appliedPromotion.name}
                     </span>
                   </div>
-                  <p className="text-xs text-green-600 dark:text-green-400">
+                  <p className="text-xs text-green-600 dark:text-green-400 dark:text-green-400">
                     Discount: ₹{promotionDiscountAmount.toFixed(2)}
                   </p>
                 </div>
@@ -1501,7 +1491,7 @@ const PaymentDialog = ({
             )}
           </div>
           {manualDiscountPercent > 0 && (
-            <div className="text-sm text-green-600 font-medium">
+            <div className="text-sm text-green-600 dark:text-green-400 font-medium">
               ✓ {manualDiscountPercent}% discount applied - Save ₹{manualDiscountAmount.toFixed(2)}
             </div>
           )}
@@ -1614,7 +1604,7 @@ const PaymentDialog = ({
 
       <div className="text-center">
         <h2 className="text-2xl font-bold text-foreground mb-2">Select Payment Method</h2>
-        <p className="text-lg text-blue-600 font-semibold">
+        <p className="text-lg text-blue-600 dark:text-blue-400 font-semibold">
           Total Amount: ₹{total.toFixed(2)}
         </p>
       </div>
