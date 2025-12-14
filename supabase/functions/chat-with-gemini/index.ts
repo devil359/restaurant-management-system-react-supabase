@@ -397,16 +397,18 @@ ALWAYS base your answers on this specific data. When asked for MTD, QTD, or YTD,
     );
   } catch (error) {
     console.error('Error in chat function:', error);
+    const errorMessage = error instanceof Error ? error.message : 'An error occurred during chat request'
+    const errorStack = error instanceof Error ? error.stack : undefined
     
     return new Response(
       JSON.stringify({ 
-        error: error.message || 'An error occurred during chat request',
-        details: error.stack,
+        error: errorMessage,
+        details: errorStack,
         choices: [
           {
             message: {
               role: "assistant",
-              content: `Error: ${error.message || 'An unexpected error occurred.'}`
+              content: `Error: ${errorMessage}`
             }
           }
         ]
@@ -416,11 +418,17 @@ ALWAYS base your answers on this specific data. When asked for MTD, QTD, or YTD,
   }
 });
 
-async function handleSalesForecast(apiKey, restaurantData, days, corsHeaders) {
+interface RevenueDataItem {
+  date: string;
+  total_revenue: number;
+  order_count: number;
+}
+
+async function handleSalesForecast(apiKey: string, restaurantData: { revenueStats: RevenueDataItem[] }, days: number, corsHeaders: Record<string, string>) {
   console.log(`Generating sales forecast for ${days} days`);
   
   try {
-    const revenueData = restaurantData.revenueStats.slice(0, 30).map(item => ({
+    const revenueData = restaurantData.revenueStats.slice(0, 30).map((item: RevenueDataItem) => ({
       date: item.date,
       revenue: item.total_revenue,
       orders: item.order_count
@@ -472,7 +480,7 @@ For each prediction, include a confidence level (0-100) and the key factors that
     console.log("Received successful Gemini API forecast response");
     
     // access response text safely
-    const textContent = response.text;
+    const textContent = response.text || '';
     const jsonContent = textContent.replace(/```json|```/g, '').trim();
     const forecastData = JSON.parse(jsonContent);
     
@@ -482,10 +490,11 @@ For each prediction, include a confidence level (0-100) and the key factors that
     );
   } catch (error) {
     console.error('Error generating sales forecast:', error);
+    const errorMessage = error instanceof Error ? error.message : 'An error occurred during forecast generation'
     
     return new Response(
       JSON.stringify({ 
-        error: error.message || 'An error occurred during forecast generation',
+        error: errorMessage,
         predictions: { sales_forecast: [] }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
@@ -493,11 +502,20 @@ For each prediction, include a confidence level (0-100) and the key factors that
   }
 }
 
-async function handleInventoryRecommendations(apiKey, restaurantData, corsHeaders) {
+interface InventoryDataItem {
+  id: string;
+  name: string;
+  quantity: number;
+  reorder_level: number;
+  unit: string;
+  category: string;
+}
+
+async function handleInventoryRecommendations(apiKey: string, restaurantData: { inventoryItems: InventoryDataItem[], recentOrders: unknown[] }, corsHeaders: Record<string, string>) {
   console.log("Generating inventory recommendations");
   
   try {
-    const inventoryData = restaurantData.inventoryItems.map(item => ({
+    const inventoryData = restaurantData.inventoryItems.map((item: InventoryDataItem) => ({
       id: item.id,
       name: item.name,
       current_quantity: item.quantity,
@@ -562,7 +580,7 @@ Only include items that need attention - don't include items with sufficient sto
 
     console.log("Received successful Gemini API inventory recommendations response");
     
-    const textContent = response.text;
+    const textContent = response.text || '';
     const jsonContent = textContent.replace(/```json|```/g, '').trim();
     const recommendationsData = JSON.parse(jsonContent);
     
@@ -572,10 +590,11 @@ Only include items that need attention - don't include items with sufficient sto
     );
   } catch (error) {
     console.error('Error generating inventory recommendations:', error);
+    const errorMessage = error instanceof Error ? error.message : 'An error occurred during inventory analysis'
     
     return new Response(
       JSON.stringify({ 
-        error: error.message || 'An error occurred during inventory analysis',
+        error: errorMessage,
         predictions: { inventory_recommendations: [] }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }

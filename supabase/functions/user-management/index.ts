@@ -257,11 +257,13 @@ serve(async (req) => {
   } catch (error) {
     // Generate a unique error ID for tracking
     const errorId = crypto.randomUUID();
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorStack = error instanceof Error ? error.stack : undefined
     
     // Log detailed error server-side only
     console.error(`[Error ID: ${errorId}] User management error:`, {
-      message: error.message,
-      stack: error.stack,
+      message: errorMessage,
+      stack: errorStack,
       timestamp: new Date().toISOString()
     });
     
