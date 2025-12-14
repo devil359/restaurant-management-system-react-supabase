@@ -35,6 +35,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/hooks/useAuth";
 import { Permission } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
+import { useRestaurantId } from "@/hooks/useRestaurantId";
 import { supabase } from "@/integrations/supabase/client";
 
 interface NavigationItem {
@@ -265,7 +266,11 @@ export const ImprovedSidebarNavigation = ({
   const navigate = useNavigate();
   const { user, hasAnyPermission } = useAuth();
   const { toast } = useToast();
+  const { restaurantName } = useRestaurantId();
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(['Dashboard', 'Operations']));
+
+  // Dynamic sidebar title - use restaurant name if available
+  const sidebarTitle = restaurantName || "Swadeshi Solutions RMS";
 
   const toggleGroup = (groupTitle: string) => {
     const newExpanded = new Set(expandedGroups);
@@ -312,8 +317,11 @@ export const ImprovedSidebarNavigation = ({
       {/* Header Section */}
       <div className="p-4 border-b border-white/10">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3 truncate">
-            <span className="font-bold text-white text-lg truncate">Restaurant Pro</span>
+          <div 
+            className="flex items-center space-x-3 truncate cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={() => navigate("/")}
+          >
+            <span className="font-bold text-white text-lg truncate" title={sidebarTitle}>{sidebarTitle}</span>
           </div>
           <Button
             variant="ghost"
@@ -465,7 +473,7 @@ export const ImprovedSidebarNavigation = ({
           </Button>
         </div>
         <div className="text-center">
-          <span className="text-xs text-white/60">© 2025 Restaurant Pro</span>
+          <span className="text-xs text-white/60">© {new Date().getFullYear()} Restaurant Pro</span>
         </div>
       </div>
     </div>

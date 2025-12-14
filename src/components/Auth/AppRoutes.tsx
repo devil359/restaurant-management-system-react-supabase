@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { ImprovedSidebarNavigation } from "@/components/Layout/ImprovedSidebarNavigation";
 import SimpleSidebar from "../Layout/SimpleSidebar";
 import Index from "@/pages/Index";
+import StaffLandingPage from "@/components/Dashboard/StaffLandingPage";
 import Orders from "@/pages/Orders";
 import POS from "@/pages/POS";
 import QSRPos from "@/pages/QSRPos";
@@ -71,7 +72,10 @@ export const AppRoutes = () => {
       <div className="flex-1 overflow-y-auto pb-16 md:pb-0">
         <Routes>
           <Route path="/" element={
-            <PermissionGuard permission="dashboard.view">
+            <PermissionGuard 
+              permission="dashboard.view"
+              fallback={<StaffLandingPage />}
+            >
               <Index />
             </PermissionGuard>
           } />
