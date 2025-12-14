@@ -187,7 +187,11 @@ export const AppRoutes = () => {
               <UserManagement />
             </PermissionGuard>
           } />
-          <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/admin" element={
+            <PermissionGuard permission="users.manage">
+              <AdminPanel />
+            </PermissionGuard>
+          } />
           <Route path="/role-management" element={
             <PermissionGuard permission="users.manage">
               <RoleManagement />

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import OrderTicket from "./OrderTicket";
 import OrdersColumn from "./OrdersColumn";
 import DateFilter from "./DateFilter";
-import { filterOrdersByDateRange } from "@/components/Staff/utilities/staffUtils";
+import { startOfDay, endOfDay, subDays, startOfMonth, endOfMonth } from "date-fns";
 import { Json } from "@/integrations/supabase/types";
 
 export interface KitchenOrder {
@@ -23,7 +23,7 @@ export interface KitchenOrder {
 
 const KitchenDisplay = () => {
   const [orders, setOrders] = useState<KitchenOrder[]>([]);
-  const [filteredOrders, setFilteredOrders] = useState<KitchenOrder[]>([]);
+  // filteredOrders state removed as we filter on server side now
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [dateFilter, setDateFilter] = useState("today");
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -73,13 +73,10 @@ const KitchenDisplay = () => {
     return 'data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU9vT18=';
   };
 
-  useEffect(() => {
-    // Apply date filter to orders
-    setFilteredOrders(filterOrdersByDateRange(orders, dateFilter));
-  }, [orders, dateFilter]);
 
+
+  // Fetch orders with server-side filtering
   useEffect(() => {
-    // Fetch initial orders
     const fetchOrders = async () => {
       const { data: profile } = await supabase
         .from("profiles")
@@ -89,19 +86,46 @@ const KitchenDisplay = () => {
 
       if (!profile?.restaurant_id) return;
 
-      const { data } = await supabase
+      let query = supabase
         .from("kitchen_orders")
         .select("*")
         .eq("restaurant_id", profile.restaurant_id)
         .order("created_at", { ascending: false });
 
+      const today = new Date();
+      
+      // Apply date filters on the server side
+      switch (dateFilter) {
+        case "today":
+          query = query
+            .gte('created_at', startOfDay(today).toISOString())
+            .lte('created_at', endOfDay(today).toISOString());
+          break;
+        case "yesterday":
+          const yesterday = subDays(today, 1);
+          query = query
+            .gte('created_at', startOfDay(yesterday).toISOString())
+            .lte('created_at', endOfDay(yesterday).toISOString());
+          break;
+        case "last7days":
+          query = query
+            .gte('created_at', startOfDay(subDays(today, 6)).toISOString())
+            .lte('created_at', endOfDay(today).toISOString());
+          break;
+        case "thisMonth":
+          query = query
+            .gte('created_at', startOfMonth(today).toISOString())
+            .lte('created_at', endOfMonth(today).toISOString());
+          break;
+        // 'all' case doesn't add filters, effectively fetching everything (which is still risky but better than always)
+      }
+
+      const { data } = await query;
+
       if (data) {
-        // Properly transform and cast the data from Supabase's Json type to our KitchenOrder type
         const typedOrders = data.map(order => {
-          // Safely cast the items to handle Json type
           const itemsArray = Array.isArray(order.items) ? order.items : [];
           
-          // Ensure items is an array and transform each item to match our expected structure
           const transformedItems = itemsArray.map((item: any) => ({
             name: typeof item.name === 'string' ? item.name : 'Unknown Item',
             quantity: typeof item.quantity === 'number' ? item.quantity : 1,
@@ -118,12 +142,39 @@ const KitchenDisplay = () => {
         });
         
         setOrders(typedOrders);
+        // We no longer need separate filteredOrders state, as orders itself is now filtered
+        // We no longer need separate filteredOrders state, as orders itself is now filtered 
       }
     };
 
     fetchOrders();
+    // Re-fetch when date filter changes
+  }, [dateFilter]);
 
-    // Subscribe to real-time updates
+  // Helper function to check if an order falls within the current date filter
+  const isWithinDateFilter = (orderCreatedAt: string): boolean => {
+    const orderDate = new Date(orderCreatedAt);
+    const today = new Date();
+
+    switch (dateFilter) {
+      case "today":
+        return orderDate >= startOfDay(today) && orderDate <= endOfDay(today);
+      case "yesterday":
+        const yesterday = subDays(today, 1);
+        return orderDate >= startOfDay(yesterday) && orderDate <= endOfDay(yesterday);
+      case "last7days":
+        return orderDate >= startOfDay(subDays(today, 6)) && orderDate <= endOfDay(today);
+      case "thisMonth":
+        return orderDate >= startOfMonth(today) && orderDate <= endOfMonth(today);
+      case "all":
+        return true;
+      default:
+        return true;
+    }
+  };
+
+  // Subscribe to real-time updates
+  useEffect(() => {
     const channel = supabase
       .channel("kitchen-orders")
       .on(
@@ -137,6 +188,13 @@ const KitchenDisplay = () => {
           if (payload.eventType === "INSERT") {
             // Transform the new order data to match KitchenOrder type
             const newOrderData = payload.new;
+            
+            // Check if the new order falls within current date filter
+            if (!isWithinDateFilter(newOrderData.created_at)) {
+              // Order is outside current filter, skip adding it
+              return;
+            }
+
             const itemsArray = Array.isArray(newOrderData.items) ? newOrderData.items : [];
             
             // Transform each item safely
@@ -207,7 +265,7 @@ const KitchenDisplay = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [soundEnabled, toast, notification]);
+  }, [soundEnabled, toast, notification, dateFilter]);
 
   const handleStatusUpdate = async (orderId: string, newStatus: KitchenOrder["status"]) => {
     try {
@@ -283,7 +341,7 @@ const KitchenDisplay = () => {
   };
 
   const filterOrdersByStatus = (status: KitchenOrder["status"]) => {
-    return filteredOrders.filter((order) => order.status === status);
+    return orders.filter((order) => order.status === status);
   };
 
   const toggleFullscreen = () => {
@@ -296,7 +354,7 @@ const KitchenDisplay = () => {
     }
   };
 
-  const totalOrders = filteredOrders.length;
+  const totalOrders = orders.length;
   const newOrders = filterOrdersByStatus("new").length;
   const preparingOrders = filterOrdersByStatus("preparing").length;
   const readyOrders = filterOrdersByStatus("ready").length;

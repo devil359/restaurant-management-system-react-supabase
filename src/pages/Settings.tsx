@@ -73,13 +73,10 @@ const Settings = () => {
   const handleLogout = async () => {
     try {
       setLoading(true);
-      console.log("Settings: Starting logout process");
-      
       // Clear all queries from the cache on logout
       queryClient.clear();
       
       await signOut();
-      console.log("Settings: Logout successful");
       
       toast({
         title: "Success",

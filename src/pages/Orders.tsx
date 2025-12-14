@@ -34,9 +34,8 @@ const Orders = () => {
   };
 
   const handleRefresh = () => {
-    // Trigger refresh functionality in OrdersView
+    // Trigger refresh functionality in OrdersView via the refreshTrigger prop
     setRefreshTrigger(prev => prev + 1);
-    window.location.reload();
   };
 
   const quickActions = [
