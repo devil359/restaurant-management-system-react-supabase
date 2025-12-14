@@ -85,8 +85,9 @@ export const GlobalUserManagement = () => {
         <CardContent>
           <UserList
             key={refreshKey}
+            users={[]}
+            isLoading={false}
             onUserUpdated={handleUserUpdated}
-            restaurantFilter={selectedRestaurantId}
           />
         </CardContent>
       </Card>
