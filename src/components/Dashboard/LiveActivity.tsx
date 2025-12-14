@@ -9,7 +9,7 @@ const LiveActivity = () => {
 
   if (isLoading) {
     return (
-      <Card className="bg-white/80 backdrop-blur-xl border border-white/20 rounded-3xl shadow-2xl p-8">
+      <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border border-white/20 dark:border-gray-700/30 rounded-3xl shadow-2xl p-8">
         <div className="flex items-center gap-3 mb-6">
           <div className="p-2 bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl shadow-lg animate-pulse">
             <Activity className="h-6 w-6 text-white" />
@@ -34,7 +34,7 @@ const LiveActivity = () => {
 
   if (error || !activity) {
     return (
-      <Card className="bg-white/80 backdrop-blur-xl border border-white/20 rounded-3xl shadow-2xl p-8">
+      <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border border-white/20 dark:border-gray-700/30 rounded-3xl shadow-2xl p-8">
         <div className="text-center text-red-500">
           Failed to load live activity
         </div>
@@ -82,7 +82,7 @@ const LiveActivity = () => {
   ];
 
   return (
-    <Card className="bg-white/80 backdrop-blur-xl border border-white/20 rounded-3xl shadow-2xl p-8 transform hover:scale-[1.01] transition-all duration-300">
+    <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border border-white/20 dark:border-gray-700/30 rounded-3xl shadow-2xl p-8 transform hover:scale-[1.01] transition-all duration-300">
       <div className="flex items-center gap-3 mb-6">
         <div className="p-2 bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl shadow-lg relative">
           <Activity className="h-6 w-6 text-white" />

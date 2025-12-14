@@ -36,7 +36,7 @@ const RecipeManagement = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-orange-50 to-amber-100 dark:from-gray-900 dark:via-slate-900 dark:to-orange-950 p-3 md:p-6">
       {/* Header */}
-      <div className="mb-4 md:mb-8 bg-white/80 backdrop-blur-xl border border-white/20 rounded-2xl md:rounded-3xl shadow-xl p-4 md:p-8">
+      <div className="mb-4 md:mb-8 bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border border-white/20 dark:border-gray-700/30 rounded-2xl md:rounded-3xl shadow-xl p-4 md:p-8">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
           <div className="flex items-start md:items-center gap-3 md:gap-4">
             <div className="p-2 md:p-3 bg-gradient-to-r from-orange-500 to-amber-600 rounded-xl md:rounded-2xl shadow-lg flex-shrink-0">
@@ -124,7 +124,7 @@ const RecipeManagement = () => {
       </div>
 
       {/* Main Content */}
-      <div className="bg-white/90 backdrop-blur-sm border border-white/30 rounded-2xl md:rounded-3xl shadow-xl overflow-hidden">
+      <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-white/30 dark:border-gray-700/30 rounded-2xl md:rounded-3xl shadow-xl overflow-hidden">
         <Tabs defaultValue="recipes" className="p-3 md:p-6">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="recipes" className="text-xs md:text-sm">Recipes</TabsTrigger>

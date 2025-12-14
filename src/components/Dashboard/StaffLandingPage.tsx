@@ -104,7 +104,7 @@ const StaffLandingPage: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-slate-900 dark:to-indigo-950 p-4 md:p-6">
       {/* Welcome Header */}
       <div className="max-w-5xl mx-auto">
-        <div className="bg-white/80 backdrop-blur-xl border border-white/20 rounded-3xl shadow-2xl p-8 mb-8">
+        <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border border-white/20 dark:border-gray-700/30 rounded-3xl shadow-2xl p-8 mb-8">
           <div className="flex items-center gap-4 mb-6">
             <div className="p-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-2xl shadow-xl">
               <Sparkles className="h-10 w-10 text-white" />
@@ -134,7 +134,7 @@ const StaffLandingPage: React.FC = () => {
         </div>
 
         {/* Quick Access Section */}
-        <div className="bg-white/80 backdrop-blur-xl border border-white/20 rounded-3xl shadow-2xl p-8">
+        <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border border-white/20 dark:border-gray-700/30 rounded-3xl shadow-2xl p-8">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-xl shadow-lg">
               <ArrowRight className="h-6 w-6 text-white" />
@@ -154,7 +154,7 @@ const StaffLandingPage: React.FC = () => {
               {accessibleActions.map((action, index) => (
                 <div
                   key={index}
-                  className="group relative overflow-hidden bg-white/90 backdrop-blur-sm border border-white/30 rounded-2xl p-6 hover:bg-white hover:border-purple-200 hover:shadow-2xl transition-all duration-300 transform hover:scale-105 cursor-pointer"
+                  className="group relative overflow-hidden bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-white/30 dark:border-gray-700/30 rounded-2xl p-6 hover:bg-white dark:hover:bg-gray-800 hover:border-purple-200 dark:hover:border-purple-700 hover:shadow-2xl transition-all duration-300 transform hover:scale-105 cursor-pointer"
                   onClick={() => navigate(action.path)}
                 >
                   {/* Gradient overlay */}
@@ -169,10 +169,10 @@ const StaffLandingPage: React.FC = () => {
                       >
                         <action.icon className="h-6 w-6 text-white" />
                       </div>
-                      <ArrowRight className="h-5 w-5 text-gray-400 group-hover:text-purple-600 group-hover:translate-x-1 transition-all duration-300" />
+                      <ArrowRight className="h-5 w-5 text-gray-400 dark:text-gray-500 group-hover:text-purple-600 dark:group-hover:text-purple-400 group-hover:translate-x-1 transition-all duration-300" />
                     </div>
 
-                    <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-2 text-lg group-hover:text-purple-700 transition-colors duration-300">
+                    <h3 className="font-bold text-gray-900 dark:text-white mb-2 text-lg group-hover:text-purple-700 dark:group-hover:text-purple-400 transition-colors duration-300">
                       {action.title}
                     </h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">

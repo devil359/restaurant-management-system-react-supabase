@@ -37,6 +37,7 @@ import { Permission } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
 import { useRestaurantId } from "@/hooks/useRestaurantId";
 import { supabase } from "@/integrations/supabase/client";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface NavigationItem {
   title: string;
@@ -471,6 +472,10 @@ export const ImprovedSidebarNavigation = ({
           >
             <LogOut className="h-4 w-4" />
           </Button>
+        </div>
+        {/* Theme Toggle */}
+        <div className="flex justify-center mb-2">
+          <ThemeToggle variant="compact" />
         </div>
         <div className="text-center">
           <span className="text-xs text-white/60">© {new Date().getFullYear()} Restaurant Pro</span>

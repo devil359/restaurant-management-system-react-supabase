@@ -360,7 +360,7 @@ const POSMode = () => {
         {/* Left Section - Menu & Orders */}
         <div className="lg:col-span-3 flex flex-col space-y-6">
           {/* Header Section */}
-          <div className="bg-white/90 backdrop-blur-xl border border-white/30 rounded-3xl shadow-xl p-6">
+          <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl border border-white/30 dark:border-gray-700/30 rounded-3xl shadow-xl p-6">
             <div className="flex items-center justify-between mb-6">
               <POSHeader 
                 orderType={orderType}
@@ -372,7 +372,7 @@ const POSMode = () => {
               <Button 
                 variant="outline" 
                 onClick={() => setShowActiveOrders(!showActiveOrders)}
-                className="flex items-center gap-2 bg-white/80 backdrop-blur-sm border-2 border-indigo-200 hover:border-indigo-300 hover:bg-indigo-50 text-indigo-700 rounded-xl px-4 py-2 transition-all duration-300"
+                className="flex items-center gap-2 bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm border-2 border-indigo-200 dark:border-indigo-700 hover:border-indigo-300 dark:hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 rounded-xl px-4 py-2 transition-all duration-300"
               >
                 {showActiveOrders ? (
                   <>
@@ -389,8 +389,8 @@ const POSMode = () => {
             </div>
 
             {showActiveOrders && (
-              <div className="bg-gradient-to-r from-gray-50/80 to-white/80 backdrop-blur-sm rounded-2xl p-4 border border-gray-200/50">
-                <h2 className="text-lg font-semibold mb-3 text-gray-800 flex items-center gap-2">
+              <div className="bg-gradient-to-r from-gray-50/80 to-white/80 dark:from-gray-700/80 dark:to-gray-800/80 backdrop-blur-sm rounded-2xl p-4 border border-gray-200/50 dark:border-gray-600/50">
+                <h2 className="text-lg font-semibold mb-3 text-gray-800 dark:text-white flex items-center gap-2">
                   <div className="w-3 h-3 bg-gradient-to-r from-orange-400 to-red-500 rounded-full animate-pulse"></div>
                   Active Orders
                 </h2>
@@ -410,8 +410,8 @@ const POSMode = () => {
           </div>
 
           {/* Menu Section */}
-          <div className="flex-1 bg-white/90 backdrop-blur-xl border border-white/30 rounded-3xl shadow-xl overflow-hidden">
-            <div className="p-6 border-b border-gray-100">
+          <div className="flex-1 bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl border border-white/30 dark:border-gray-700/30 rounded-3xl shadow-xl overflow-hidden">
+            <div className="p-6 border-b border-gray-100 dark:border-gray-700">
               <h2 className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
                 Menu Items
               </h2>

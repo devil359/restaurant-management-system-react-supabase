@@ -32,6 +32,7 @@ import { useRestaurantId } from "@/hooks/useRestaurantId";
 import { Permission } from "@/types/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface MobileNavItem {
   id: string;
@@ -164,13 +165,13 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
                   "p-2.5 rounded-xl transition-all",
                   active 
                     ? `bg-gradient-to-br ${item.gradient} shadow-lg ${item.shadowColor}` 
-                    : "bg-gray-100"
+                    : "bg-gray-100 dark:bg-gray-700"
                 )}>
-                  <Icon className={cn("h-5 w-5", active ? "text-white" : item.textColor)} />
+                  <Icon className={cn("h-5 w-5", active ? "text-white" : `${item.textColor} dark:text-gray-300`)} />
                 </div>
                 <span className={cn(
                   "text-[10px] font-medium truncate w-full text-center",
-                  active ? item.textColor : "text-gray-500"
+                  active ? item.textColor : "text-gray-500 dark:text-gray-400"
                 )}>{item.label}</span>
               </button>
             );
@@ -180,10 +181,10 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
             onClick={() => setIsOpen(true)}
             className="flex flex-col items-center gap-1 p-2 rounded-xl transition-all min-w-[60px] hover:scale-105"
           >
-            <div className="p-2.5 rounded-xl bg-gray-100">
-              <MoreHorizontal className="h-5 w-5 text-gray-500" />
+            <div className="p-2.5 rounded-xl bg-gray-100 dark:bg-gray-700">
+              <MoreHorizontal className="h-5 w-5 text-gray-500 dark:text-gray-400" />
             </div>
-            <span className="text-[10px] font-medium text-gray-500">More</span>
+            <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">More</span>
           </button>
         </div>
       </div>
@@ -263,8 +264,13 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
               )}
             </div>
             
+            {/* Theme Toggle */}
+            <div className="flex justify-center py-3 border-b border-gray-100">
+              <ThemeToggle variant="pill" />
+            </div>
+            
             {/* User Info Footer */}
-            <div className="sticky bottom-0 bg-white/90 backdrop-blur-xl border-t border-gray-100 p-4 shadow-2xl shadow-black/5">
+            <div className="sticky bottom-0 bg-white/90 backdrop-blur-xl p-4 shadow-2xl shadow-black/5">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-purple-500/30">
                   {user?.first_name ? user.first_name.charAt(0) : user?.email?.charAt(0) || "?"}
