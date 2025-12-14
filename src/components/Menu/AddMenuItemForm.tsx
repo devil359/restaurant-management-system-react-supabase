@@ -90,24 +90,37 @@ const AddMenuItemForm = ({ onClose, onSuccess, editingItem }: AddMenuItemFormPro
       price: editingItem?.price ? String(editingItem.price) : "",
       category: editingItem?.category || "",
       image_url: editingItem?.image_url || "",
-      is_veg: editingItem?.is_veg ?? false,
+      is_veg: editingItem ? (editingItem.is_veg ?? true) : true, // Default to veg for new items
       is_special: editingItem?.is_special ?? false,
     },
   });
 
-  // Keep this in useEffect to handle any changes to editingItem
+  // Reset form when editingItem changes
   useEffect(() => {
     if (editingItem) {
+      // Editing existing item - use item's values
       form.reset({
         name: editingItem.name || "",
         description: editingItem.description || "",
         price: editingItem.price ? String(editingItem.price) : "",
         category: editingItem.category || "",
         image_url: editingItem.image_url || "",
-        is_veg: editingItem.is_veg ?? false,
+        is_veg: editingItem.is_veg ?? true,
         is_special: editingItem.is_special ?? false,
       });
       setUploadedImageUrl(editingItem.image_url || "");
+    } else {
+      // New item - reset to defaults with is_veg = true
+      form.reset({
+        name: "",
+        description: "",
+        price: "",
+        category: "",
+        image_url: "",
+        is_veg: true, // Default to vegetarian
+        is_special: false,
+      });
+      setUploadedImageUrl("");
     }
   }, [editingItem, form]);
 
@@ -214,20 +227,37 @@ const AddMenuItemForm = ({ onClose, onSuccess, editingItem }: AddMenuItemFormPro
         category: data.category,
         image_url: imageUrl,
         is_available: true,
-        is_veg: data.is_veg,
-        is_special: data.is_special,
+        is_veg: Boolean(data.is_veg), // Explicit Boolean conversion
+        is_special: Boolean(data.is_special), // Explicit Boolean conversion
+        updated_at: new Date().toISOString(), // Track update time
       };
 
       console.log("Saving menu item with data:", menuItemData);
+      console.log("is_veg value:", data.is_veg, "->", menuItemData.is_veg);
+      console.log("Editing item ID:", editingItem?.id);
+      console.log("Restaurant ID:", userProfile.restaurant_id);
 
       if (editingItem) {
-        // Update existing menu item
-        const { error } = await supabase
+        // Update existing menu item - include restaurant_id for RLS
+        const { error, data: updatedData } = await supabase
           .from("menu_items")
           .update(menuItemData)
-          .eq("id", editingItem.id);
+          .eq("id", editingItem.id)
+          .eq("restaurant_id", userProfile.restaurant_id) // RLS requirement
+          .select();
 
-        if (error) throw error;
+        if (error) {
+          console.error("Supabase update error:", error);
+          throw error;
+        }
+        
+        console.log("Updated menu item result:", updatedData);
+        
+        // Check if update actually happened
+        if (!updatedData || updatedData.length === 0) {
+          console.error("No rows were updated - RLS policy may be blocking the update");
+          throw new Error("Failed to update menu item. Please check permissions.");
+        }
 
         toast({
           title: "Success",
