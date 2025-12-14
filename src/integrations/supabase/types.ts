@@ -689,6 +689,35 @@ export type Database = {
         }
         Relationships: []
       }
+      component_table_mapping: {
+        Row: {
+          component_id: string | null
+          created_at: string | null
+          id: string
+          table_name: string
+        }
+        Insert: {
+          component_id?: string | null
+          created_at?: string | null
+          id?: string
+          table_name: string
+        }
+        Update: {
+          component_id?: string | null
+          created_at?: string | null
+          id?: string
+          table_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "component_table_mapping_component_id_fkey"
+            columns: ["component_id"]
+            isOneToOne: false
+            referencedRelation: "app_components"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       currencies: {
         Row: {
           code: string
@@ -5029,6 +5058,10 @@ export type Database = {
         Args: { customer_points: number; restaurant_id_param: string }
         Returns: string
       }
+      check_access: {
+        Args: { _restaurant_id: string; _table_name: string }
+        Returns: boolean
+      }
       generate_purchase_order_number: {
         Args: { restaurant_id_param: string }
         Returns: string
@@ -5112,6 +5145,7 @@ export type Database = {
           component_name: string
         }[]
       }
+      get_user_restaurant_id: { Args: { _user_id?: string }; Returns: string }
       get_user_role_name: { Args: { user_id: string }; Returns: string }
       has_active_subscription: {
         Args: { restaurant_id: string }
@@ -5146,7 +5180,11 @@ export type Database = {
         Args: { required_permissions?: string[]; required_roles: string[] }
         Returns: boolean
       }
-      user_is_admin_or_owner: { Args: { user_id: string }; Returns: boolean }
+      user_has_table_access: {
+        Args: { _restaurant_id?: string; _table_name: string; _user_id: string }
+        Returns: boolean
+      }
+      user_is_admin_or_owner: { Args: { user_id?: string }; Returns: boolean }
     }
     Enums: {
       recipe_category:
