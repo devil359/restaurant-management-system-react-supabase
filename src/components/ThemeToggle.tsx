@@ -5,13 +5,14 @@ import { cn } from "@/lib/utils";
 
 interface ThemeToggleProps {
   className?: string;
-  variant?: "pill" | "compact";
+  variant?: "pill" | "compact" | "mini";
 }
 
 /**
  * 3D-style Theme Toggle with gradient backgrounds
  * pill variant: Full toggle with text label
  * compact variant: Smaller toggle for tight spaces
+ * mini variant: Icon-only toggle for headers
  */
 export function ThemeToggle({ className, variant = "pill" }: ThemeToggleProps) {
   const [mounted, setMounted] = useState(false);
@@ -32,6 +33,29 @@ export function ThemeToggle({ className, variant = "pill" }: ThemeToggleProps) {
   }
 
   const isLight = actualTheme === "light";
+
+  // Mini variant - icon only, very compact
+  if (variant === "mini") {
+    return (
+      <button
+        onClick={toggleTheme}
+        aria-label={`Switch to ${isLight ? "dark" : "light"} mode`}
+        className={cn(
+          "relative flex items-center justify-center p-1.5 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg",
+          isLight 
+            ? "bg-gradient-to-r from-amber-400 to-orange-500 shadow-orange-400/20 hover:from-amber-500 hover:to-orange-600" 
+            : "bg-gradient-to-r from-indigo-500 to-blue-600 shadow-blue-600/20 hover:from-indigo-600 hover:to-blue-700",
+          className
+        )}
+      >
+        {isLight ? (
+          <Sun className="h-3.5 w-3.5 text-white" />
+        ) : (
+          <Moon className="h-3.5 w-3.5 text-white" />
+        )}
+      </button>
+    );
+  }
 
   // Compact variant for mobile and tight spaces
   if (variant === "compact") {

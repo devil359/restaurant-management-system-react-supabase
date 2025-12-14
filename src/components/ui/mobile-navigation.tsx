@@ -142,9 +142,9 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
 
   return (
     <>
-      {/* Mobile Bottom Navigation Bar - Light Theme */}
+      {/* Mobile Bottom Navigation Bar */}
       <div className={cn(
-        "lg:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-gray-200 px-2 z-50 shadow-2xl shadow-black/10",
+        "lg:hidden fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl border-t border-gray-200 dark:border-gray-700 px-2 z-50 shadow-2xl shadow-black/10",
         "pb-[env(safe-area-inset-bottom,8px)] pt-2",
         className
       )}>
@@ -189,14 +189,14 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
         </div>
       </div>
 
-      {/* Mobile Menu Overlay - Light Theme */}
+      {/* Mobile Menu Overlay */}
       {isOpen && (
         <div 
           className="lg:hidden fixed inset-0 bg-black/30 backdrop-blur-sm z-50 animate-in fade-in" 
           onClick={() => setIsOpen(false)}
         >
           <div 
-            className="absolute bottom-0 left-0 right-0 bg-gradient-to-b from-white via-white to-purple-50 rounded-t-3xl max-h-[85vh] overflow-hidden animate-in slide-in-from-bottom pb-[env(safe-area-inset-bottom,0px)]"
+            className="absolute bottom-0 left-0 right-0 bg-gradient-to-b from-white via-white to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 rounded-t-3xl max-h-[85vh] overflow-hidden animate-in slide-in-from-bottom pb-[env(safe-area-inset-bottom,0px)]"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header with Restaurant Name */}
@@ -209,17 +209,20 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
                   <h3 className="text-xl font-bold text-white truncate">{brandName}</h3>
                   <p className="text-white/80 text-xs">Tap to go home</p>
                 </div>
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="p-2.5 rounded-xl bg-white/20 hover:bg-white/30 transition-colors shadow-lg"
-                >
-                  <X className="h-5 w-5 text-white" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <ThemeToggle variant="mini" />
+                  <button
+                    onClick={() => setIsOpen(false)}
+                    className="p-2.5 rounded-xl bg-white/20 hover:bg-white/30 transition-colors shadow-lg"
+                  >
+                    <X className="h-5 w-5 text-white" />
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Scrollable Content */}
-            <div className="overflow-y-auto max-h-[calc(85vh-200px)] p-4 bg-gradient-to-b from-purple-50/50 to-white">
+            <div className="overflow-y-auto max-h-[calc(85vh-200px)] p-4 bg-gradient-to-b from-purple-50/50 to-white dark:from-gray-800/50 dark:to-gray-900">
               {/* Navigation Grid with Colorful Icons */}
               <div className="grid grid-cols-4 gap-3">
                 {accessibleItems.map((item) => {
@@ -230,9 +233,9 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
                       key={item.id}
                       onClick={() => handleNavigate(item.path)}
                       className={cn(
-                        "flex flex-col items-center gap-2.5 p-3 rounded-2xl transition-all transform bg-white",
+                        "flex flex-col items-center gap-2.5 p-3 rounded-2xl transition-all transform bg-white dark:bg-gray-800",
                         active 
-                          ? "scale-105 shadow-lg ring-2 ring-purple-200" 
+                          ? "scale-105 shadow-lg ring-2 ring-purple-200 dark:ring-purple-700" 
                           : "hover:scale-105 hover:shadow-md shadow-sm"
                       )}
                     >
@@ -246,7 +249,7 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
                       </div>
                       <span className={cn(
                         "font-semibold text-[10px] text-center leading-tight",
-                        active ? item.textColor : "text-gray-600"
+                        active ? item.textColor : "text-gray-600 dark:text-gray-300"
                       )}>{item.label}</span>
                     </button>
                   );
@@ -264,20 +267,20 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
               )}
             </div>
             
-            {/* Theme Toggle */}
-            <div className="flex justify-center py-3 border-b border-gray-100">
+            {/* Theme Toggle - Commented out, using mini variant in header instead */}
+            {/* <div className="flex justify-center py-3 border-b border-gray-100 dark:border-gray-700">
               <ThemeToggle variant="pill" />
-            </div>
+            </div> */}
             
             {/* User Info Footer */}
-            <div className="sticky bottom-0 bg-white/90 backdrop-blur-xl p-4 shadow-2xl shadow-black/5">
+            <div className="sticky bottom-0 bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl p-4 shadow-2xl shadow-black/5">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-purple-500/30">
                   {user?.first_name ? user.first_name.charAt(0) : user?.email?.charAt(0) || "?"}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm truncate text-gray-800">{displayName}</p>
-                  <p className="text-xs text-gray-500 truncate">{userRole}</p>
+                  <p className="font-semibold text-sm truncate text-gray-800 dark:text-white">{displayName}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{userRole}</p>
                 </div>
                 <button
                   onClick={handleSignOut}

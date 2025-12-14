@@ -324,14 +324,17 @@ export const ImprovedSidebarNavigation = ({
           >
             <span className="font-bold text-white text-lg truncate" title={sidebarTitle}>{sidebarTitle}</span>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-            className="text-white hover:bg-white/10 w-8 h-8 rounded-lg shrink-0"
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle variant="mini" />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              className="text-white hover:bg-white/10 w-8 h-8 rounded-lg shrink-0"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -472,10 +475,6 @@ export const ImprovedSidebarNavigation = ({
           >
             <LogOut className="h-4 w-4" />
           </Button>
-        </div>
-        {/* Theme Toggle */}
-        <div className="flex justify-center mb-2">
-          <ThemeToggle variant="compact" />
         </div>
         <div className="text-center">
           <span className="text-xs text-white/60">© {new Date().getFullYear()} Restaurant Pro</span>

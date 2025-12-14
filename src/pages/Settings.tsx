@@ -554,7 +554,7 @@ const Settings = () => {
                   </p>
                   <Button 
                     variant="outline" 
-                    className="bg-white hover:bg-indigo-50 hover:text-indigo-700 border-indigo-200 font-semibold px-6 py-2 rounded-xl shadow-md hover:shadow-lg transition-all duration-300"
+                    className="bg-white dark:bg-gray-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/50 hover:text-indigo-700 dark:hover:text-indigo-300 border-indigo-200 dark:border-indigo-700 dark:text-white font-semibold px-6 py-2 rounded-xl shadow-md hover:shadow-lg transition-all duration-300"
                     onClick={() => window.open('mailto:support@swadeshi.solutions', '_blank')}
                   >
                     Contact Support
