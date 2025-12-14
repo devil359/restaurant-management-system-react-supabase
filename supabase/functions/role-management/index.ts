@@ -271,14 +271,22 @@ Deno.serve(async (req) => {
         // Check if role is deletable (can't modify owner/admin roles)
         const { data: existingRole } = await supabaseClient
           .from('roles')
-          .select('is_deletable')
+          .select('is_deletable, name')
           .eq('id', validated.id)
           .eq('restaurant_id', profile.restaurant_id)
           .single();
 
-        if (!existingRole || !existingRole.is_deletable) {
+        if (!existingRole) {
           return new Response(
-            JSON.stringify({ error: 'Cannot modify this role' }),
+            JSON.stringify({ error: 'Role not found' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 404 }
+          );
+        }
+
+        // prevent renaming system roles
+        if (!existingRole.is_deletable && validated.name && validated.name !== existingRole.name) {
+           return new Response(
+            JSON.stringify({ error: 'Cannot rename system roles' }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
           );
         }

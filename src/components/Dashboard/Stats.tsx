@@ -36,9 +36,9 @@ const Stats = () => {
   );
   const totalSales = completedRevenue.reduce((sum, item) => sum + (item.total || 0), 0);
   
-  // Active orders should only include pending, preparing, and ready status (from POS orders only)
+  // Active orders - New (pending), Preparing, Ready, Held
   const activeOrders = orders.filter(order => 
-    ['pending', 'preparing', 'ready'].includes(order.status)
+    ['pending', 'preparing', 'ready', 'held'].includes(order.status)
   ).length || 0;
   
   const uniqueCustomers = orders.length > 0 
@@ -71,7 +71,7 @@ const Stats = () => {
       trend: "+3",
       color: "text-blue-600 dark:text-blue-400",
       type: "orders" as const,
-      data: orders.filter(order => ['pending', 'preparing', 'ready'].includes(order.status))
+      data: orders.filter(order => ['pending', 'preparing', 'ready', 'held'].includes(order.status))
     },
     {
       title: "Customers",

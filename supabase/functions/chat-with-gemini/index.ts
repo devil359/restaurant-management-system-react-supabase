@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { GoogleGenAI } from "npm:@google/genai";
+import { GoogleGenAI } from "https://esm.sh/@google/genai";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -378,7 +378,7 @@ ALWAYS base your answers on this specific data. When asked for MTD, QTD, or YTD,
     console.log("Received successful Gemini API SDK response");
     
     // access response text safely
-    const generatedText = response.text();
+    const generatedText = response.text;
 
     const formattedResponse = {
       choices: [
@@ -406,7 +406,7 @@ ALWAYS base your answers on this specific data. When asked for MTD, QTD, or YTD,
           {
             message: {
               role: "assistant",
-              content: "I'm sorry, I encountered an error processing your request. Please try again or contact support if the issue persists."
+              content: `Error: ${error.message || 'An unexpected error occurred.'}`
             }
           }
         ]
@@ -472,7 +472,7 @@ For each prediction, include a confidence level (0-100) and the key factors that
     console.log("Received successful Gemini API forecast response");
     
     // access response text safely
-    const textContent = response.text();
+    const textContent = response.text;
     const jsonContent = textContent.replace(/```json|```/g, '').trim();
     const forecastData = JSON.parse(jsonContent);
     
@@ -562,7 +562,7 @@ Only include items that need attention - don't include items with sufficient sto
 
     console.log("Received successful Gemini API inventory recommendations response");
     
-    const textContent = response.text();
+    const textContent = response.text;
     const jsonContent = textContent.replace(/```json|```/g, '').trim();
     const recommendationsData = JSON.parse(jsonContent);
     

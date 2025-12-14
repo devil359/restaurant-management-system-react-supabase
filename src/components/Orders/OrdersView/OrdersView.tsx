@@ -20,6 +20,7 @@ import { usePagination } from "@/hooks/usePagination";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { EnhancedSkeleton } from "@/components/ui/enhanced-skeleton";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
+import { StandardizedLayout } from "@/components/ui/standardized-layout";
 
 interface OrdersViewProps {
   searchTrigger?: number;
@@ -222,7 +223,7 @@ const OrdersView = ({
 
   const orderStats = {
     totalOrders: filteredOrders.length || 0,
-    pendingOrders: filteredOrders.filter(order => ['pending', 'preparing', 'ready'].includes(order.status)).length || 0,
+    pendingOrders: filteredOrders.filter(order => ['pending', 'preparing', 'ready', 'held'].includes(order.status)).length || 0,
     completedOrders: filteredOrders.filter(order => order.status === 'completed').length || 0,
     totalRevenue: filteredOrders.filter(order => order.status === 'completed').reduce((sum, order) => sum + order.total, 0) || 0,
   };
@@ -253,209 +254,183 @@ const OrdersView = ({
     );
   }
 
+  // Status tabs configuration
+  const statusTabs = [
+    { id: 'all', label: 'All Orders', count: orders?.length || 0 },
+    { id: 'pending', label: 'New Orders', count: orders?.filter(o => o.status === 'pending').length || 0, color: 'bg-orange-100 text-orange-700 border-orange-200' },
+    { id: 'preparing', label: 'Preparing', count: orders?.filter(o => o.status === 'preparing').length || 0, color: 'bg-blue-100 text-blue-700 border-blue-200' },
+    { id: 'ready', label: 'Ready', count: orders?.filter(o => o.status === 'ready').length || 0, color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+    { id: 'completed', label: 'Completed', count: orders?.filter(o => o.status === 'completed').length || 0, color: 'bg-gray-100 text-gray-700 border-gray-200' },
+    { id: 'held', label: 'Held', count: orders?.filter(o => o.status === 'held').length || 0, color: 'bg-purple-100 text-purple-700 border-purple-200' },
+    { id: 'cancelled', label: 'Cancelled', count: orders?.filter(o => o.status === 'cancelled').length || 0, color: 'bg-red-100 text-red-700 border-red-200' },
+  ];
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
-      {/* Header */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-6 flex-shrink-0">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Orders Management</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Manage and track your restaurant orders • {getDateFilterLabel()}
-            </p>
-          </div>
-          
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Button 
-              variant="outline" 
-              onClick={handleRefresh}
-              disabled={isLoading}
-              className="flex items-center gap-2"
-            >
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-            
-            <Button 
-              variant="outline"
-              onClick={handleExportOrders}
-              disabled={!filteredOrders || filteredOrders.length === 0}
-              className="flex items-center gap-2"
-            >
-              <Download className="h-4 w-4" />
-              Export
-            </Button>
-            
-            {/* <Button 
-              onClick={() => setShowAddForm(true)}
-              className="bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              New Order
-            </Button> */}
-          </div>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-50 to-indigo-50/20 dark:from-gray-900 dark:via-slate-900 dark:to-indigo-950 flex flex-col">
+      {/* Modern Header with Glass Effect */}
+      <div className="sticky top-0 z-40 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-800/50">
+        <StandardizedLayout padding="md">
+          <div className="flex flex-col gap-6 py-4">
+            {/* Title and Actions */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 via-indigo-800 to-gray-900 dark:from-white dark:via-indigo-200 dark:to-white bg-clip-text text-transparent">
+                  Orders Management
+                </h1>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-2">
+                  <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                  Live Updates • {getDateFilterLabel()}
+                </p>
+              </div>
 
-        {/* Enhanced Filters Bar */}
-        <div className="flex flex-col lg:flex-row gap-4 mt-6">
-          {/* Search */}
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              ref={searchInputRef}
-              placeholder="Search orders, customers, or items..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-
-          {/* Filter Toggle */}
-          <Button
-            variant="outline"
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2"
-          >
-            <Filter className="h-4 w-4" />
-            Filters
-            {(statusFilter !== "all" || dateFilter !== "today" || sourceFilter !== "all") && (
-              <Badge variant="secondary" className="ml-1">
-                Active
-              </Badge>
-            )}
-          </Button>
-        </div>
-
-        {/* Expandable Filters */}
-        {showFilters && (
-          <div className="flex flex-col lg:flex-row gap-4 mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            {/* Status Filter */}
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Orders</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="preparing">Preparing</SelectItem>
-                <SelectItem value="ready">Ready</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {/* Date Filter */}
-            <Select value={dateFilter} onValueChange={setDateFilter}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Select time range" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="today">Today</SelectItem>
-                <SelectItem value="yesterday">Yesterday</SelectItem>
-                <SelectItem value="last7days">Last 7 Days</SelectItem>
-                <SelectItem value="last30days">Last 30 Days</SelectItem>
-                <SelectItem value="lastMonth">Last Month</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {/* Source Filter */}
-            <Select value={sourceFilter} onValueChange={setSourceFilter}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Filter by source" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Sources</SelectItem>
-                <SelectItem value="pos">POS</SelectItem>
-                <SelectItem value="table">Table Order</SelectItem>
-                <SelectItem value="manual">Manual</SelectItem>
-                <SelectItem value="qsr">QSR</SelectItem>
-                <SelectItem value="room_service">Room Service</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {/* Clear Filters */}
-            {(searchQuery || statusFilter !== "all" || dateFilter !== "today" || sourceFilter !== "all") && (
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setSearchQuery("");
-                  setStatusFilter("all");
-                  setDateFilter("today");
-                  setSourceFilter("all");
-                }}
-                className="text-sm"
-              >
-                Clear All
-              </Button>
-            )}
-          </div>
-        )}
-
-        {/* Active Filters */}
-        {(searchQuery || statusFilter !== "all") && (
-          <div className="flex flex-wrap gap-2 mt-4">
-            {searchQuery && (
-              <Badge variant="secondary" className="flex items-center gap-1">
-                Search: "{searchQuery}"
-                <button 
-                  onClick={() => setSearchQuery("")}
-                  className="ml-1 hover:bg-gray-200 rounded-full w-4 h-4 flex items-center justify-center"
+              <div className="flex flex-wrap gap-2">
+                 <Button 
+                  variant="outline" 
+                  onClick={handleRefresh}
+                  disabled={isLoading}
+                  className="bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 border shadow-sm transition-all duration-200 hidden sm:flex"
                 >
-                  ×
-                </button>
-              </Badge>
-            )}
-            {statusFilter !== "all" && (
-              <Badge variant="secondary" className="flex items-center gap-1">
-                Status: {statusFilter}
-                <button 
-                  onClick={() => setStatusFilter("all")}
-                  className="ml-1 hover:bg-gray-200 rounded-full w-4 h-4 flex items-center justify-center"
+                  <RefreshCw className={`h-3.5 w-3.5 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+                
+                <Button 
+                  variant="outline"
+                  onClick={handleExportOrders}
+                  disabled={!filteredOrders || filteredOrders.length === 0}
+                  className="bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 border shadow-sm transition-all duration-200"
                 >
-                  ×
+                  <Download className="h-3.5 w-3.5 mr-2" />
+                  Export
+                </Button>
+              </div>
+            </div>
+
+            {/* Stats Overview */}
+             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
+                <div>
+                  <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Active</p>
+                  <p className="text-xl font-bold text-gray-900 dark:text-white mt-1">{orderStats.pendingOrders}</p>
+                </div>
+                <div className="h-8 w-8 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center group-hover:bg-orange-100 transition-colors">
+                  <RefreshCw className="h-4 w-4" />
+                </div>
+              </div>
+              <div className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
+                <div>
+                  <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Completed</p>
+                  <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">{orderStats.completedOrders}</p>
+                </div>
+                <div className="h-8 w-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-100 transition-colors">
+                  <Download className="h-4 w-4" />
+                </div>
+              </div>
+              {/* Add more mini-stats as needed */}
+            </div>
+
+            {/* Modern Filter Bar */}
+            <div className="flex flex-col lg:flex-row gap-4">
+               {/* Search */}
+               <div className="relative flex-1 group">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 group-focus-within:text-indigo-500 transition-colors" />
+                <Input
+                  ref={searchInputRef}
+                  placeholder="Search orders..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 bg-white/50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500/20 transition-all rounded-xl"
+                />
+              </div>
+
+               {/* Date Filter */}
+               <div className="flex items-center gap-2 overflow-x-auto pb-1 hide-scrollbar">
+                <Select value={dateFilter} onValueChange={setDateFilter}>
+                  <SelectTrigger className="w-[160px] bg-white/50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 rounded-xl">
+                    <SelectValue placeholder="Date Range" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="today">Today</SelectItem>
+                    <SelectItem value="yesterday">Yesterday</SelectItem>
+                    <SelectItem value="last7days">Last 7 Days</SelectItem>
+                    <SelectItem value="last30days">Last 30 Days</SelectItem>
+                    <SelectItem value="lastMonth">Last Month</SelectItem>
+                  </SelectContent>
+                 </Select>
+                 
+                 <Select value={sourceFilter} onValueChange={setSourceFilter}>
+                  <SelectTrigger className="w-[150px] bg-white/50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 rounded-xl">
+                    <SelectValue placeholder="Source" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Sources</SelectItem>
+                    <SelectItem value="pos">POS</SelectItem>
+                    <SelectItem value="table">Table Order</SelectItem>
+                    <SelectItem value="manual">Manual</SelectItem>
+                    <SelectItem value="qsr">QSR</SelectItem>
+                    <SelectItem value="room_service">Room Service</SelectItem>
+                  </SelectContent>
+                 </Select>
+               </div>
+            </div>
+
+            {/* Status Tabs (Pills) */}
+            <div className="flex gap-2 overflow-x-auto pb-2 hide-scrollbar">
+              {statusTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setStatusFilter(tab.id)}
+                  className={`
+                    whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 flex items-center gap-2 border
+                    ${statusFilter === tab.id 
+                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-200 dark:shadow-none' 
+                      : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-indigo-300 hover:bg-gray-50'
+                    }
+                  `}
+                >
+                  {tab.label}
+                  <span className={`
+                    text-xs py-0.5 px-2 rounded-full 
+                    ${statusFilter === tab.id 
+                      ? 'bg-white/20 text-white' 
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                    }
+                  `}>
+                    {tab.count}
+                  </span>
                 </button>
-              </Badge>
-            )}
+              ))}
+            </div>
           </div>
-        )}
+        </StandardizedLayout>
       </div>
 
-      {/* Content with Scroll */}
-      <div className="flex-1 overflow-hidden">
+      {/* Content Area */}
+      <div className="flex-1 overflow-hidden bg-gray-50/50 dark:bg-gray-950/50">
         <ScrollArea className="h-full">
-          <div className="p-6">
-            <OrderStats 
-              totalOrders={orderStats.totalOrders}
-              pendingOrders={orderStats.pendingOrders}
-              completedOrders={orderStats.completedOrders}
-              totalRevenue={orderStats.totalRevenue}
+          <div className="p-4 md:p-6 lg:max-w-7xl lg:mx-auto">
+            <OrderList 
+              orders={paginatedOrders} 
+              onOrdersChange={refetchOrders}
+              onEditOrder={setEditingOrder}
+              isLoading={isLoading}
             />
-
-            <div className="mt-6">
-              <OrderList 
-                orders={paginatedOrders} 
-                onOrdersChange={refetchOrders}
-                onEditOrder={setEditingOrder}
-                isLoading={isLoading}
-              />
-              
-              {totalPages > 1 && (
-                <div className="mt-6">
-                  <DataTablePagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    totalItems={totalItems}
-                    itemsPerPage={itemsPerPage}
-                    startIndex={startIndex}
-                    endIndex={endIndex}
-                    onPageChange={goToPage}
-                    onItemsPerPageChange={setItemsPerPage}
-                    showItemsPerPage={true}
-                  />
-                </div>
-              )}
-            </div>
+            
+            {totalPages > 1 && (
+              <div className="mt-8">
+                <DataTablePagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={totalItems}
+                  itemsPerPage={itemsPerPage}
+                  startIndex={startIndex}
+                  endIndex={endIndex}
+                  onPageChange={goToPage}
+                  onItemsPerPageChange={setItemsPerPage}
+                  showItemsPerPage={true}
+                />
+              </div>
+            )}
           </div>
         </ScrollArea>
       </div>
