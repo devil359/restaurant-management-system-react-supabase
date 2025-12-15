@@ -41,7 +41,8 @@ const PaymentDialog = ({
   const [currentStep, setCurrentStep] = useState<PaymentStep>('confirm');
   const [customerName, setCustomerName] = useState('');
   const [customerMobile, setCustomerMobile] = useState('');
-  const [sendBillToMobile, setSendBillToMobile] = useState(false);
+  const [customerEmail, setCustomerEmail] = useState('');
+  const [sendBillToEmail, setSendBillToEmail] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
   const [newItemsBuffer, setNewItemsBuffer] = useState<OrderItem[]>([]);
@@ -524,7 +525,7 @@ const PaymentDialog = ({
 
 
     // If checkbox not checked, return success
-    if (!sendBillToMobile) {
+    if (!sendBillToEmail) {
 
       return true;
     }
@@ -550,24 +551,24 @@ const PaymentDialog = ({
       return false;
     }
 
-    const mobileStr = String(customerMobile);
-    if (!mobileStr.trim()) {
+    const emailStr = String(customerEmail).trim();
+    if (!emailStr) {
 
       toast({
-        title: "Mobile Number Required",
-        description: "Please enter mobile number to send bill.",
+        title: "Email Required",
+        description: "Please enter email address to send bill.",
         variant: "destructive"
       });
       return false;
     }
 
-    // Validate mobile number (10 digits)
-    const mobileRegex = /^[0-9]{10}$/;
-    if (!mobileRegex.test(mobileStr.trim())) {
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(emailStr)) {
 
       toast({
-        title: "Invalid Mobile Number",
-        description: "Please enter a valid 10-digit mobile number.",
+        title: "Invalid Email",
+        description: "Please enter a valid email address.",
         variant: "destructive"
       });
       return false;
@@ -691,8 +692,59 @@ const PaymentDialog = ({
     }
   };
 
+  // Email bill sending function (using Resend)
+  const sendBillViaEmail = async () => {
+    if (!sendBillToEmail || !customerEmail) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('send-email-bill', {
+        body: {
+          orderId: orderId || '',
+          email: customerEmail,
+          customerName: customerName || 'Valued Customer',
+          restaurantName: restaurantInfo?.name || 'Restaurant',
+          restaurantAddress: restaurantInfo?.address || '',
+          restaurantPhone: restaurantInfo?.phone || '',
+          total: total,
+          items: orderItems.map(item => ({
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price
+          })),
+          tableNumber: tableNumber || 'POS',
+          orderDate: new Date().toLocaleString('en-IN'),
+          discount: totalDiscountAmount > 0 ? totalDiscountAmount : undefined,
+          promotionName: appliedPromotion?.name || undefined
+        }
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast({
+          title: "Bill Sent Successfully",
+          description: `Bill has been sent to ${customerEmail} via Email.`
+        });
+      } else {
+        toast({
+          title: "Failed to Send Bill",
+          description: data?.error || "There was an error sending the bill.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error sending Email bill:', error);
+      toast({
+        title: "Email Send Failed",
+        description: "Failed to send bill via Email. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  /* FROZEN: WhatsApp sending - Uncomment when Twilio credentials are available
   const sendBillViaWhatsApp = async () => {
-    if (!sendBillToMobile || !customerMobile) return;
+    if (!customerMobile) return;
 
     try {
       const { data, error } = await supabase.functions.invoke('send-whatsapp-bill', {
@@ -730,6 +782,7 @@ const PaymentDialog = ({
       });
     }
   };
+  */
 
   const handlePrintBill = async () => {
 
@@ -982,18 +1035,18 @@ const PaymentDialog = ({
         };
       }
       
-      // Send bill via WhatsApp if checkbox is checked
-      if (sendBillToMobile && customerMobile) {
-        console.log('📱 Sending bill via WhatsApp');
-        await sendBillViaWhatsApp();
+      // Send bill via Email if checkbox is checked
+      if (sendBillToEmail && customerEmail) {
+        console.log('📧 Sending bill via Email');
+        await sendBillViaEmail();
       } else {
-        console.log('ℹ️ Skipping WhatsApp send', { sendBillToMobile, customerMobile });
+        console.log('ℹ️ Skipping Email send', { sendBillToEmail, customerEmail });
       }
       
       toast({
         title: "Bill Generated",
-        description: sendBillToMobile 
-          ? "Bill has been generated and sent to customer's mobile."
+        description: sendBillToEmail 
+          ? "Bill has been generated and sent to customer's email."
           : "The bill has been generated and sent to printer."
       });
     } catch (error) {
@@ -1523,26 +1576,26 @@ const PaymentDialog = ({
         Delete Order
       </Button>
 
-      {/* Send Bill to Mobile Checkbox and Inputs */}
+      {/* Send Bill via Email Checkbox and Inputs */}
       <Card className="p-4 bg-muted/30 border-2 border-primary/20">
         <div className="space-y-4">
           <div className="flex items-center space-x-2">
             <input
               type="checkbox"
               id="send-bill-checkbox"
-              checked={sendBillToMobile}
-              onChange={(e) => setSendBillToMobile(e.target.checked)}
+              checked={sendBillToEmail}
+              onChange={(e) => setSendBillToEmail(e.target.checked)}
               className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
             />
             <label
               htmlFor="send-bill-checkbox"
               className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
             >
-              Send bill to customer's mobile
+              📧 Send bill to customer's email
             </label>
           </div>
 
-          {sendBillToMobile && (
+          {sendBillToEmail && (
             <div className="space-y-3 animate-in slide-in-from-top-2">
               <div>
                 <label className="text-sm font-medium mb-1 block">
@@ -1557,15 +1610,14 @@ const PaymentDialog = ({
               </div>
               <div>
                 <label className="text-sm font-medium mb-1 block">
-                  Mobile Number <span className="text-red-500">*</span>
+                  Email Address <span className="text-red-500">*</span>
                 </label>
                 <Input
-                  type="tel"
-                  placeholder="Enter 10-digit mobile number"
-                  value={customerMobile}
-                  onChange={(e) => setCustomerMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  type="email"
+                  placeholder="Enter email address"
+                  value={customerEmail}
+                  onChange={(e) => setCustomerEmail(e.target.value)}
                   className="w-full"
-                  maxLength={10}
                 />
               </div>
             </div>
