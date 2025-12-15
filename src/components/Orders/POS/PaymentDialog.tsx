@@ -695,7 +695,11 @@ const PaymentDialog = ({
 
   // Email bill sending function (using Resend)
   const sendBillViaEmail = async () => {
-    if (!sendBillToEmail || !customerEmail) return;
+    console.log('📧 sendBillViaEmail called', { sendBillToEmail, customerEmail });
+    if (!sendBillToEmail || !customerEmail) {
+      console.log('⚠️ sendBillViaEmail skipped - missing data', { sendBillToEmail, customerEmail });
+      return;
+    }
 
     try {
       const { data, error } = await supabase.functions.invoke('send-email-bill', {
@@ -719,6 +723,7 @@ const PaymentDialog = ({
         }
       });
 
+      console.log('📧 Edge function response:', { data, error });
       if (error) throw error;
 
       if (data?.success) {

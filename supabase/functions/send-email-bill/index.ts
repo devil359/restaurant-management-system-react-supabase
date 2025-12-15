@@ -25,6 +25,8 @@ interface EmailBillRequest {
   restaurantName: string;
   restaurantAddress?: string;
   restaurantPhone?: string;
+  restaurantEmail?: string;
+  restaurantWebsite?: string;
   total: number;
   items: Array<{ name: string; quantity: number; price: number }>;
   tableNumber?: string;
@@ -36,7 +38,8 @@ interface EmailBillRequest {
 async function sendEmailViaResend(
   to: string,
   subject: string,
-  htmlContent: string
+  htmlContent: string,
+  restaurantName: string
 ): Promise<{ success: boolean; id?: string; error?: string }> {
   const resendApiKey = Deno.env.get("RESEND_API_KEY");
 
@@ -53,7 +56,7 @@ async function sendEmailViaResend(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Restaurant Bill <onboarding@resend.dev>", // Free tier uses resend.dev domain
+        from: `${restaurantName} <onboarding@resend.dev>`, // Dynamic restaurant name
         to: [to],
         subject: subject,
         html: htmlContent,
@@ -77,10 +80,13 @@ async function sendEmailViaResend(
 
 function generateBillHTML(data: EmailBillRequest): string {
   const {
+    orderId,
     customerName,
     restaurantName,
     restaurantAddress,
     restaurantPhone,
+    restaurantEmail,
+    restaurantWebsite,
     total,
     items,
     tableNumber,
@@ -98,12 +104,14 @@ function generateBillHTML(data: EmailBillRequest): string {
     minute: '2-digit',
   });
 
+  const invoiceNumber = orderId ? `INV-${orderId.substring(0, 8).toUpperCase()}` : `INV-${Date.now()}`;
+
   const itemsHTML = items.map(item => `
     <tr>
-      <td style="padding: 8px 0; border-bottom: 1px solid #eee;">${item.name}</td>
-      <td style="padding: 8px 0; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
-      <td style="padding: 8px 0; border-bottom: 1px solid #eee; text-align: right;">₹${item.price.toFixed(2)}</td>
-      <td style="padding: 8px 0; border-bottom: 1px solid #eee; text-align: right;">₹${(item.price * item.quantity).toFixed(2)}</td>
+      <td style="padding: 12px 8px; border-bottom: 1px solid #eee; color: #333;">${item.name}</td>
+      <td style="padding: 12px 8px; border-bottom: 1px solid #eee; text-align: center; color: #555;">${item.quantity}</td>
+      <td style="padding: 12px 8px; border-bottom: 1px solid #eee; text-align: right; color: #555;">₹${item.price.toFixed(2)}</td>
+      <td style="padding: 12px 8px; border-bottom: 1px solid #eee; text-align: right; font-weight: 500; color: #333;">₹${(item.price * item.quantity).toFixed(2)}</td>
     </tr>
   `).join('');
 
@@ -113,37 +121,49 @@ function generateBillHTML(data: EmailBillRequest): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Your Bill from ${restaurantName}</title>
+  <title>Your Receipt from ${restaurantName}</title>
 </head>
-<body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
-  <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
-    <h1 style="color: white; margin: 0; font-size: 28px;">🍽️ ${restaurantName}</h1>
-    ${restaurantAddress ? `<p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 14px;">${restaurantAddress}</p>` : ''}
-    ${restaurantPhone ? `<p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 14px;">📞 ${restaurantPhone}</p>` : ''}
+<body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 650px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;">
+  
+  <!-- Header with Restaurant Branding -->
+  <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 35px 30px; border-radius: 16px 16px 0 0; text-align: center;">
+    <h1 style="color: white; margin: 0; font-size: 32px; font-weight: 700; letter-spacing: -0.5px;">🍽️ ${restaurantName}</h1>
+    ${restaurantAddress ? `<p style="color: rgba(255,255,255,0.9); margin: 12px 0 0 0; font-size: 14px;">📍 ${restaurantAddress}</p>` : ''}
+    ${restaurantPhone ? `<p style="color: rgba(255,255,255,0.9); margin: 6px 0 0 0; font-size: 14px;">📞 ${restaurantPhone}</p>` : ''}
   </div>
   
-  <div style="background: white; padding: 30px; border-radius: 0 0 12px 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-    <div style="border-bottom: 2px dashed #eee; padding-bottom: 20px; margin-bottom: 20px;">
-      <h2 style="color: #333; margin: 0 0 10px 0;">Dear ${customerName},</h2>
-      <p style="color: #666; margin: 0;">Thank you for dining with us! Here's your bill:</p>
+  <!-- Main Content -->
+  <div style="background: white; padding: 35px 30px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+    
+    <!-- Greeting Section -->
+    <div style="margin-bottom: 25px;">
+      <h2 style="color: #333; margin: 0 0 12px 0; font-size: 22px;">Hi ${customerName},</h2>
+      <p style="color: #666; margin: 0; line-height: 1.6; font-size: 15px;">
+        Thank you for dining with us at <strong style="color: #667eea;">${restaurantName}</strong>! We hope you enjoyed your meal and had a wonderful experience.
+      </p>
     </div>
     
-    <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-      <table style="width: 100%; font-size: 14px; color: #666;">
-        <tr>
-          <td><strong>Date:</strong> ${formattedDate}</td>
-          ${tableNumber ? `<td style="text-align: right;"><strong>Table:</strong> ${tableNumber}</td>` : ''}
-        </tr>
-      </table>
+    <!-- Invoice Info Card -->
+    <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 20px; border-radius: 12px; margin-bottom: 25px; border-left: 4px solid #667eea;">
+      <p style="margin: 0 0 8px 0; font-size: 14px; color: #666;">
+        <strong style="color: #333;">Invoice Number:</strong> ${invoiceNumber}
+      </p>
+      <p style="margin: 0 0 8px 0; font-size: 14px; color: #666;">
+        <strong style="color: #333;">Date:</strong> ${formattedDate}
+      </p>
+      ${tableNumber ? `<p style="margin: 0; font-size: 14px; color: #666;"><strong style="color: #333;">Table:</strong> ${tableNumber}</p>` : ''}
     </div>
+    
+    <!-- Order Details -->
+    <h3 style="color: #333; margin: 0 0 15px 0; font-size: 16px; border-bottom: 2px solid #667eea; padding-bottom: 8px;">📋 Order Details</h3>
     
     <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
       <thead>
-        <tr style="background: #f0f0f0;">
-          <th style="padding: 12px 8px; text-align: left; font-weight: 600; color: #333;">Item</th>
-          <th style="padding: 12px 8px; text-align: center; font-weight: 600; color: #333;">Qty</th>
-          <th style="padding: 12px 8px; text-align: right; font-weight: 600; color: #333;">Rate</th>
-          <th style="padding: 12px 8px; text-align: right; font-weight: 600; color: #333;">Amount</th>
+        <tr style="background: #f8f9fa;">
+          <th style="padding: 14px 8px; text-align: left; font-weight: 600; color: #333; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Item</th>
+          <th style="padding: 14px 8px; text-align: center; font-weight: 600; color: #333; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Qty</th>
+          <th style="padding: 14px 8px; text-align: right; font-weight: 600; color: #333; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Rate</th>
+          <th style="padding: 14px 8px; text-align: right; font-weight: 600; color: #333; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Amount</th>
         </tr>
       </thead>
       <tbody>
@@ -151,40 +171,74 @@ function generateBillHTML(data: EmailBillRequest): string {
       </tbody>
     </table>
     
-    <div style="border-top: 2px solid #eee; padding-top: 15px;">
-      <table style="width: 100%; font-size: 14px;">
+    <!-- Totals Section -->
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 25px;">
+      <table style="width: 100%; font-size: 15px;">
         <tr>
-          <td style="padding: 5px 0; color: #666;">Subtotal</td>
-          <td style="padding: 5px 0; text-align: right; color: #666;">₹${subtotal.toFixed(2)}</td>
+          <td style="padding: 8px 0; color: #666;">Subtotal</td>
+          <td style="padding: 8px 0; text-align: right; color: #666;">₹${subtotal.toFixed(2)}</td>
         </tr>
         ${discount && discount > 0 ? `
         <tr>
-          <td style="padding: 5px 0; color: #27ae60;">Discount ${promotionName ? `(${promotionName})` : ''}</td>
-          <td style="padding: 5px 0; text-align: right; color: #27ae60;">-₹${discount.toFixed(2)}</td>
+          <td style="padding: 8px 0; color: #27ae60; font-weight: 500;">
+            🎉 Discount ${promotionName ? `(${promotionName})` : ''}
+          </td>
+          <td style="padding: 8px 0; text-align: right; color: #27ae60; font-weight: 500;">-₹${discount.toFixed(2)}</td>
         </tr>
         ` : ''}
-        <tr style="font-size: 18px; font-weight: bold;">
-          <td style="padding: 15px 0 5px 0; color: #333; border-top: 2px solid #333;">Total Amount</td>
-          <td style="padding: 15px 0 5px 0; text-align: right; color: #667eea; border-top: 2px solid #333;">₹${total.toFixed(2)}</td>
+        <tr style="border-top: 2px solid #dee2e6;">
+          <td style="padding: 15px 0 5px 0; color: #333; font-size: 18px; font-weight: 700;">Total Amount</td>
+          <td style="padding: 15px 0 5px 0; text-align: right; color: #667eea; font-size: 22px; font-weight: 700;">₹${total.toFixed(2)}</td>
         </tr>
       </table>
     </div>
     
-    <div style="text-align: center; margin-top: 30px; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px;">
-      <p style="color: white; margin: 0; font-size: 18px;">🙏 Thank You!</p>
-      <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 14px;">We hope you enjoyed your meal. Please visit again!</p>
+    <!-- Payment Confirmation -->
+    <div style="background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%); padding: 15px 20px; border-radius: 8px; margin-bottom: 25px; display: flex; align-items: center;">
+      <span style="font-size: 24px; margin-right: 12px;">✅</span>
+      <p style="margin: 0; color: #155724; font-weight: 500;">Payment received. Thank you for your payment!</p>
     </div>
+    
+    <!-- Thank You Section -->
+    <div style="text-align: center; padding: 30px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; margin-bottom: 20px;">
+      <p style="color: white; margin: 0; font-size: 24px; font-weight: 600;">🙏 Thank You!</p>
+      <p style="color: rgba(255,255,255,0.9); margin: 12px 0 0 0; font-size: 15px; line-height: 1.5;">
+        We truly appreciate your visit. We look forward to serving you again soon!
+      </p>
+    </div>
+    
+    <!-- Contact Information -->
+    <div style="text-align: center; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+      <p style="margin: 0 0 10px 0; color: #666; font-size: 14px;">
+        <strong>Questions about your bill?</strong>
+      </p>
+      <p style="margin: 0; color: #888; font-size: 13px;">
+        ${restaurantPhone ? `Call us at <a href="tel:${restaurantPhone}" style="color: #667eea; text-decoration: none;">${restaurantPhone}</a>` : ''}
+        ${restaurantPhone && restaurantEmail ? ' or ' : ''}
+        ${restaurantEmail ? `email <a href="mailto:${restaurantEmail}" style="color: #667eea; text-decoration: none;">${restaurantEmail}</a>` : ''}
+        ${!restaurantPhone && !restaurantEmail ? 'Please contact us at the restaurant.' : ''}
+      </p>
+    </div>
+    
   </div>
   
-  <p style="text-align: center; color: #999; font-size: 12px; margin-top: 20px;">
-    This is an automated email from ${restaurantName}. Please do not reply.
-  </p>
+  <!-- Footer -->
+  <div style="text-align: center; padding: 20px;">
+    <p style="color: #888; font-size: 12px; margin: 0 0 8px 0;">
+      This is an automated receipt from ${restaurantName}.
+    </p>
+    ${restaurantWebsite ? `<p style="margin: 0;"><a href="${restaurantWebsite}" style="color: #667eea; font-size: 12px;">Visit our website</a></p>` : ''}
+    <p style="color: #aaa; font-size: 11px; margin: 10px 0 0 0;">
+      © ${new Date().getFullYear()} ${restaurantName}. All rights reserved.
+    </p>
+  </div>
+  
 </body>
 </html>
   `;
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
   console.log(`${req.method} request received at ${new Date().toISOString()}`);
 
   // Handle CORS preflight
@@ -209,11 +263,16 @@ serve(async (req) => {
     const requestBody = await req.json() as EmailBillRequest;
     const { orderId, email, customerName, restaurantName, total, items } = requestBody;
     
+    // Use provided restaurant name or fetch from database if possible
+    const finalRestaurantName = restaurantName && restaurantName !== 'Restaurant' 
+      ? restaurantName 
+      : 'Our Restaurant';
+    
     console.log("Processing email bill request:", {
       orderId,
       email: email ? `${email.substring(0, 3)}***` : 'Missing',
       customerName,
-      restaurantName,
+      restaurantName: finalRestaurantName,
       itemCount: items?.length || 0,
       total
     });
@@ -248,12 +307,15 @@ serve(async (req) => {
       );
     }
 
+    // Update request body with final restaurant name
+    const updatedRequestBody = { ...requestBody, restaurantName: finalRestaurantName };
+
     // Generate bill HTML
-    const htmlContent = generateBillHTML(requestBody);
-    const subject = `Your Bill from ${restaurantName || 'Restaurant'} - ₹${total.toFixed(2)}`;
+    const htmlContent = generateBillHTML(updatedRequestBody);
+    const subject = `Your Receipt from ${finalRestaurantName} - ₹${total.toFixed(2)}`;
 
     // Send email via Resend
-    const emailResult = await sendEmailViaResend(email, subject, htmlContent);
+    const emailResult = await sendEmailViaResend(email, subject, htmlContent, finalRestaurantName);
 
     if (!emailResult.success) {
       console.error("Failed to send email:", emailResult.error);
