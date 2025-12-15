@@ -221,7 +221,7 @@ const PaymentDialog = ({
               if (name) setCustomerName(name);
               if (phone) {
                 setCustomerMobile(String(phone));
-                setSendBillToMobile(true);
+                setSendBillToEmail(true);
               }
               
               // Load existing discount percentage if available
@@ -235,9 +235,9 @@ const PaymentDialog = ({
             if (kitchenOrder?.customer_name) setCustomerName(kitchenOrder.customer_name);
             if ((kitchenOrder as any)?.customer_phone) {
               setCustomerMobile(String((kitchenOrder as any).customer_phone));
-              setSendBillToMobile(true);
+              setSendBillToEmail(true);
             } else {
-              setSendBillToMobile(false);
+              setSendBillToEmail(false);
             }
           }
         } catch (error) {
@@ -255,7 +255,7 @@ const PaymentDialog = ({
       setCurrentStep('confirm');
       setCustomerName('');
       setCustomerMobile('');
-      setSendBillToMobile(false);
+      setSendBillToEmail(false);
       setQrCodeUrl('');
       setMenuSearchQuery('');
       setNewItemsBuffer([]);
