@@ -440,7 +440,7 @@ interface RevenueDataItem {
   order_count: number;
 }
 
-async function handleSalesForecast(apiKey: string, restaurantData: { revenueStats: RevenueDataItem[] }, days: number, corsHeaders: Record<string, string>) {
+async function handleSalesForecast(apiKey: string, restaurantData: Record<string, unknown> & { revenueStats: RevenueDataItem[] }, days: number, corsHeaders: Record<string, string>) {
   console.log(`Generating sales forecast for ${days} days`);
   
   try {
@@ -527,7 +527,7 @@ interface InventoryDataItem {
   category: string;
 }
 
-async function handleInventoryRecommendations(apiKey: string, restaurantData: { inventoryItems: InventoryDataItem[], recentOrders: unknown[] }, corsHeaders: Record<string, string>) {
+async function handleInventoryRecommendations(apiKey: string, restaurantData: Record<string, unknown> & { inventoryItems: InventoryDataItem[], recentOrders: unknown[] }, corsHeaders: Record<string, string>) {
   console.log("Generating inventory recommendations");
   
   try {

@@ -43,6 +43,7 @@ const PaymentDialog = ({
   const [customerMobile, setCustomerMobile] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [sendBillToEmail, setSendBillToEmail] = useState(false);
+  const [sendBillToMobile, setSendBillToMobile] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
   const [newItemsBuffer, setNewItemsBuffer] = useState<OrderItem[]>([]);
