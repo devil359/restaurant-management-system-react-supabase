@@ -2555,13 +2555,6 @@ export type Database = {
             foreignKeyName: "profiles_role_id_fkey"
             columns: ["role_id"]
             isOneToOne: false
-            referencedRelation: "profiles_with_role"
-            referencedColumns: ["role_id_fk"]
-          },
-          {
-            foreignKeyName: "profiles_role_id_fkey"
-            columns: ["role_id"]
-            isOneToOne: false
             referencedRelation: "roles"
             referencedColumns: ["id"]
           },
@@ -3396,13 +3389,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "app_components"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "role_components_role_id_fkey"
-            columns: ["role_id"]
-            isOneToOne: false
-            referencedRelation: "profiles_with_role"
-            referencedColumns: ["role_id_fk"]
           },
           {
             foreignKeyName: "role_components_role_id_fkey"
@@ -4931,22 +4917,11 @@ export type Database = {
       }
       profiles_with_role: {
         Row: {
-          created_at: string | null
-          first_name: string | null
           id: string | null
-          last_name: string | null
           restaurant_id: string | null
           role: Database["public"]["Enums"]["user_role"] | null
-          role_created_at: string | null
-          role_description: string | null
           role_id: string | null
-          role_id_fk: string | null
-          role_is_deletable: boolean | null
           role_name: string | null
-          role_name_text: string | null
-          role_restaurant_id: string | null
-          role_updated_at: string | null
-          updated_at: string | null
         }
         Relationships: [
           {
@@ -4960,21 +4935,7 @@ export type Database = {
             foreignKeyName: "profiles_role_id_fkey"
             columns: ["role_id"]
             isOneToOne: false
-            referencedRelation: "profiles_with_role"
-            referencedColumns: ["role_id_fk"]
-          },
-          {
-            foreignKeyName: "profiles_role_id_fkey"
-            columns: ["role_id"]
-            isOneToOne: false
             referencedRelation: "roles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "roles_restaurant_id_fkey"
-            columns: ["role_restaurant_id"]
-            isOneToOne: false
-            referencedRelation: "restaurants"
             referencedColumns: ["id"]
           },
         ]
