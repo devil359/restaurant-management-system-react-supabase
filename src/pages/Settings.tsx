@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +19,7 @@ const Settings = () => {
   const { toast } = useToast();
   const { user, signOut } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
   // Fetch user and profile data
@@ -77,6 +79,9 @@ const Settings = () => {
       queryClient.clear();
       
       await signOut();
+      
+      // Redirect to auth page after sign out
+      navigate('/auth');
       
       toast({
         title: "Success",

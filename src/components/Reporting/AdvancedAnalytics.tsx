@@ -30,14 +30,115 @@ const AdvancedAnalytics = () => {
     queryFn: async () => {
       if (!restaurantId || !dateRange?.from || !dateRange?.to) return null;
 
-      const { data, error } = await supabase.rpc("get_analytics_data", {
-        p_restaurant_id: restaurantId,
-        p_start_date: format(dateRange.from, "yyyy-MM-dd"),
-        p_end_date: format(dateRange.to, "yyyy-MM-dd"),
-      });
+      const startDate = format(dateRange.from, "yyyy-MM-dd");
+      const endDate = format(dateRange.to, "yyyy-MM-dd");
 
-      if (error) throw error;
-      return data;
+      try {
+        // Try RPC first
+        const { data, error } = await supabase.rpc("get_analytics_data", {
+          p_restaurant_id: restaurantId,
+          p_start_date: startDate,
+          p_end_date: endDate,
+        });
+
+        if (!error && data) {
+          return data;
+        }
+      } catch (rpcError) {
+        console.log("RPC failed, using fallback", rpcError);
+      }
+
+      // Fallback: Fetch directly from tables
+      const [ordersResult, customersResult] = await Promise.all([
+        supabase
+          .from('orders')
+          .select('*')
+          .eq('restaurant_id', restaurantId)
+          .gte('created_at', `${startDate}T00:00:00`)
+          .lte('created_at', `${endDate}T23:59:59`),
+        supabase
+          .from('customers')
+          .select('*')
+          .eq('restaurant_id', restaurantId)
+          .gte('created_at', `${startDate}T00:00:00`)
+          .lte('created_at', `${endDate}T23:59:59`)
+      ]);
+
+      const orders = ordersResult.data || [];
+      const customers = customersResult.data || [];
+
+      // Calculate KPIs
+      const totalRevenue = orders.reduce((sum, o) => sum + (o.total || 0), 0);
+      const totalOrders = orders.length;
+      const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+      const newCustomers = customers.length;
+
+      // Group orders by date for daily revenue chart
+      const dailyRevenueMap: Record<string, number> = {};
+      orders.forEach(order => {
+        const date = order.created_at.split('T')[0];
+        dailyRevenueMap[date] = (dailyRevenueMap[date] || 0) + (order.total || 0);
+      });
+      const dailyRevenue = Object.entries(dailyRevenueMap)
+        .map(([date, amount]) => ({ date, amount }))
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+      // Group orders by category (parse items)
+      const categoryMap: Record<string, number> = {};
+      orders.forEach(order => {
+        if (order.items && Array.isArray(order.items)) {
+          order.items.forEach((item: string) => {
+            try {
+              const parsed = typeof item === 'string' ? JSON.parse(item) : item;
+              const category = parsed.category || 'Other';
+              categoryMap[category] = (categoryMap[category] || 0) + (parsed.price || 0) * (parsed.quantity || 1);
+            } catch {
+              categoryMap['Other'] = (categoryMap['Other'] || 0) + 0;
+            }
+          });
+        }
+      });
+      const salesByCategory = Object.entries(categoryMap)
+        .map(([name, amount]) => ({ name, amount }))
+        .sort((a, b) => b.amount - a.amount);
+
+      // Top products
+      const productMap: Record<string, { count: number; revenue: number }> = {};
+      orders.forEach(order => {
+        if (order.items && Array.isArray(order.items)) {
+          order.items.forEach((item: string) => {
+            try {
+              const parsed = typeof item === 'string' ? JSON.parse(item) : item;
+              const name = parsed.name || 'Unknown';
+              if (!productMap[name]) {
+                productMap[name] = { count: 0, revenue: 0 };
+              }
+              productMap[name].count += parsed.quantity || 1;
+              productMap[name].revenue += (parsed.price || 0) * (parsed.quantity || 1);
+            } catch {
+              // Skip invalid items
+            }
+          });
+        }
+      });
+      const topProducts = Object.entries(productMap)
+        .map(([name, data]) => ({ name, quantity: data.count, revenue: data.revenue }))
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, 10);
+
+      return {
+        kpis: {
+          totalRevenue,
+          totalOrders,
+          avgOrderValue,
+          newCustomers,
+        },
+        charts: {
+          dailyRevenue,
+          salesByCategory,
+          topProducts,
+        }
+      };
     },
     enabled: !!restaurantId && !!dateRange?.from && !!dateRange?.to,
     staleTime: 30000, // Cache for 30 seconds
