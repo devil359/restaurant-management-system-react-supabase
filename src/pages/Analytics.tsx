@@ -395,10 +395,10 @@ const Analytics = () => {
               <BarChart3 className="h-8 w-8 text-white" />
             </div>
             <div className="flex-1">
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-600 bg-clip-text text-transparent">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-600 bg-clip-text text-transparent">
                 Analytics & Reports
               </h1>
-              <p className="text-gray-600 dark:text-gray-400 mt-2 text-lg">
+              <p className="text-gray-600 dark:text-gray-400 mt-2 text-base md:text-lg">
                 Comprehensive insights into your restaurant's performance
               </p>
             </div>

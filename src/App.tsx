@@ -28,7 +28,7 @@ function AppWithRealtime() {
   useRealtimeAnalytics(); // Initialize real-time subscriptions
   
   return (
-    <div className="h-screen w-full overflow-hidden bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
+    <div className="min-h-screen w-full overflow-auto bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
       <Routes />
       <Toaster />
     </div>

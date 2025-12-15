@@ -34,6 +34,7 @@ export const useCategories = () => {
       const { data, error } = await supabase
         .from('categories')
         .select('*')
+        .eq('restaurant_id', restaurantId)
         .order('name', { ascending: true });
 
       if (error) throw error;
@@ -51,9 +52,13 @@ export const useCategories = () => {
   // Add new category
   const addCategoryMutation = useMutation({
     mutationFn: async (categoryName: string) => {
+      if (!restaurantId) {
+        throw new Error('No restaurant ID available');
+      }
+      
       const { data, error } = await supabase
         .from('categories')
-        .insert([{ name: categoryName }])
+        .insert([{ name: categoryName, restaurant_id: restaurantId }])
         .select()
         .single();
 

@@ -7,6 +7,7 @@ import { Plus, Edit2, Trash2, CakeSlice, Coffee, Pizza, Beef, Soup, Search, Filt
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { useRestaurantId } from "@/hooks/useRestaurantId";
 import AddMenuItemForm from "./AddMenuItemForm";
 
 interface MenuItem {
@@ -102,19 +103,23 @@ const MenuItemCard = memo(({
 const MenuGrid = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { restaurantId } = useRestaurantId();
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
 
-  // Fetch menu items
+  // Fetch menu items - filter by restaurant_id for RLS compliance
   const { data: menuItems, isLoading } = useQuery({
-    queryKey: ['menuItems'],
+    queryKey: ['menuItems', restaurantId],
     queryFn: async () => {
-      console.log('Fetching menu items...');
+      if (!restaurantId) return [];
+      
+      console.log('Fetching menu items for restaurant:', restaurantId);
       const { data, error } = await supabase
         .from('menu_items')
         .select('*')
+        .eq('restaurant_id', restaurantId)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -125,6 +130,7 @@ const MenuGrid = () => {
       console.log('Fetched menu items:', data);
       return data as MenuItem[];
     },
+    enabled: !!restaurantId,
     staleTime: 60000, // 1 minute cache
     refetchOnWindowFocus: false, // Prevent refetch on window focus to avoid loading flashes
   });

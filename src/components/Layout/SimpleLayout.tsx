@@ -16,7 +16,7 @@ export const SimpleLayout = ({ children }: SimpleLayoutProps) => {
       <div className="flex h-screen w-full overflow-hidden">
         <Sidebar />
         <main 
-          className="flex-1 overflow-auto pb-20 lg:pb-0 w-full safe-area-inset-bottom" 
+          className="flex-1 overflow-auto overflow-x-hidden pb-20 lg:pb-0 w-full safe-area-inset-bottom" 
           style={{ paddingLeft: isMobile ? '0' : '7rem' }}
         >
           <div className="p-3 sm:p-4 md:p-6 w-full max-w-full overflow-x-hidden">

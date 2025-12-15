@@ -356,7 +356,7 @@ const POSMode = () => {
 
   return (
     <div className="h-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-slate-900 dark:to-indigo-950">
-      <div className="grid grid-cols-1 lg:grid-cols-4 h-full gap-6 p-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 h-full gap-4 md:gap-6 p-3 md:p-6 pb-24 lg:pb-6">
         {/* Left Section - Menu & Orders */}
         <div className="lg:col-span-3 flex flex-col space-y-6">
           {/* Header Section */}
@@ -394,7 +394,7 @@ const POSMode = () => {
                   <div className="w-3 h-3 bg-gradient-to-r from-orange-400 to-red-500 rounded-full animate-pulse"></div>
                   Active Orders
                 </h2>
-                <div className="max-h-[250px] overflow-auto">
+                <div className="max-h-[180px] md:max-h-[250px] overflow-auto mobile-scroll">
                   <ActiveOrdersList onRecallOrder={({ items, kitchenOrderId, source }) => {
                     setCurrentOrderItems(items as OrderItem[]);
                     setRecalledKitchenOrderId(kitchenOrderId);

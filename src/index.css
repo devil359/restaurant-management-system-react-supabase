@@ -32,6 +32,25 @@
     -webkit-touch-callout: none;
     user-select: none;
   }
+
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Hide table columns on mobile */
+  .hide-on-mobile {
+    @apply hidden md:table-cell;
+  }
+
+  /* Responsive skeleton heights */
+  .skeleton-responsive {
+    @apply h-32 md:h-48 lg:h-64;
+  }
 }
 
 @layer base {

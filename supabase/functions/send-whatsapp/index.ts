@@ -1,6 +1,12 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.29.0";
+import { 
+  checkRateLimit, 
+  createRateLimitResponse, 
+  RATE_LIMITS,
+  getRequestIdentifier 
+} from "../_shared/rate-limit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -63,6 +69,16 @@ serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
+  }
+
+  // Rate limiting check - 100 messages per hour
+  const authHeader = req.headers.get('authorization');
+  const identifier = getRequestIdentifier(req, authHeader);
+  const rateLimitResult = checkRateLimit(identifier, RATE_LIMITS.WHATSAPP);
+  
+  if (!rateLimitResult.allowed) {
+    console.log(`WhatsApp rate limit exceeded for ${identifier}`);
+    return createRateLimitResponse(rateLimitResult, corsHeaders);
   }
 
   try {
