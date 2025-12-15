@@ -251,7 +251,7 @@ describe('Settings Access Control', () => {
 
   describe('Admin Permissions', () => {
     it('admin cannot access billing tab', () => {
-      const userRole = 'admin';
+      const userRole: string = 'admin';
       
       const canAccessBilling = userRole === 'owner';
       const canAccessRestaurant = ['owner', 'admin'].includes(userRole);

@@ -143,7 +143,7 @@ export function createLazyComponent<T extends object>(
   
   return (props: T) => (
     <Suspense fallback={fallback}>
-      <LazyComponent {...props} />
+      <LazyComponent {...(props as any)} />
     </Suspense>
   );
 }
