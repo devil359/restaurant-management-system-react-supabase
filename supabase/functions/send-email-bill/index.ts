@@ -71,7 +71,7 @@ async function sendEmailViaResend(
     return { success: true, id: result.id };
   } catch (error) {
     console.error("Email sending error:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
 
@@ -320,7 +320,7 @@ serve(async (req) => {
       JSON.stringify({ 
         success: false,
         error: "Internal server error",
-        details: error.message 
+        details: error instanceof Error ? error.message : String(error) 
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
