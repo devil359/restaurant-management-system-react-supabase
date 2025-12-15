@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useTheme } from "@/hooks/useTheme";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { PieChart as PieChartIcon } from "lucide-react";
 import { HighchartComponent } from "@/components/ui/highcharts";
 import { Options } from "highcharts";
@@ -24,6 +25,7 @@ const DARK_COLORS = ['#a78bfa', '#34d399', '#fbbf24', '#f472b6', '#22d3ee', '#f8
 
 const RevenueByCategoryChart = ({ data }: RevenueByCategoryChartProps) => {
   const { theme } = useTheme();
+  const isMobile = useIsMobile();
   const isDarkMode = theme === 'dark';
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('30d');
   
@@ -162,11 +164,11 @@ const RevenueByCategoryChart = ({ data }: RevenueByCategoryChartProps) => {
         <CardDescription>Distribution of revenue across menu categories</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-col md:flex-row items-center">
-          <div className="w-full md:w-2/3 h-[300px]">
+        <div className="flex flex-col items-center">
+          <div className={`w-full ${isMobile ? 'h-[220px]' : 'h-[300px]'}`}>
             <HighchartComponent options={chartOptions} />
           </div>
-          <div className="w-full md:w-1/3">
+          <div className="w-full md:w-2/3 mt-4">
             <div className="mt-4 md:mt-0 space-y-3">
               {sortedData.map((item, index) => (
                 <div key={index} className="flex items-center justify-between group hover:bg-gray-50 dark:hover:bg-gray-800/50 p-2 rounded-lg transition-all duration-200">

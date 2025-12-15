@@ -5,6 +5,7 @@ import HighchartsReact from 'highcharts-react-official';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { format, subDays, subMonths, subYears, startOfDay, startOfWeek, startOfMonth, startOfYear } from "date-fns";
 import { useTheme } from "@/hooks/useTheme";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { BarChart3, TrendingUp } from "lucide-react";
 import { Options, SeriesColumnOptions, SeriesLineOptions } from "highcharts";
 
@@ -22,6 +23,7 @@ type TimePeriod = '1d' | '7d' | '30d' | '90d' | '1y' | 'all';
 
 const RevenueHighchart = ({ data }: RevenueHighchartProps) => {
   const { theme } = useTheme();
+  const isMobile = useIsMobile();
   const isDarkMode = theme === 'dark';
   const chartComponentRef = useRef<HighchartsReact.RefObject>(null);
   const [chartType, setChartType] = useState<'line' | 'column'>('line');
@@ -98,7 +100,7 @@ const RevenueHighchart = ({ data }: RevenueHighchartProps) => {
       style: {
         fontFamily: 'Inter, sans-serif'
       },
-      height: 400
+      height: isMobile ? 280 : 400
     },
     title: {
       text: undefined
@@ -176,6 +178,25 @@ const RevenueHighchart = ({ data }: RevenueHighchartProps) => {
     },
     credits: {
       enabled: false
+    },
+    responsive: {
+      rules: [{
+        condition: {
+          maxWidth: 500
+        },
+        chartOptions: {
+          legend: {
+            align: 'center',
+            verticalAlign: 'bottom',
+            layout: 'horizontal'
+          },
+          yAxis: [{
+            title: { text: null }
+          }, {
+            title: { text: null }
+          }]
+        }
+      }]
     },
     plotOptions: {
       series: {
