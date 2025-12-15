@@ -702,12 +702,16 @@ const PaymentDialog = ({
     }
 
     try {
+      console.log('📧 restaurantInfo data:', restaurantInfo);
+      const restaurantId = restaurantInfo?.restaurantId || restaurantInfo?.id || '';
+      
       const { data, error } = await supabase.functions.invoke('send-email-bill', {
         body: {
           orderId: orderId || '',
           email: customerEmail,
           customerName: customerName || 'Valued Customer',
-          restaurantName: restaurantInfo?.name || 'Restaurant',
+          restaurantName: restaurantInfo?.name || '',
+          restaurantId: restaurantId, // Pass ID so edge function can fetch name if needed
           restaurantAddress: restaurantInfo?.address || '',
           restaurantPhone: restaurantInfo?.phone || '',
           total: total,

@@ -23,6 +23,7 @@ interface EmailBillRequest {
   email: string;
   customerName: string;
   restaurantName: string;
+  restaurantId?: string; // For DB lookup if name not provided
   restaurantAddress?: string;
   restaurantPhone?: string;
   restaurantEmail?: string;
@@ -261,12 +262,43 @@ serve(async (req: Request) => {
 
   try {
     const requestBody = await req.json() as EmailBillRequest;
-    const { orderId, email, customerName, restaurantName, total, items } = requestBody;
+    const { orderId, email, customerName, restaurantName, restaurantId, total, items } = requestBody;
     
-    // Use provided restaurant name or fetch from database if possible
-    const finalRestaurantName = restaurantName && restaurantName !== 'Restaurant' 
-      ? restaurantName 
-      : 'Our Restaurant';
+    // Initialize Supabase client for DB lookup
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    let finalRestaurantName = restaurantName;
+    let finalRestaurantAddress = requestBody.restaurantAddress || '';
+    let finalRestaurantPhone = requestBody.restaurantPhone || '';
+    
+    // If restaurant name is empty or default, try to fetch from database
+    if ((!restaurantName || restaurantName === 'Restaurant' || restaurantName === '') && restaurantId && supabaseUrl && supabaseServiceKey) {
+      console.log('📍 Restaurant name not provided, fetching from database with ID:', restaurantId);
+      try {
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+        const { data: restaurant, error: dbError } = await supabase
+          .from('restaurants')
+          .select('name, address, phone')
+          .eq('id', restaurantId)
+          .single();
+        
+        if (!dbError && restaurant) {
+          console.log('✅ Found restaurant in DB:', restaurant.name);
+          finalRestaurantName = restaurant.name || 'Our Restaurant';
+          finalRestaurantAddress = restaurant.address || finalRestaurantAddress;
+          finalRestaurantPhone = restaurant.phone || finalRestaurantPhone;
+        } else {
+          console.warn('❌ Could not fetch restaurant from DB:', dbError);
+          finalRestaurantName = 'Our Restaurant';
+        }
+      } catch (fetchError) {
+        console.error('❌ Error fetching restaurant:', fetchError);
+        finalRestaurantName = 'Our Restaurant';
+      }
+    } else if (!restaurantName || restaurantName === 'Restaurant' || restaurantName === '') {
+      finalRestaurantName = 'Our Restaurant';
+    }
     
     console.log("Processing email bill request:", {
       orderId,
@@ -307,8 +339,13 @@ serve(async (req: Request) => {
       );
     }
 
-    // Update request body with final restaurant name
-    const updatedRequestBody = { ...requestBody, restaurantName: finalRestaurantName };
+    // Update request body with final restaurant details (including any DB-fetched values)
+    const updatedRequestBody = { 
+      ...requestBody, 
+      restaurantName: finalRestaurantName,
+      restaurantAddress: finalRestaurantAddress,
+      restaurantPhone: finalRestaurantPhone
+    };
 
     // Generate bill HTML
     const htmlContent = generateBillHTML(updatedRequestBody);
