@@ -552,27 +552,20 @@ const PaymentDialog = ({
       return false;
     }
 
+    // Email is optional - only validate format if provided
     const emailStr = String(customerEmail).trim();
-    if (!emailStr) {
+    if (emailStr) {
+      // Validate email format only if email is provided
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(emailStr)) {
 
-      toast({
-        title: "Email Required",
-        description: "Please enter email address to send bill.",
-        variant: "destructive"
-      });
-      return false;
-    }
-
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(emailStr)) {
-
-      toast({
-        title: "Invalid Email",
-        description: "Please enter a valid email address.",
-        variant: "destructive"
-      });
-      return false;
+        toast({
+          title: "Invalid Email",
+          description: "Please enter a valid email address.",
+          variant: "destructive"
+        });
+        return false;
+      }
     }
 
     setIsSaving(true);
@@ -1601,7 +1594,7 @@ const PaymentDialog = ({
               htmlFor="send-bill-checkbox"
               className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
             >
-              📧 Send bill to customer's email
+              📧 Send bill to customer
             </label>
           </div>
 
@@ -1620,7 +1613,32 @@ const PaymentDialog = ({
               </div>
               <div>
                 <label className="text-sm font-medium mb-1 block">
-                  Email Address <span className="text-red-500">*</span>
+                  Mobile Number <span className="text-muted-foreground text-xs">(for room detection)</span>
+                </label>
+                <Input
+                  type="tel"
+                  placeholder="Enter mobile number"
+                  value={customerMobile}
+                  onChange={(e) => setCustomerMobile(e.target.value)}
+                  onBlur={() => {
+                    if (customerMobile && customerMobile.replace(/\D/g, '').length >= 10) {
+                      checkForActiveReservation();
+                    }
+                  }}
+                  className="w-full"
+                />
+                {detectedReservation && (
+                  <div className="mt-2 p-2 bg-green-50 dark:bg-green-950/30 rounded-md border border-green-200 dark:border-green-800 flex items-center gap-2">
+                    <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
+                    <span className="text-sm text-green-700 dark:text-green-300">
+                      Guest detected in {detectedReservation.roomName}
+                    </span>
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">
+                  Email Address <span className="text-muted-foreground text-xs">(for email receipt)</span>
                 </label>
                 <Input
                   type="email"

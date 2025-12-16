@@ -34,7 +34,7 @@ vi.mock('@/hooks/useAuth', () => ({
     user: { 
         id: '123', 
         email: 'test@example.com', 
-        role: 'admin',
+        role: 'staff',
         role_name_text: 'Owner' 
     },
     loading: false,
