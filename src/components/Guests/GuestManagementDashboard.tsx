@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,6 +21,8 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { useGuestManagement } from "@/hooks/useGuestManagement";
+import { useReservations } from "@/hooks/useReservations";
+import { useCurrencyContext } from "@/contexts/CurrencyContext";
 import GuestCheckInDialog from "./GuestCheckInDialog";
 import GuestCheckOutDialog from "./GuestCheckOutDialog";
 
@@ -36,24 +37,32 @@ const GuestManagementDashboard = () => {
     checkOutGuest,
   } = useGuestManagement();
 
+  const { roomReservations, isLoading: isLoadingReservations } = useReservations();
+  const { symbol: currencySymbol } = useCurrencyContext();
+
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedGuest, setSelectedGuest] = useState(null);
   const [checkInDialog, setCheckInDialog] = useState(false);
   const [checkOutDialog, setCheckOutDialog] = useState(false);
   const [selectedCheckIn, setSelectedCheckIn] = useState(null);
 
-  // Mock reservations for demo - in real app, this would come from API
-  const pendingReservations = [
-    {
-      id: "1",
-      customer_name: "John Doe",
-      customer_email: "john@example.com",
-      customer_phone: "+1234567890",
-      start_time: new Date().toISOString(),
-      end_time: new Date(Date.now() + 86400000 * 2).toISOString(),
-      room: { id: "1", name: "Deluxe Room 101", price: 2500 }
+  // Filter for pending check-ins: confirmed reservations with upcoming start dates
+  const pendingReservations = roomReservations.filter(reservation => 
+    reservation.status === 'confirmed' && 
+    new Date(reservation.start_time) >= new Date()
+  ).map(reservation => ({
+    id: reservation.id,
+    customer_name: reservation.customer_name,
+    customer_email: reservation.customer_email || "",
+    customer_phone: reservation.customer_phone || "",
+    start_time: reservation.start_time,
+    end_time: reservation.end_time,
+    room: { 
+      id: reservation.room_id, 
+      name: reservation.rooms?.name || "Room", 
+      price: reservation.rooms?.price || 0 
     }
-  ];
+  }));
 
   const handleCheckIn = async (data: any) => {
     try {
@@ -204,7 +213,7 @@ const GuestManagementDashboard = () => {
                           {checkIn.total_guests} guest{checkIn.total_guests > 1 ? 's' : ''}
                         </Badge>
                         <Badge variant="outline">
-                          ₹{checkIn.room_rate}/night
+                          {currencySymbol}{checkIn.room_rate}/night
                         </Badge>
                         <Button 
                           size="sm" 
@@ -262,7 +271,7 @@ const GuestManagementDashboard = () => {
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge variant="outline">
-                          ₹{reservation.room.price}/night
+                          {currencySymbol}{reservation.room.price}/night
                         </Badge>
                         <Button 
                           size="sm"
@@ -340,7 +349,7 @@ const GuestManagementDashboard = () => {
                         
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Total Spent:</span>
-                          <span className="font-medium">₹{guest.total_spent}</span>
+                          <span className="font-medium">{currencySymbol}{guest.total_spent}</span>
                         </div>
                         
                         {guest.last_stay && (

@@ -6,9 +6,11 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ShoppingCart, Package, TrendingUp, AlertTriangle, Eye, X } from "lucide-react";
+import { ShoppingCart, Package, TrendingUp, AlertTriangle, Eye } from "lucide-react";
 import { useRestaurantId } from "@/hooks/useRestaurantId";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useCurrencyContext } from '@/contexts/CurrencyContext';
+import { EnhancedSkeleton } from "@/components/ui/enhanced-skeleton";
 
 interface PurchaseOrderSuggestion {
   supplier_id: string;
@@ -40,6 +42,7 @@ const PurchaseOrderSuggestions = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { restaurantId } = useRestaurantId();
+  const { symbol: currencySymbol } = useCurrencyContext();
   const [selectedSupplier, setSelectedSupplier] = useState<PurchaseOrderSuggestion | null>(null);
   const [showItemsDialog, setShowItemsDialog] = useState(false);
 
@@ -179,7 +182,11 @@ const PurchaseOrderSuggestions = () => {
   };
 
   if (isLoading) {
-    return <div>Loading suggestions...</div>;
+    return (
+      <div className="space-y-4">
+        <EnhancedSkeleton type="card" count={2} showHeader={true} />
+      </div>
+    );
   }
 
   if (lowStockItems.length === 0) {
@@ -211,7 +218,7 @@ const PurchaseOrderSuggestions = () => {
                     Current: {item.quantity} {item.unit} | Reorder Level: {item.reorder_level} {item.unit}
                   </p>
                   {item.cost_per_unit && (
-                    <p className="text-sm text-gray-500">Cost: ₹{item.cost_per_unit}/{item.unit}</p>
+                    <p className="text-sm text-gray-500">Cost: {currencySymbol}{item.cost_per_unit}/{item.unit}</p>
                   )}
                 </div>
                 <Badge variant="destructive" className="ml-3">
@@ -250,7 +257,7 @@ const PurchaseOrderSuggestions = () => {
                 </p>
               </div>
               <Badge className="bg-blue-100 text-blue-800">
-                ₹{suggestion.estimated_total.toFixed(2)}
+                {currencySymbol}{suggestion.estimated_total.toFixed(2)}
               </Badge>
             </div>
             
@@ -281,20 +288,11 @@ const PurchaseOrderSuggestions = () => {
 
       {/* Items Dialog */}
       <Dialog open={showItemsDialog} onOpenChange={setShowItemsDialog}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl rounded-2xl">
           <DialogHeader>
-            <div className="flex items-center justify-between">
-              <DialogTitle>
-                Items for {selectedSupplier?.supplier_name}
-              </DialogTitle>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setShowItemsDialog(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+            <DialogTitle className="text-xl font-bold bg-gradient-to-r from-purple-600 to-violet-600 bg-clip-text text-transparent">
+              Items for {selectedSupplier?.supplier_name}
+            </DialogTitle>
           </DialogHeader>
           
           <div className="space-y-3">
@@ -308,7 +306,7 @@ const PurchaseOrderSuggestions = () => {
                       <p>Reorder Level: {item.reorder_level} {item.unit}</p>
                       <p>Suggested Quantity: <span className="text-green-600 font-medium">{item.suggested_quantity} {item.unit}</span></p>
                       {item.cost_per_unit && (
-                        <p>Unit Cost: ₹{item.cost_per_unit}</p>
+                        <p>Unit Cost: {currencySymbol}{item.cost_per_unit}</p>
                       )}
                     </div>
                   </div>
@@ -318,7 +316,7 @@ const PurchaseOrderSuggestions = () => {
                     </Badge>
                     {item.cost_per_unit && (
                       <p className="text-sm font-medium text-green-600">
-                        Est. Cost: ₹{(item.suggested_quantity * item.cost_per_unit).toFixed(2)}
+                        Est. Cost: {currencySymbol}{(item.suggested_quantity * item.cost_per_unit).toFixed(2)}
                       </p>
                     )}
                   </div>
@@ -329,7 +327,7 @@ const PurchaseOrderSuggestions = () => {
           
           <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
             <p className="text-sm text-blue-700">
-              <strong>Total Estimated Cost:</strong> ₹{selectedSupplier?.estimated_total.toFixed(2)}
+              <strong>Total Estimated Cost:</strong> {currencySymbol}{selectedSupplier?.estimated_total.toFixed(2)}
             </p>
           </div>
         </DialogContent>

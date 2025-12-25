@@ -9,8 +9,10 @@ import { ErrorBoundary } from "./components/ui/error-boundary";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AccessProvider } from "@/contexts/AccessContext";
+import { CurrencyProvider } from "@/contexts/CurrencyContext";
 import { useRealtimeAnalytics } from "@/hooks/useRealtimeAnalytics";
 import Routes from "./components/Auth/Routes";
+import NotificationListener from "@/components/Notifications/NotificationListener";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -29,6 +31,7 @@ function AppWithRealtime() {
   
   return (
     <div className="min-h-screen w-full overflow-auto bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
+      <NotificationListener />
       <Routes />
       <Toaster />
     </div>
@@ -44,11 +47,13 @@ function App() {
         <TooltipProvider>
           <AuthProvider>
             <AccessProvider>
-              <ErrorBoundary>
-                <Router>
-                  <AppWithRealtime />
-                </Router>
-              </ErrorBoundary>
+              <CurrencyProvider>
+                <ErrorBoundary>
+                  <Router>
+                    <AppWithRealtime />
+                  </Router>
+                </ErrorBoundary>
+              </CurrencyProvider>
             </AccessProvider>
           </AuthProvider>
         </TooltipProvider>

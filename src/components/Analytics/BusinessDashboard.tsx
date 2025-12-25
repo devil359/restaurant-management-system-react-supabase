@@ -27,6 +27,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/use-toast';
 import BusinessReportExport from './BusinessReportExport';
 import FileAnalysisUploader from './FileAnalysisUploader';
+import { useCurrencyContext } from '@/contexts/CurrencyContext';
 
 // Colors for charts
 const COLORS = ['#4299E1', '#48BB78', '#F6AD55', '#F56565', '#805AD5', '#38B2AC', '#ED8936'];
@@ -36,6 +37,7 @@ const BusinessDashboard = () => {
   const [documents, setDocuments] = useState<{name: string, type: string, date: string, insights: string}[]>([]);
   const { data, isLoading, error } = useBusinessDashboardData();
   const { toast } = useToast();
+  const { symbol: currencySymbol } = useCurrencyContext();
 
   useEffect(() => {
     if (data?.documents && data.documents.length > 0) {
@@ -196,7 +198,7 @@ const BusinessDashboard = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">₹{totalOperationalCost.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">{currencySymbol}{totalOperationalCost.toLocaleString()}</div>
             <div className="text-xs text-muted-foreground">
               <span className={revenueTrend < 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}>
                 {revenueTrend < 0 ? "↓" : "↑"} {Math.abs(revenueTrend).toFixed(1)}%
@@ -216,7 +218,7 @@ const BusinessDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-700 dark:text-green-300">
-              ₹{revenueTrendData.reduce((sum, day) => sum + (day.revenue || 0), 0).toLocaleString()}
+              {currencySymbol}{revenueTrendData.reduce((sum, day) => sum + (day.revenue || 0), 0).toLocaleString()}
             </div>
             <div className="text-xs text-muted-foreground">
               Last 30 days total
@@ -305,9 +307,9 @@ const BusinessDashboard = () => {
                     <YAxis yAxisId="right" orientation="right" />
                     <Tooltip />
                     <Legend />
-                    <Area yAxisId="left" type="monotone" dataKey="revenue" fill="#4299E1" fillOpacity={0.3} stroke="#4299E1" name="Revenue (₹)" />
+                    <Area yAxisId="left" type="monotone" dataKey="revenue" fill="#4299E1" fillOpacity={0.3} stroke="#4299E1" name={`Revenue (${currencySymbol})`} />
                     <Bar yAxisId="right" dataKey="orders" fill="#48BB78" name="Orders" />
-                    <Line yAxisId="left" type="monotone" dataKey="average" stroke="#F6AD55" strokeWidth={2} name="Avg Order Value (₹)" />
+                    <Line yAxisId="left" type="monotone" dataKey="average" stroke="#F6AD55" strokeWidth={2} name={`Avg Order Value (${currencySymbol})`} />
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>
@@ -498,7 +500,7 @@ const BusinessDashboard = () => {
                         <XAxis type="number" />
                         <YAxis dataKey="name" type="category" />
                         <Tooltip 
-                          formatter={(value) => [`₹${value}`, 'Expense']}
+                          formatter={(value) => [`${currencySymbol}${value}`, 'Expense']}
                         />
                         <Legend />
                         <Bar dataKey="value" fill="#4299E1" />
@@ -527,7 +529,7 @@ const BusinessDashboard = () => {
                           ))}
                         </Pie>
                         <Tooltip
-                          formatter={(value) => [`₹${value}`, 'Expense']}
+                          formatter={(value) => [`${currencySymbol}${value}`, 'Expense']}
                         />
                       </PieChart>
                     </ResponsiveContainer>
@@ -552,20 +554,20 @@ const BusinessDashboard = () => {
                       {expenseData.map((item, i) => (
                         <TableRow key={i}>
                           <TableCell className="font-medium">{item.name}</TableCell>
-                          <TableCell>₹{item.value.toLocaleString()}</TableCell>
-                          <TableCell>₹{Math.round(item.value * (1 + (Math.random() * 0.2 - 0.1))).toLocaleString()}</TableCell>
+                          <TableCell>{currencySymbol}{item.value.toLocaleString()}</TableCell>
+                          <TableCell>{currencySymbol}{Math.round(item.value * (1 + (Math.random() * 0.2 - 0.1))).toLocaleString()}</TableCell>
                           <TableCell className={Math.random() > 0.5 ? "text-green-600" : "text-red-600"}>
                             {Math.random() > 0.5 ? "↓" : "↑"} {Math.round(Math.random() * 10)}%
                           </TableCell>
-                          <TableCell>₹{Math.round(item.value * 9).toLocaleString()}</TableCell>
+                          <TableCell>{currencySymbol}{Math.round(item.value * 9).toLocaleString()}</TableCell>
                         </TableRow>
                       ))}
                       <TableRow className="bg-muted/50">
                         <TableCell className="font-bold">Total</TableCell>
-                        <TableCell className="font-bold">₹{totalOperationalCost.toLocaleString()}</TableCell>
-                        <TableCell className="font-bold">₹{Math.round(totalOperationalCost * 1.032).toLocaleString()}</TableCell>
+                        <TableCell className="font-bold">{currencySymbol}{totalOperationalCost.toLocaleString()}</TableCell>
+                        <TableCell className="font-bold">{currencySymbol}{Math.round(totalOperationalCost * 1.032).toLocaleString()}</TableCell>
                         <TableCell className="font-bold text-green-600">↓ 3.2%</TableCell>
-                        <TableCell className="font-bold">₹{Math.round(totalOperationalCost * 9).toLocaleString()}</TableCell>
+                        <TableCell className="font-bold">{currencySymbol}{Math.round(totalOperationalCost * 9).toLocaleString()}</TableCell>
                       </TableRow>
                     </TableBody>
                   </Table>
@@ -646,24 +648,24 @@ const BusinessDashboard = () => {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm">Chefs</span>
-                    <span className="text-sm font-medium">₹{Math.round(data?.staffData?.filter(s => s.position?.toLowerCase().includes('chef')).length * 15000).toLocaleString() || '12,500'}</span>
+                    <span className="text-sm font-medium">{currencySymbol}{(data?.staffExpenseBreakdown?.chefs || 0).toLocaleString()}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm">Wait Staff</span>
-                    <span className="text-sm font-medium">₹{Math.round(data?.staffData?.filter(s => s.position?.toLowerCase().includes('wait')).length * 8000).toLocaleString() || '8,200'}</span>
+                    <span className="text-sm font-medium">{currencySymbol}{(data?.staffExpenseBreakdown?.waitStaff || 0).toLocaleString()}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm">Cleaning</span>
-                    <span className="text-sm font-medium">₹{Math.round(data?.staffData?.filter(s => s.position?.toLowerCase().includes('clean')).length * 7000).toLocaleString() || '2,500'}</span>
+                    <span className="text-sm font-medium">{currencySymbol}{(data?.staffExpenseBreakdown?.cleaning || 0).toLocaleString()}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm">Management</span>
-                    <span className="text-sm font-medium">₹{Math.round(data?.staffData?.filter(s => s.position?.toLowerCase().includes('manage')).length * 22000).toLocaleString() || '1,800'}</span>
+                    <span className="text-sm font-medium">{currencySymbol}{(data?.staffExpenseBreakdown?.management || 0).toLocaleString()}</span>
                   </div>
                   <div className="pt-2 mt-2 border-t">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium">Total</span>
-                      <span className="text-sm font-bold">₹{expenseData.find(e => e.name === 'Staff')?.value.toLocaleString() || '25,000'}</span>
+                      <span className="text-sm font-bold">{currencySymbol}{(data?.staffExpenseBreakdown?.total || 0).toLocaleString()}</span>
                     </div>
                     <div className="text-xs text-muted-foreground mt-1">
                       <span className="text-green-600">↓ 2.5%</span> from last month
@@ -684,38 +686,38 @@ const BusinessDashboard = () => {
                 <div className="space-y-3">
                   <div>
                     <div className="flex justify-between">
-                      <span className="text-sm">Lunch (12PM-2PM)</span>
-                      <span className="text-sm font-medium">₹15,200</span>
+                      <span className="text-sm">Lunch (11AM-3PM)</span>
+                      <span className="text-sm font-medium">{currencySymbol}{(data?.peakPeriodRevenue?.lunch || 0).toLocaleString()}</span>
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      +12% from last month
+                      Revenue from lunch orders (last 30 days)
                     </div>
                   </div>
                   <div>
                     <div className="flex justify-between">
-                      <span className="text-sm">Dinner (7PM-9PM)</span>
-                      <span className="text-sm font-medium">₹28,500</span>
+                      <span className="text-sm">Dinner (6PM-10PM)</span>
+                      <span className="text-sm font-medium">{currencySymbol}{(data?.peakPeriodRevenue?.dinner || 0).toLocaleString()}</span>
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      +8% from last month
+                      Revenue from dinner orders (last 30 days)
                     </div>
                   </div>
                   <div>
                     <div className="flex justify-between">
                       <span className="text-sm">Weekend</span>
-                      <span className="text-sm font-medium">₹42,000</span>
+                      <span className="text-sm font-medium">{currencySymbol}{(data?.peakPeriodRevenue?.weekend || 0).toLocaleString()}</span>
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      +15% from last month
+                      Total revenue on Sat & Sun (last 30 days)
                     </div>
                   </div>
                   <div>
                     <div className="flex justify-between">
                       <span className="text-sm">Weekday</span>
-                      <span className="text-sm font-medium">₹28,000</span>
+                      <span className="text-sm font-medium">{currencySymbol}{(data?.peakPeriodRevenue?.weekday || 0).toLocaleString()}</span>
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      +5% from last month
+                      Total revenue Mon-Fri (last 30 days)
                     </div>
                   </div>
                 </div>

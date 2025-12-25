@@ -7,10 +7,12 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { HighchartComponent } from "@/components/ui/highcharts";
 import { Options } from "highcharts";
+import { useCurrencyContext } from "@/contexts/CurrencyContext";
 
 const WeeklySalesChart = () => {
   const { theme } = useTheme();
   const isDarkMode = theme === 'dark';
+  const { symbol } = useCurrencyContext();
   
   const { data: profile } = useQuery({
     queryKey: ["profile"],
@@ -46,14 +48,18 @@ const WeeklySalesChart = () => {
         .gte("created_at", startDate.toISOString())
         .lte("created_at", endDate.toISOString());
 
-      // Fetch room billings revenue
-      const { data: roomBillings } = await supabase
+      // Fetch room billings revenue (use checkout_date instead of billing_date)
+      const { data: roomBillings, error: roomBillingsError } = await supabase
         .from("room_billings")
-        .select("billing_date, total_amount, payment_status")
+        .select("checkout_date, total_amount, payment_status")
         .eq("restaurant_id", profile?.restaurant_id)
         .eq("payment_status", "paid")
-        .gte("billing_date", startDate.toISOString())
-        .lte("billing_date", endDate.toISOString());
+        .gte("checkout_date", startDate.toISOString())
+        .lte("checkout_date", endDate.toISOString());
+
+      if (roomBillingsError) {
+        console.log('Room billings query error:', roomBillingsError.message);
+      }
 
       // Calculate revenue per day
       const dailyRevenue: { [key: string]: number } = {};
@@ -64,7 +70,7 @@ const WeeklySalesChart = () => {
       });
 
       roomBillings?.forEach(billing => {
-        const day = format(new Date(billing.billing_date), 'EEE');
+        const day = format(new Date(billing.checkout_date), 'EEE');
         dailyRevenue[day] = (dailyRevenue[day] || 0) + (billing.total_amount || 0);
       });
 
@@ -81,10 +87,10 @@ const WeeklySalesChart = () => {
   }
 
   // Theme-aware colors
-  const backgroundColor = isDarkMode ? 'transparent' : 'transparent';
-  const textColor = isDarkMode ? '#F7FAFC' : '#2D3748';
-  const gridColor = isDarkMode ? '#4A5568' : '#E2E8F0';
-  const barColor = isDarkMode ? '#48BB78' : '#48BB78';
+  const backgroundColor = 'transparent';
+  const textColor = isDarkMode ? '#F7FAFC' : '#64748B'; // Slate-500 for better contrast on glass
+  const gridColor = isDarkMode ? '#334155' : '#E2E8F0';
+  const barColor = isDarkMode ? '#48BB78' : '#3B82F6'; // Blue-500 for premium look
 
   const chartOptions: Options = {
     chart: {
@@ -96,13 +102,14 @@ const WeeklySalesChart = () => {
       height: 300
     },
     title: {
-      text: null
+      text: undefined
     },
     xAxis: {
       categories: weeklyData.map(item => item.day),
       labels: {
         style: {
-          color: textColor
+          color: textColor,
+          fontWeight: '500'
         }
       },
       lineColor: gridColor,
@@ -110,7 +117,7 @@ const WeeklySalesChart = () => {
     },
     yAxis: {
       title: {
-        text: 'Revenue (₹)',
+        text: `Revenue (${symbol})`,
         style: {
           color: textColor
         }
@@ -120,7 +127,7 @@ const WeeklySalesChart = () => {
           color: textColor
         },
         formatter: function() {
-          return '₹' + this.value;
+          return symbol + this.value;
         }
       },
       gridLineColor: gridColor
@@ -134,20 +141,29 @@ const WeeklySalesChart = () => {
     tooltip: {
       headerFormat: '<span style="font-size:10px">{point.key}</span><table>',
       pointFormat: '<tr><td style="color:{series.color};padding:0">Revenue: </td>' +
-        '<td style="padding:0"><b>₹{point.y:.0f}</b></td></tr>',
+        `<td style="padding:0"><b>${symbol}{point.y:.0f}</b></td></tr>`,
       footerFormat: '</table>',
       shared: true,
       useHTML: true,
-      backgroundColor: isDarkMode ? '#2D3748' : '#FFFFFF',
-      borderColor: isDarkMode ? '#4A5568' : '#E2E8F0',
+      backgroundColor: isDarkMode ? 'rgba(30, 41, 59, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+      borderColor: isDarkMode ? '#475569' : '#E2E8F0',
+      borderRadius: 12,
       style: {
         color: textColor
-      }
+      },
+      shadow: true
     },
     plotOptions: {
       column: {
-        borderRadius: 6,
-        color: barColor,
+        borderRadius: 8,
+        color: {
+          linearGradient: { x1: 0, x2: 0, y1: 0, y2: 1 },
+          stops: [
+            [0, '#6366f1'], // Indigo 500
+            [1, '#3b82f6'] // Blue 500
+          ]
+        },
+        pointWidth: 20,
         animation: {
           duration: 1000
         }
@@ -162,8 +178,26 @@ const WeeklySalesChart = () => {
   };
 
   return (
-    <Card className="p-4 shadow-card hover:shadow-card-hover transition-all duration-300">
-      <HighchartComponent options={chartOptions} />
+    <Card className="relative overflow-hidden bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border-0 rounded-3xl shadow-2xl p-6 hover:shadow-3xl transition-all duration-300 group">
+      {/* 3D Gradient Overlay Effect */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-indigo-500/5 to-purple-500/5 pointer-events-none" />
+      
+      {/* Subtle border gradient */}
+      <div className="absolute inset-0 border border-white/20 dark:border-gray-700/30 rounded-3xl pointer-events-none" />
+      
+      {/* Header */}
+      <div className="relative z-10 mb-6 flex items-center justify-between">
+        <div>
+          <h3 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            Sales Trend
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Weekly revenue overview</p>
+        </div>
+      </div>
+
+      <div className="relative z-10">
+        <HighchartComponent options={chartOptions} />
+      </div>
     </Card>
   );
 };

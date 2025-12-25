@@ -15,7 +15,7 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import { supabase } from "@/integrations/supabase/client";
-import { X, Upload, Loader2, Image as ImageIcon, Sparkles, ChefHat, Plus } from "lucide-react";
+import { X, Upload, Loader2, Image as ImageIcon, Sparkles, ChefHat, Plus, Scale } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCategories } from "@/hooks/useCategories";
@@ -31,6 +31,9 @@ interface MenuItem {
   is_available: boolean;
   is_veg?: boolean;
   is_special?: boolean;
+  pricing_type?: string;
+  pricing_unit?: string;
+  base_unit_quantity?: number;
 }
 
 interface AddMenuItemFormProps {
@@ -47,6 +50,9 @@ type FormData = {
   image_url: string;
   is_veg: boolean;
   is_special: boolean;
+  pricing_type: string;
+  pricing_unit: string;
+  base_unit_quantity: string;
 };
 
 const AddMenuItemForm = ({ onClose, onSuccess, editingItem }: AddMenuItemFormProps) => {
@@ -92,6 +98,9 @@ const AddMenuItemForm = ({ onClose, onSuccess, editingItem }: AddMenuItemFormPro
       image_url: editingItem?.image_url || "",
       is_veg: editingItem ? (editingItem.is_veg ?? true) : true, // Default to veg for new items
       is_special: editingItem?.is_special ?? false,
+      pricing_type: editingItem?.pricing_type || "fixed",
+      pricing_unit: editingItem?.pricing_unit || "piece",
+      base_unit_quantity: editingItem?.base_unit_quantity ? String(editingItem.base_unit_quantity) : "1",
     },
   });
 
@@ -107,6 +116,9 @@ const AddMenuItemForm = ({ onClose, onSuccess, editingItem }: AddMenuItemFormPro
         image_url: editingItem.image_url || "",
         is_veg: editingItem.is_veg ?? true,
         is_special: editingItem.is_special ?? false,
+        pricing_type: editingItem.pricing_type || "fixed",
+        pricing_unit: editingItem.pricing_unit || "piece",
+        base_unit_quantity: editingItem.base_unit_quantity ? String(editingItem.base_unit_quantity) : "1",
       });
       setUploadedImageUrl(editingItem.image_url || "");
     } else {
@@ -119,6 +131,9 @@ const AddMenuItemForm = ({ onClose, onSuccess, editingItem }: AddMenuItemFormPro
         image_url: "",
         is_veg: true, // Default to vegetarian
         is_special: false,
+        pricing_type: "fixed",
+        pricing_unit: "piece",
+        base_unit_quantity: "1",
       });
       setUploadedImageUrl("");
     }
@@ -229,6 +244,9 @@ const AddMenuItemForm = ({ onClose, onSuccess, editingItem }: AddMenuItemFormPro
         is_available: true,
         is_veg: Boolean(data.is_veg), // Explicit Boolean conversion
         is_special: Boolean(data.is_special), // Explicit Boolean conversion
+        pricing_type: data.pricing_type || "fixed",
+        pricing_unit: data.pricing_type !== "fixed" ? data.pricing_unit : null,
+        base_unit_quantity: data.pricing_type !== "fixed" ? parseFloat(data.base_unit_quantity) || 1 : null,
         updated_at: new Date().toISOString(), // Track update time
       };
 
@@ -384,52 +402,54 @@ const AddMenuItemForm = ({ onClose, onSuccess, editingItem }: AddMenuItemFormPro
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border border-white/30 dark:border-gray-700/30 rounded-3xl shadow-2xl w-full max-w-2xl relative animate-fade-in overflow-y-auto max-h-[75vh]">
-        {/* Modern Header */}
-        <div className="bg-gradient-to-r from-emerald-500/20 via-teal-500/20 to-green-500/20 dark:from-emerald-900/30 dark:via-teal-900/30 dark:to-green-900/30 border-b border-white/20 dark:border-gray-700/30 p-6 rounded-t-3xl">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start justify-center z-50 overflow-auto py-8">
+      <div className="bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border border-white/30 dark:border-gray-700/30 rounded-2xl shadow-2xl w-full max-w-lg mx-4 relative animate-fade-in flex flex-col" style={{ maxHeight: 'calc(100vh - 64px)' }}>
+        {/* Header with transparent gradient overlay */}
+        <div className="flex-shrink-0 bg-gradient-to-r from-emerald-500/20 via-teal-500/20 to-green-500/20 dark:from-emerald-900/30 dark:via-teal-900/30 dark:to-green-900/30 border-b border-white/20 dark:border-gray-700/30 p-4 rounded-t-2xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-xl shadow-lg">
-                <ChefHat className="h-6 w-6 text-white" />
+                <ChefHat className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold bg-gradient-to-r from-emerald-600 via-teal-600 to-green-600 bg-clip-text text-transparent">
-                  {editingItem ? "Edit Menu Item" : "Add New Menu Item"}
+                <h2 className="text-xl font-bold bg-gradient-to-r from-emerald-600 via-teal-600 to-green-600 bg-clip-text text-transparent">
+                  {editingItem ? "Edit Menu Item" : "Add New Item"}
                 </h2>
-                <p className="text-gray-600 dark:text-gray-400 text-sm flex items-center gap-1 mt-1">
-                  <Sparkles className="h-4 w-4" />
-                  Create delicious offerings for your customers
+                <p className="text-gray-600 dark:text-gray-400 text-xs flex items-center gap-1">
+                  <Sparkles className="h-3 w-3" />
+                  Create delicious offerings
                 </p>
               </div>
             </div>
             <Button
               variant="ghost"
               size="icon"
-              className="rounded-full hover:bg-white/20 transition-all duration-200"
+              className="h-8 w-8 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
               onClick={onClose}
             >
-              <X className="h-5 w-5" />
+              <X className="h-4 w-4" />
             </Button>
           </div>
         </div>
 
-        {/* Form Content */}
-        <div className="p-6">
+        {/* Scrollable Form Content */}
+        <div className="flex-1 overflow-auto p-4">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              {/* Basic Information */}
-              <div className="space-y-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              {/* Name and Price in 2 columns */}
+              <div className="grid grid-cols-2 gap-3">
                 <FormField
                   control={form.control}
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-gray-700 dark:text-gray-300 font-semibold">Item Name</FormLabel>
+                      <FormLabel className="text-gray-700 dark:text-gray-300 text-sm font-semibold flex items-center gap-1">
+                        📝 Name
+                      </FormLabel>
                       <FormControl>
                         <Input 
-                          placeholder="Enter item name" 
-                          className="bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 transition-all duration-200 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500" 
+                          placeholder="Item name" 
+                          className="h-9 bg-gradient-to-r from-white to-emerald-50/50 dark:from-gray-700 dark:to-emerald-900/20 border-2 border-emerald-200/50 dark:border-emerald-700/30 rounded-lg text-sm focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200/50" 
                           {...field} 
                         />
                       </FormControl>
@@ -440,14 +460,39 @@ const AddMenuItemForm = ({ onClose, onSuccess, editingItem }: AddMenuItemFormPro
 
                 <FormField
                   control={form.control}
+                  name="price"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-gray-700 dark:text-gray-300 text-sm font-semibold flex items-center gap-1">
+                        💰 Price
+                      </FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00" 
+                          className="h-9 bg-gradient-to-r from-white to-purple-50/50 dark:from-gray-700 dark:to-purple-900/20 border-2 border-purple-200/50 dark:border-purple-700/30 rounded-lg text-sm focus:border-purple-400 focus:ring-2 focus:ring-purple-200/50" 
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Description and Category in a row */}
+              <div className="grid grid-cols-2 gap-3">
+                <FormField
+                  control={form.control}
                   name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-gray-700 dark:text-gray-300 font-semibold">Description</FormLabel>
+                      <FormLabel className="text-gray-700 dark:text-gray-300 text-sm font-semibold">📄 Description</FormLabel>
                       <FormControl>
                         <Textarea 
-                          placeholder="Describe your delicious item..." 
-                          className="bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 transition-all duration-200 min-h-[100px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500" 
+                          placeholder="Brief description..." 
+                          className="bg-gradient-to-r from-white to-blue-50/50 dark:from-gray-700 dark:to-blue-900/20 border-2 border-blue-200/50 dark:border-blue-700/30 rounded-lg text-sm min-h-[50px] resize-none focus:border-blue-400" 
                           {...field} 
                         />
                       </FormControl>
@@ -456,72 +501,166 @@ const AddMenuItemForm = ({ onClose, onSuccess, editingItem }: AddMenuItemFormPro
                   )}
                 />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Category selector */}
+                <FormField
+                  control={form.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-gray-700 dark:text-gray-300 text-sm font-semibold">📂 Category</FormLabel>
+                      <Select 
+                        onValueChange={(value) => {
+                          if (value === "__create_new__") {
+                            setShowNewCategoryDialog(true);
+                          } else {
+                            field.onChange(value);
+                          }
+                        }}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="h-9 bg-gradient-to-r from-white to-orange-50/50 dark:from-gray-700 dark:to-orange-900/20 border-2 border-orange-200/50 dark:border-orange-700/30 rounded-lg text-sm focus:border-orange-400">
+                            <SelectValue placeholder="Select category" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent className="bg-white/95 dark:bg-gray-800/95 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-[200px]">
+                          {categories.map((category) => (
+                            <SelectItem key={category} value={category} className="text-sm">
+                              {category}
+                            </SelectItem>
+                          ))}
+                          <SelectItem 
+                            value="__create_new__" 
+                            className="text-sm text-emerald-700 font-medium"
+                          >
+                            <div className="flex items-center gap-2">
+                              <Plus className="h-3 w-3" />
+                              New Category
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Pricing Configuration */}
+              <div className="bg-gradient-to-r from-blue-50/80 to-cyan-50/80 dark:from-blue-900/20 dark:to-cyan-900/20 backdrop-blur-sm rounded-2xl p-4 border border-blue-200/50 dark:border-blue-600/50">
+                <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
+                  <Scale className="h-5 w-5 text-blue-500" />
+                  Pricing Configuration
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                  Configure how this item is priced - fixed price or by weight/volume
+                </p>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <FormField
                     control={form.control}
-                    name="category"
+                    name="pricing_type"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-700 dark:text-gray-300 font-semibold">Category</FormLabel>
-                        <div className="space-y-2">
-                          <Select 
-                            onValueChange={(value) => {
-                              if (value === "__create_new__") {
-                                setShowNewCategoryDialog(true);
-                              } else {
-                                field.onChange(value);
-                              }
-                            }}
-                            value={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger className="bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:border-emerald-400 transition-all duration-200 text-gray-900 dark:text-white">
-                                <SelectValue placeholder="Select category" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent className="bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border border-white/30 dark:border-gray-700/30 rounded-xl shadow-xl max-h-[300px]">
-                              {categories.map((category) => (
-                                <SelectItem key={category} value={category} className="rounded-lg">
-                                  {category}
-                                </SelectItem>
-                              ))}
-                              <SelectItem 
-                                value="__create_new__" 
-                                className="rounded-lg bg-emerald-50 text-emerald-700 font-semibold hover:bg-emerald-100"
-                              >
-                                <div className="flex items-center gap-2">
-                                  <Plus className="h-4 w-4" />
-                                  Create New Category
-                                </div>
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
+                        <FormLabel className="text-gray-700 dark:text-gray-300 font-semibold">Pricing Type</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:border-blue-400 transition-all duration-200 text-gray-900 dark:text-white">
+                              <SelectValue placeholder="Select pricing type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border border-white/30 dark:border-gray-700/30 rounded-xl shadow-xl">
+                            <SelectItem value="fixed" className="rounded-lg">📦 Fixed Price</SelectItem>
+                            <SelectItem value="weight" className="rounded-lg">⚖️ By Weight (kg/g)</SelectItem>
+                            <SelectItem value="volume" className="rounded-lg">🧴 By Volume (L/ml)</SelectItem>
+                            <SelectItem value="unit" className="rounded-lg">🔢 By Unit/Piece</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
 
-                  <FormField
-                    control={form.control}
-                    name="price"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-gray-700 dark:text-gray-300 font-semibold">Price (₹)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            placeholder="0.00"
-                            className="bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 transition-all duration-200 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {form.watch("pricing_type") !== "fixed" && (
+                    <>
+                      <FormField
+                        control={form.control}
+                        name="pricing_unit"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-gray-700 dark:text-gray-300 font-semibold">Unit</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger className="bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:border-blue-400 transition-all duration-200 text-gray-900 dark:text-white">
+                                  <SelectValue placeholder="Select unit" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent className="bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border border-white/30 dark:border-gray-700/30 rounded-xl shadow-xl">
+                                {form.watch("pricing_type") === "weight" && (
+                                  <>
+                                    <SelectItem value="kg" className="rounded-lg">Kilogram (kg)</SelectItem>
+                                    <SelectItem value="g" className="rounded-lg">Gram (g)</SelectItem>
+                                  </>
+                                )}
+                                {form.watch("pricing_type") === "volume" && (
+                                  <>
+                                    <SelectItem value="L" className="rounded-lg">Litre (L)</SelectItem>
+                                    <SelectItem value="ml" className="rounded-lg">Millilitre (ml)</SelectItem>
+                                  </>
+                                )}
+                                {form.watch("pricing_type") === "unit" && (
+                                  <>
+                                    <SelectItem value="piece" className="rounded-lg">Piece</SelectItem>
+                                    <SelectItem value="plate" className="rounded-lg">Plate</SelectItem>
+                                    <SelectItem value="unit" className="rounded-lg">Unit</SelectItem>
+                                  </>
+                                )}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="base_unit_quantity"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-gray-700 dark:text-gray-300 font-semibold">Base Quantity</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0.01"
+                                placeholder="1"
+                                className="bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all duration-200 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormDescription className="text-xs text-gray-500">
+                              e.g., 1 for "per kg"
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </>
+                  )}
                 </div>
+
+                {/* Price Preview */}
+                {form.watch("price") && (
+                  <div className="mt-4 bg-white/60 dark:bg-gray-800/60 rounded-xl p-3 border border-blue-200 dark:border-blue-700">
+                    <p className="text-sm font-medium text-blue-700 dark:text-blue-400">
+                      💰 Price Preview: ₹{form.watch("price")}
+                      {form.watch("pricing_type") !== "fixed" && form.watch("pricing_unit") && (
+                        <> per {form.watch("base_unit_quantity") || 1} {form.watch("pricing_unit")}</>
+                      )}
+                      {form.watch("pricing_type") === "fixed" && " (fixed price)"}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Special Options */}

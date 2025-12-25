@@ -1,15 +1,16 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { format } from "date-fns";
+import { format, differenceInMinutes, parse } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Clock } from "lucide-react";
+import { Clock, AlertTriangle, CheckCircle2, Timer, Sunrise, Sunset, Moon } from "lucide-react";
 import type { StaffMember, StaffTimeClockEntry } from "@/types/staff";
 
 interface TimeClockDialogProps {
@@ -18,6 +19,17 @@ interface TimeClockDialogProps {
   staffId?: string;
   restaurantId: string | null;
   onSuccess: () => void;
+}
+
+type ClockInStatus = 'early' | 'on_time' | 'late' | 'no_shift';
+
+interface ShiftInfo {
+  id: string;
+  name: string;
+  start_time: string;
+  end_time: string;
+  color: string;
+  grace_period_minutes: number;
 }
 
 const TimeClockDialog: React.FC<TimeClockDialogProps> = ({
@@ -60,6 +72,93 @@ const TimeClockDialog: React.FC<TimeClockDialogProps> = ({
       return data as StaffMember[];
     },
   });
+
+  // Fetch today's shift assignment for the staff member
+  const effectiveStaffId = selectedStaffId || staffId;
+  const dayOfWeek = currentTime.getDay(); // 0 = Sunday, 6 = Saturday
+
+  const { data: todayShift } = useQuery<ShiftInfo | null>({
+    queryKey: ["staff-today-shift", effectiveStaffId, dayOfWeek],
+    enabled: !!effectiveStaffId && !!restaurantId && isOpen,
+    queryFn: async () => {
+      const today = format(currentTime, 'yyyy-MM-dd');
+      
+      const { data, error } = await supabase
+        .from('staff_shift_assignments')
+        .select(`
+          shift_id,
+          shifts!inner(
+            id,
+            name,
+            start_time,
+            end_time,
+            color,
+            grace_period_minutes
+          )
+        `)
+        .eq('staff_id', effectiveStaffId)
+        .eq('restaurant_id', restaurantId)
+        .eq('day_of_week', dayOfWeek)
+        .eq('is_active', true)
+        .lte('effective_from', today)
+        .or(`effective_until.is.null,effective_until.gte.${today}`)
+        .limit(1)
+        .single();
+
+      if (error) {
+        if (error.code === 'PGRST116') return null; // No shift assigned
+        console.error('Error fetching shift:', error);
+        return null;
+      }
+
+      return data?.shifts as ShiftInfo || null;
+    },
+  });
+
+  // Calculate clock-in status based on shift
+  const clockInValidation = useMemo(() => {
+    if (!todayShift) {
+      return {
+        status: 'no_shift' as ClockInStatus,
+        message: 'No shift assigned for today',
+        minutesVariance: 0,
+        color: 'gray'
+      };
+    }
+
+    const now = currentTime;
+    const todayDate = format(now, 'yyyy-MM-dd');
+    const shiftStartTime = parse(`${todayDate} ${todayShift.start_time}`, 'yyyy-MM-dd HH:mm:ss', new Date());
+    const gracePeriod = todayShift.grace_period_minutes || 15;
+    
+    const minutesFromShiftStart = differenceInMinutes(now, shiftStartTime);
+    
+    if (minutesFromShiftStart < -gracePeriod) {
+      // Too early (more than grace period before shift)
+      return {
+        status: 'early' as ClockInStatus,
+        message: `${Math.abs(minutesFromShiftStart)} min early`,
+        minutesVariance: minutesFromShiftStart,
+        color: 'blue'
+      };
+    } else if (minutesFromShiftStart <= gracePeriod) {
+      // On time (within grace period)
+      return {
+        status: 'on_time' as ClockInStatus,
+        message: 'On time',
+        minutesVariance: minutesFromShiftStart,
+        color: 'green'
+      };
+    } else {
+      // Late (after grace period)
+      return {
+        status: 'late' as ClockInStatus,
+        message: `${minutesFromShiftStart} min late`,
+        minutesVariance: minutesFromShiftStart,
+        color: 'red'
+      };
+    }
+  }, [todayShift, currentTime]);
 
   // Get current time clock status for the staff member
   const { data: activeSession, refetch: refetchActiveSession } = useQuery<StaffTimeClockEntry | null>({
@@ -106,6 +205,15 @@ const TimeClockDialog: React.FC<TimeClockDialogProps> = ({
     }
   }, [isOpen]);
 
+  // Get shift icon based on time
+  const getShiftIcon = (shiftName: string) => {
+    const name = shiftName.toLowerCase();
+    if (name.includes('morning')) return <Sunrise className="h-4 w-4" />;
+    if (name.includes('evening')) return <Sunset className="h-4 w-4" />;
+    if (name.includes('night')) return <Moon className="h-4 w-4" />;
+    return <Clock className="h-4 w-4" />;
+  };
+
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,7 +241,6 @@ const TimeClockDialog: React.FC<TimeClockDialogProps> = ({
     setIsSubmitting(true);
 
     try {
-      // Direct interaction with Supabase instead of the Edge function that's causing issues
       if (action === "in") {
         // Check if there's already an active session
         const { data: activeSessions } = await supabase
@@ -147,15 +254,24 @@ const TimeClockDialog: React.FC<TimeClockDialogProps> = ({
           throw new Error("You already have an active clock-in session");
         }
 
-        // Create clock-in record
+        // Create clock-in record with shift validation data
+        const clockInData: any = {
+          staff_id: staffToUse,
+          restaurant_id: restaurantId,
+          clock_in: new Date().toISOString(),
+          notes,
+          clock_in_status: clockInValidation.status,
+          minutes_variance: clockInValidation.minutesVariance,
+        };
+
+        // Add shift_id if a shift is assigned
+        if (todayShift?.id) {
+          clockInData.shift_id = todayShift.id;
+        }
+
         const { error } = await supabase
           .from("staff_time_clock")
-          .insert([{
-            staff_id: staffToUse,
-            restaurant_id: restaurantId,
-            clock_in: new Date().toISOString(),
-            notes
-          }]);
+          .insert([clockInData]);
 
         if (error) {
           throw new Error(`Error clocking in: ${error.message}`);
@@ -166,6 +282,20 @@ const TimeClockDialog: React.FC<TimeClockDialogProps> = ({
           .from("staff")
           .update({ status: "working" })
           .eq("id", staffToUse);
+
+        // Show appropriate toast based on clock-in status
+        const statusMessages: Record<ClockInStatus, string> = {
+          early: "You're early! Great job!",
+          on_time: "Right on time! Have a great shift!",
+          late: `You're ${clockInValidation.minutesVariance} minutes late. Please try to be on time.`,
+          no_shift: "Clocked in successfully (no shift assigned for today)."
+        };
+
+        toast({
+          title: `Clock in successful`,
+          description: statusMessages[clockInValidation.status],
+          variant: clockInValidation.status === 'late' ? 'destructive' : 'default',
+        });
 
       } else if (action === "out") {
         // Find the active session to clock out
@@ -201,12 +331,12 @@ const TimeClockDialog: React.FC<TimeClockDialogProps> = ({
           .from("staff")
           .update({ status: "active" })
           .eq("id", staffToUse);
-      }
 
-      toast({
-        title: `Clock ${action} successful`,
-        description: `Staff member has been clocked ${action} successfully.`,
-      });
+        toast({
+          title: `Clock out successful`,
+          description: `Staff member has been clocked out successfully.`,
+        });
+      }
 
       setNotes('');
       onSuccess();
@@ -226,34 +356,61 @@ const TimeClockDialog: React.FC<TimeClockDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>
-            Clock {action.charAt(0).toUpperCase() + action.slice(1)}
+      <DialogContent className="max-w-md p-0 overflow-hidden border-0 shadow-2xl rounded-2xl">
+        
+        {/* Gradient Header Section */}
+        <div className={`relative px-6 pt-10 pb-8 text-center ${
+          action === "in" 
+            ? "bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600" 
+            : "bg-gradient-to-br from-rose-500 via-rose-600 to-pink-600"
+        }`}>
+          {/* Decorative circles */}
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+          <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+          
+          {/* Icon */}
+          <div className="relative z-10 inline-flex items-center justify-center w-20 h-20 mb-4 bg-white/20 backdrop-blur-sm rounded-2xl border border-white/30 shadow-xl">
+            <Clock className="w-10 h-10 text-white" />
+          </div>
+          
+          <DialogTitle className="relative z-10 text-2xl font-bold text-white">
+            {action === "in" ? "Start Your Shift" : "End Your Shift"}
           </DialogTitle>
-          <DialogDescription>
-            {action === "in" 
-              ? "Record the start of a work shift."
-              : "Record the end of a work shift."}
+          <DialogDescription className="relative z-10 text-white/80 mt-1">
+            {format(currentTime, "EEEE, MMMM do, yyyy")}
           </DialogDescription>
-        </DialogHeader>
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Only show staff selection if no specific staff is provided */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-5 bg-white dark:bg-gray-900">
+          
+          {/* Live Clock Display */}
+          <div className={`relative py-5 rounded-xl text-center border-2 ${
+            action === "in" 
+              ? "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800" 
+              : "bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800"
+          }`}>
+            <div className={`text-4xl font-black tabular-nums tracking-tight ${
+              action === "in" ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+            }`}>
+              {format(currentTime, "h:mm:ss")}
+              <span className="text-base font-semibold ml-1 opacity-70">{format(currentTime, "a")}</span>
+            </div>
+          </div>
+
+          {/* Staff Selection (if needed) */}
           {!staffId && (
-            <div>
-              <Label htmlFor="staffId">Staff Member</Label>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Staff Member</Label>
               <Select
                 value={selectedStaffId}
                 onValueChange={(value) => {
                   setSelectedStaffId(value);
-                  // Refetch active session for newly selected staff
                   setTimeout(() => refetchActiveSession(), 100);
                 }}
                 required
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select staff member" />
+                <SelectTrigger className="h-12 rounded-xl border-gray-200 dark:border-gray-700">
+                  <SelectValue placeholder="Select yourself" />
                 </SelectTrigger>
                 <SelectContent>
                   {staffMembers.map((member) => (
@@ -266,83 +423,104 @@ const TimeClockDialog: React.FC<TimeClockDialogProps> = ({
             </div>
           )}
 
-          {/* Action selection (clock in/out) */}
-          <div>
-            <Label htmlFor="action">Action</Label>
-            <div className="flex gap-4 pt-2">
-              <Button
-                type="button"
-                variant={action === "in" ? "default" : "outline"}
-                className={`flex-1 ${action === "in" ? "" : "text-muted-foreground"} ${activeSession ? "opacity-50 cursor-not-allowed" : ""}`}
-                onClick={() => setAction("in")}
-                disabled={!!activeSession}
-              >
-                Clock In
-              </Button>
-              <Button
-                type="button"
-                variant={action === "out" ? "default" : "outline"}
-                className={`flex-1 ${action === "out" ? "" : "text-muted-foreground"} ${!activeSession ? "opacity-50 cursor-not-allowed" : ""}`}
-                onClick={() => setAction("out")}
-                disabled={!activeSession}
-              >
-                Clock Out
-              </Button>
-            </div>
-          </div>
-          
-          {/* Current time */}
-          <div className="py-2 flex items-center justify-center gap-2 bg-muted/50 rounded-md">
-            <Clock className="h-5 w-5 text-muted-foreground" />
-            <span className="text-lg font-medium">
-              {format(currentTime, "h:mm:ss a")}
-            </span>
-            <span className="text-sm text-muted-foreground">
-              {format(currentTime, "MMMM do, yyyy")}
-            </span>
-          </div>
-
-          {/* Notes */}
-          <div>
-            <Label htmlFor="notes">Notes</Label>
-            <Textarea
-              id="notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder={action === "in" ? "Enter notes about starting your shift..." : "Enter notes about ending your shift..."}
-              rows={3}
-            />
-          </div>
-
-          {/* If there's an active session, show when it started */}
-          {activeSession && action === "out" && (
-            <div className="text-sm text-muted-foreground">
-              <p>
-                Clock in: {format(new Date(activeSession.clock_in), "MMM do, yyyy 'at' h:mm a")}
-              </p>
-              {activeSession.notes && (
-                <p className="mt-1">
-                  Notes: {activeSession.notes}
-                </p>
-              )}
+          {/* Shift Info (Only for Clock In) */}
+          {action === "in" && effectiveStaffId && todayShift && (
+            <div className={`p-4 rounded-xl border-2 ${
+              clockInValidation.status === 'late' 
+                ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800' 
+              : clockInValidation.status === 'early' 
+                ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800' 
+              : clockInValidation.status === 'on_time' 
+                ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800' 
+                : 'bg-gray-50 border-gray-200 dark:bg-gray-800 dark:border-gray-700'
+            }`}>
+              <div className="flex justify-between items-center">
+                <div>
+                  <span className="font-bold text-gray-900 dark:text-white">{todayShift.name}</span>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    {todayShift.start_time.slice(0, 5)} - {todayShift.end_time.slice(0, 5)}
+                  </p>
+                </div>
+                <Badge className={`px-3 py-1 font-semibold ${
+                  clockInValidation.status === 'late' ? 'bg-red-500 text-white' : 
+                  clockInValidation.status === 'early' ? 'bg-blue-500 text-white' : 
+                  clockInValidation.status === 'on_time' ? 'bg-emerald-500 text-white' : 'bg-gray-500 text-white'
+                }`}>
+                  {clockInValidation.message}
+                </Badge>
+              </div>
             </div>
           )}
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
+          {/* Action Toggle Buttons - Now with color! */}
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setAction("in")}
+              disabled={!!activeSession}
+              className={`relative h-12 rounded-xl font-bold text-sm transition-all duration-200 border-2 ${
+                action === "in"
+                  ? "bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-500/30"
+                  : "bg-white dark:bg-gray-800 text-gray-400 border-gray-200 dark:border-gray-700 hover:border-emerald-300"
+              } ${activeSession ? "opacity-50 cursor-not-allowed" : ""}`}
+            >
+              Clock In
+            </button>
+            <button
+              type="button"
+              onClick={() => setAction("out")}
+              disabled={!activeSession}
+              className={`relative h-12 rounded-xl font-bold text-sm transition-all duration-200 border-2 ${
+                action === "out"
+                  ? "bg-rose-500 text-white border-rose-500 shadow-lg shadow-rose-500/30"
+                  : "bg-white dark:bg-gray-800 text-gray-400 border-gray-200 dark:border-gray-700 hover:border-rose-300"
+              } ${!activeSession ? "opacity-50 cursor-not-allowed" : ""}`}
+            >
+              Clock Out
+            </button>
+          </div>
+
+          {/* Notes Input */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Notes (Optional)</Label>
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder={action === "in" ? "Any notes for starting?" : "Handover notes..."}
+              className="resize-none rounded-xl border-gray-200 dark:border-gray-700"
+              rows={2}
+            />
+          </div>
+
+          {/* Footer Buttons */}
+          <div className="flex gap-3 pt-2">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={onClose} 
+              className="flex-1 h-12 rounded-xl border-2 font-semibold"
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button 
+              type="submit" 
+              disabled={isSubmitting}
+              className={`flex-[2] h-12 rounded-xl font-bold text-base shadow-lg transition-all hover:scale-[1.01] active:scale-[0.99] ${
+                action === 'in' 
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 shadow-emerald-500/30'
+                  : 'bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 shadow-rose-500/30'
+              }`}
+            >
               {isSubmitting ? (
-                <>
-                  <span className="animate-spin mr-1">●</span> 
-                  {action === "in" ? "Clocking in..." : "Clocking out..."}
-                </>
+                <span className="flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Processing...
+                </span>
               ) : (
-                `Clock ${action.charAt(0).toUpperCase() + action.slice(1)}`
+                action === "in" ? "Start Shift" : "End Shift"
               )}
             </Button>
-          </DialogFooter>
+          </div>
         </form>
       </DialogContent>
     </Dialog>
@@ -350,3 +528,5 @@ const TimeClockDialog: React.FC<TimeClockDialogProps> = ({
 };
 
 export default TimeClockDialog;
+
+

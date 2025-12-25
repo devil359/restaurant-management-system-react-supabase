@@ -32,3 +32,7 @@ dist-ssr
 
 # Local Netlify folder
 .netlify
+
+# Developer-only documentation (local only, not for git)
+docs/ARCHITECTURE_DEV.md
+docs/Developer-guide.md

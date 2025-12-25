@@ -86,6 +86,7 @@ export type Permission =
   | 'housekeeping.create'
   | 'housekeeping.update'
   | 'housekeeping.delete'
+  | 'housekeeping.assign'
   
   // Audit permissions
   | 'audit.view'
@@ -121,7 +122,7 @@ export const rolePermissions: RolePermissions = {
     'settings.view', 'settings.update', 'settings.manage_users', 'users.manage',
     'kitchen.view', 'kitchen.update',
     'tables.view', 'tables.create', 'tables.update', 'tables.delete',
-    'housekeeping.view', 'housekeeping.create', 'housekeeping.update', 'housekeeping.delete',
+    'housekeeping.view', 'housekeeping.create', 'housekeeping.update', 'housekeeping.delete', 'housekeeping.assign',
     'audit.view', 'audit.export',
     'backup.create', 'backup.restore', 'backup.view',
     'gdpr.view', 'gdpr.export', 'gdpr.delete'
@@ -141,7 +142,7 @@ export const rolePermissions: RolePermissions = {
     'settings.view', 'settings.update', 'settings.manage_users', 'users.manage',
     'kitchen.view', 'kitchen.update',
     'tables.view', 'tables.create', 'tables.update', 'tables.delete',
-    'housekeeping.view', 'housekeeping.create', 'housekeeping.update', 'housekeeping.delete',
+    'housekeeping.view', 'housekeeping.create', 'housekeeping.update', 'housekeeping.delete', 'housekeeping.assign',
     'audit.view', 'audit.export',
     'backup.create', 'backup.restore', 'backup.view',
     'gdpr.view', 'gdpr.export', 'gdpr.delete'
@@ -160,7 +161,7 @@ export const rolePermissions: RolePermissions = {
     'settings.view', 'settings.update',
     'kitchen.view', 'kitchen.update',
     'tables.view', 'tables.create', 'tables.update', 'tables.delete',
-    'housekeeping.view', 'housekeeping.create', 'housekeeping.update', 'housekeeping.delete',
+    'housekeeping.view', 'housekeeping.create', 'housekeeping.update', 'housekeeping.delete', 'housekeeping.assign',
     'audit.view',
     'gdpr.view'
   ],
@@ -212,6 +213,8 @@ export interface UserProfile {
   role: UserRole | string; // Can be system role or custom role name
   role_id?: string; // Foreign key to custom roles table
   role_name_text?: string; // Text representation of custom role
+  role_is_system?: boolean; // True if this is a system role (Admin/Owner)
+  role_has_full_access?: boolean; // True if user has full access (Admin)
   restaurant_id?: string;
   avatar_url?: string;
   phone?: string;

@@ -1,23 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import RoomCard from "@/components/Rooms/RoomCard";
 import RoomDialog from "@/components/Rooms/RoomDialog";
 import ReservationDialog from "@/components/Rooms/ReservationDialog";
+import WalkInCheckInDialog from "@/components/Rooms/WalkInCheckInDialog";
+import { AvailabilityCalendarGrid } from "@/components/Rooms/AvailabilityCalendar";
+import { GroupReservationDialog } from "@/components/Rooms/GroupReservation";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Room } from "@/hooks/useRooms";
-import { Search, Filter } from "lucide-react";
+import { Search, Filter, LayoutGrid, CalendarDays, Users } from "lucide-react";
 
 // Lazy imports moved outside component to prevent remounting
-const RoomCheckout = React.lazy(() => import("@/components/Rooms/RoomCheckout"));
-const RoomOrdersDialog = React.lazy(() => import("@/components/Rooms/RoomOrdersDialog"));
+const RoomCheckout = React.lazy(
+  () => import("@/components/Rooms/RoomCheckout")
+);
+const RoomOrdersDialog = React.lazy(
+  () => import("@/components/Rooms/RoomOrdersDialog")
+);
 
 interface RoomsListProps {
   rooms: Room[];
   getRoomFoodOrdersTotal: (roomId: string) => number;
-  onAddRoom: (room: Omit<Room, 'id' | 'restaurant_id'>) => Promise<boolean>;
+  onAddRoom: (room: Omit<Room, "id" | "restaurant_id">) => Promise<boolean>;
   onEditRoom: (room: Room) => Promise<boolean>;
   onCreateReservation: (room: Room, reservationData: any) => Promise<boolean>;
   onCheckoutComplete: () => Promise<void>;
@@ -29,7 +42,8 @@ interface CheckoutRoomState {
 }
 
 const statusColors = {
-  available: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200",
+  available:
+    "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200",
   occupied: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
   cleaning: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
   maintenance: "bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-200",
@@ -41,27 +55,33 @@ const RoomsList: React.FC<RoomsListProps> = ({
   onAddRoom,
   onEditRoom,
   onCreateReservation,
-  onCheckoutComplete
+  onCheckoutComplete,
 }) => {
   const [openAddRoom, setOpenAddRoom] = useState(false);
   const [openEditRoom, setOpenEditRoom] = useState(false);
   const [openReservation, setOpenReservation] = useState(false);
   const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
-  const [checkoutRoom, setCheckoutRoom] = useState<CheckoutRoomState | null>(null);
+  const [checkoutRoom, setCheckoutRoom] = useState<CheckoutRoomState | null>(
+    null
+  );
   const [openFoodOrder, setOpenFoodOrder] = useState(false);
+  const [openWalkIn, setOpenWalkIn] = useState(false);
+  const [walkInRoom, setWalkInRoom] = useState<Room | null>(null);
+  const [openGroupReservation, setOpenGroupReservation] = useState(false);
   const { toast } = useToast();
-  
+
   // Filter states
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  
+  const [viewMode, setViewMode] = useState<"cards" | "calendar">("cards");
+
   const [newRoom, setNewRoom] = useState({
     name: "",
     capacity: 1,
     price: 0,
     status: "available",
   });
-  
+
   const [editRoom, setEditRoom] = useState({
     id: "",
     name: "",
@@ -69,7 +89,7 @@ const RoomsList: React.FC<RoomsListProps> = ({
     price: 0,
     status: "available",
   });
-  
+
   const [reservation, setReservation] = useState({
     customer_name: "",
     customer_email: "",
@@ -79,14 +99,19 @@ const RoomsList: React.FC<RoomsListProps> = ({
     notes: "",
     special_occasion: "",
     special_occasion_date: null as Date | null,
-    marketing_consent: false
+    marketing_consent: false,
   });
-  const [currentReservationId, setCurrentReservationId] = useState<string | null>(null);
+  const [currentReservationId, setCurrentReservationId] = useState<
+    string | null
+  >(null);
 
   // Filter rooms based on search query and status filter
-  const filteredRooms = rooms.filter(room => {
-    const matchesSearch = room.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === "all" || room.status === statusFilter;
+  const filteredRooms = rooms.filter((room) => {
+    const matchesSearch = room.name
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
+    const matchesStatus =
+      statusFilter === "all" || room.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
@@ -132,19 +157,22 @@ const RoomsList: React.FC<RoomsListProps> = ({
       notes: "",
       special_occasion: "",
       special_occasion_date: null,
-      marketing_consent: false
+      marketing_consent: false,
     });
     setOpenReservation(true);
   };
 
   const handleCreateReservation = async () => {
     if (!currentRoom) return;
-    
+
     const cleanReservation = {
       ...reservation,
-      special_occasion: reservation.special_occasion === "none" ? "" : reservation.special_occasion
+      special_occasion:
+        reservation.special_occasion === "none"
+          ? ""
+          : reservation.special_occasion,
     };
-    
+
     const success = await onCreateReservation(currentRoom, cleanReservation);
     if (success) {
       setOpenReservation(false);
@@ -176,7 +204,7 @@ const RoomsList: React.FC<RoomsListProps> = ({
         .select("*")
         .eq("room_id", roomId)
         .eq("status", "delivered");
-      
+
       if (foodOrdersError) {
         console.error("Error fetching food orders:", foodOrdersError);
       }
@@ -217,7 +245,7 @@ const RoomsList: React.FC<RoomsListProps> = ({
 
       setCurrentRoom(room);
       setCurrentReservationId(data.id);
-      setReservation(prev => ({
+      setReservation((prev) => ({
         ...prev,
         customer_name: data.customer_name,
       }));
@@ -233,16 +261,29 @@ const RoomsList: React.FC<RoomsListProps> = ({
   };
 
   const getStatusClass = (status: string) => {
-    return statusColors[status as keyof typeof statusColors] || "bg-gray-100 text-gray-800";
+    return (
+      statusColors[status as keyof typeof statusColors] ||
+      "bg-gray-100 text-gray-800"
+    );
   };
 
   if (checkoutRoom) {
     return (
-      <React.Suspense fallback={<div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div></div>}>
-        <RoomCheckout 
+      <React.Suspense
+        fallback={
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+          </div>
+        }
+      >
+        <RoomCheckout
           roomId={checkoutRoom.roomId}
           reservationId={checkoutRoom.reservationId}
-          onComplete={onCheckoutComplete}
+          onComplete={async () => {
+            await onCheckoutComplete();
+            setCheckoutRoom(null);
+          }}
+          onCancel={() => setCheckoutRoom(null)}
         />
       </React.Suspense>
     );
@@ -250,7 +291,13 @@ const RoomsList: React.FC<RoomsListProps> = ({
 
   if (openFoodOrder && currentRoom && currentReservationId) {
     return (
-      <React.Suspense fallback={<div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div></div>}>
+      <React.Suspense
+        fallback={
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+          </div>
+        }
+      >
         <RoomOrdersDialog
           roomId={currentRoom.id}
           roomName={currentRoom.name}
@@ -273,80 +320,141 @@ const RoomsList: React.FC<RoomsListProps> = ({
   return (
     <>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <h1 className="text-3xl font-bold">Rooms Management</h1>
-        <Button 
-          onClick={() => setOpenAddRoom(true)}
-          className="bg-primary hover:bg-primary/90 text-white"
-        >
-          Add New Room
-        </Button>
-      </div>
-      
-      {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search rooms..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-muted-foreground" />
-          <Select
-            value={statusFilter}
-            onValueChange={setStatusFilter}
+        <div className="flex gap-3">
+          <Button
+            onClick={() => setOpenAddRoom(true)}
+            className="bg-primary hover:bg-primary/90 text-white"
           >
-            <SelectTrigger className="flex-1 h-10">
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="available">Available</SelectItem>
-              <SelectItem value="occupied">Occupied</SelectItem>
-              <SelectItem value="cleaning">Cleaning</SelectItem>
-              <SelectItem value="maintenance">Maintenance</SelectItem>
-            </SelectContent>
-          </Select>
+            Add New Room
+          </Button>
+          <Button
+            onClick={() => setOpenGroupReservation(true)}
+            className="bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600 text-white"
+          >
+            <Users className="h-4 w-4 mr-2" />
+            Group Booking
+          </Button>
+        </div>
+
+        {/* View Mode Toggle */}
+        <div className="flex bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
+          <button
+            onClick={() => setViewMode("cards")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              viewMode === "cards"
+                ? "bg-white dark:bg-gray-700 text-primary shadow-sm"
+                : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+            }`}
+          >
+            <LayoutGrid className="h-4 w-4" />
+            Cards
+          </button>
+          <button
+            onClick={() => setViewMode("calendar")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              viewMode === "calendar"
+                ? "bg-white dark:bg-gray-700 text-primary shadow-sm"
+                : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+            }`}
+          >
+            <CalendarDays className="h-4 w-4" />
+            Calendar
+          </button>
         </div>
       </div>
 
-      {filteredRooms.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-          <p className="text-muted-foreground text-center mb-2">
-            {rooms.length === 0 ? 
-              "No rooms found. Add your first room to get started." : 
-              "No rooms match your search criteria."}
-          </p>
-          {rooms.length > 0 && (
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                setSearchQuery("");
-                setStatusFilter("all");
-              }}
-            >
-              Clear Filters
-            </Button>
-          )}
-        </div>
+      {/* Conditional View Rendering */}
+      {viewMode === "calendar" ? (
+        <AvailabilityCalendarGrid
+          onCreateReservation={(roomId, date) => {
+            const room = rooms.find((r) => r.id === roomId);
+            if (room) {
+              setCurrentRoom(room);
+              setReservation({
+                customer_name: "",
+                customer_email: "",
+                customer_phone: "",
+                start_date: date,
+                end_date: date,
+                notes: "",
+                special_occasion: "",
+                special_occasion_date: null,
+                marketing_consent: false,
+              });
+              setOpenReservation(true);
+            }
+          }}
+        />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredRooms.map((room) => (
-            <RoomCard
-              key={room.id}
-              room={room}
-              foodOrdersTotal={getRoomFoodOrdersTotal(room.id)}
-              onEdit={openEditDialog}
-              onReserve={openReservationDialog}
-              onFoodOrder={openFoodOrderDialog}
-              onCheckout={handleCheckout}
-              getStatusClass={getStatusClass}
-            />
-          ))}
-        </div>
+        <>
+          {/* Filters - Only show in card view */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search rooms..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="flex-1 h-10">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="available">Available</SelectItem>
+                  <SelectItem value="occupied">Occupied</SelectItem>
+                  <SelectItem value="cleaning">Cleaning</SelectItem>
+                  <SelectItem value="maintenance">Maintenance</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {filteredRooms.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+              <p className="text-muted-foreground text-center mb-2">
+                {rooms.length === 0
+                  ? "No rooms found. Add your first room to get started."
+                  : "No rooms match your search criteria."}
+              </p>
+              {rooms.length > 0 && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setStatusFilter("all");
+                  }}
+                >
+                  Clear Filters
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredRooms.map((room) => (
+                <RoomCard
+                  key={room.id}
+                  room={room}
+                  foodOrdersTotal={getRoomFoodOrdersTotal(room.id)}
+                  onEdit={openEditDialog}
+                  onReserve={openReservationDialog}
+                  onFoodOrder={openFoodOrderDialog}
+                  onCheckout={handleCheckout}
+                  onCheckIn={(room) => {
+                    setWalkInRoom(room);
+                    setOpenWalkIn(true);
+                  }}
+                  getStatusClass={getStatusClass}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {/* Keep existing dialogs */}
@@ -378,6 +486,31 @@ const RoomsList: React.FC<RoomsListProps> = ({
           handleCreateReservation={handleCreateReservation}
         />
       )}
+
+      {/* Walk-in Check-in Dialog */}
+      {walkInRoom && (
+        <WalkInCheckInDialog
+          open={openWalkIn}
+          onOpenChange={setOpenWalkIn}
+          room={{
+            id: walkInRoom.id,
+            name: walkInRoom.name,
+            price: walkInRoom.price,
+            restaurant_id: walkInRoom.restaurant_id,
+          }}
+          onSuccess={async () => {
+            await onCheckoutComplete(); // Refresh rooms list
+            setWalkInRoom(null);
+          }}
+        />
+      )}
+
+      {/* Group Reservation Dialog */}
+      <GroupReservationDialog
+        open={openGroupReservation}
+        onOpenChange={setOpenGroupReservation}
+        onSuccess={onCheckoutComplete}
+      />
     </>
   );
 };
