@@ -100,10 +100,8 @@ const POSMode = () => {
 
       if (!orders) return 0;
 
-      return orders.reduce(
-        (sum, order) => sum + (order.total - (order.discount_amount || 0)),
-        0
-      );
+      // order.total already contains the discounted amount
+      return orders.reduce((sum, order) => sum + order.total, 0);
     },
     refetchInterval: 30000, // Refresh every 30 seconds
   });

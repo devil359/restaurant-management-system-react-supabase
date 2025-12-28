@@ -29,10 +29,9 @@ const Stats = () => {
   const allRevenueSources = statsData?.allRevenueSources || [];
   const orders = statsData?.orders || [];
 
+  // order.total already contains the discounted amount
   const getActualRevenue = (item: any) => {
-    const total = Number(item.total) || 0;
-    const discountAmount = Number(item.discount_amount) || 0;
-    return total - discountAmount;
+    return Number(item.total) || 0;
   };
 
   const completedRevenue = allRevenueSources.filter(
