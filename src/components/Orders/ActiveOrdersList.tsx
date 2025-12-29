@@ -434,23 +434,24 @@ const ActiveOrdersList = ({ onRecallOrder }: ActiveOrdersListProps = {}) => {
       );
 
       // Prepare data for export
-      const exportData: Record<string, string>[] = filteredOrders.map(
+      // Prepare data for export
+      const exportData: Record<string, string | number>[] = filteredOrders.map(
         (order) => ({
           "Order ID": order.id.slice(0, 8) + "...",
           Source: order.source,
           Items: order.items.map((i) => `${i.quantity}x ${i.name}`).join(", "),
-          "Gross Total": `${currencySymbol}${calculateOrderTotal(
+          [`Gross Total (${currencySymbol})`]: calculateOrderTotal(
             order.items
-          ).toFixed(2)}`,
-          Discount: order.discount_amount
-            ? `${currencySymbol}${order.discount_amount.toFixed(2)} (${
+          ).toFixed(2),
+          [`Discount (${currencySymbol})`]: order.discount_amount
+            ? `${order.discount_amount.toFixed(2)} (${
                 order.discount_percentage
               }%)`
             : "-",
-          "Net Total": `${currencySymbol}${calculateFinalTotal(
+          [`Net Total (${currencySymbol})`]: calculateFinalTotal(
             order.items,
             order.discount_amount
-          ).toFixed(2)}`,
+          ).toFixed(2),
           Status: order.status,
           "Created Date": format(new Date(order.created_at), "yyyy-MM-dd"),
           "Created Time": format(new Date(order.created_at), "HH:mm:ss"),
@@ -462,9 +463,9 @@ const ActiveOrdersList = ({ onRecallOrder }: ActiveOrdersListProps = {}) => {
         "Order ID": "",
         Source: "",
         Items: "",
-        "Gross Total": "",
-        Discount: "",
-        "Net Total": "",
+        [`Gross Total (${currencySymbol})`]: "",
+        [`Discount (${currencySymbol})`]: "",
+        [`Net Total (${currencySymbol})`]: "",
         Status: "-",
         "Created Date": "",
         "Created Time": "",
@@ -475,9 +476,9 @@ const ActiveOrdersList = ({ onRecallOrder }: ActiveOrdersListProps = {}) => {
         "Order ID": "SUMMARY",
         Source: `Total Orders: ${filteredOrders.length}`,
         Items: "",
-        "Gross Total": "",
-        Discount: `${currencySymbol}${totalDiscount.toFixed(2)}`,
-        "Net Total": `${currencySymbol}${totalRevenue.toFixed(2)}`,
+        [`Gross Total (${currencySymbol})`]: "",
+        [`Discount (${currencySymbol})`]: totalDiscount.toFixed(2),
+        [`Net Total (${currencySymbol})`]: totalRevenue.toFixed(2),
         Status: "-",
         "Created Date": format(new Date(), "yyyy-MM-dd"),
         "Created Time": "",

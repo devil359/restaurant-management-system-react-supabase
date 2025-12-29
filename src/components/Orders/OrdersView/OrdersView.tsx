@@ -239,13 +239,14 @@ const OrdersView = ({
       const totalOrders = filteredOrders.length;
 
       // Prepare data for export
+      // Prepare data for export
       const exportData = filteredOrders.map((order) => ({
         "Order ID": order.id,
         "Customer Name": order.customer_name,
         Items: order.items.join(", "),
-        "Total Amount": `${currencySymbol}${order.total.toFixed(2)}`,
-        Discount: order.discount_amount
-          ? `${currencySymbol}${order.discount_amount.toFixed(2)} (${
+        [`Total Amount (${currencySymbol})`]: order.total.toFixed(2),
+        [`Discount (${currencySymbol})`]: order.discount_amount
+          ? `${order.discount_amount.toFixed(2)} (${
               order.discount_percentage
             }%)`
           : "-",
@@ -259,8 +260,8 @@ const OrdersView = ({
         "Order ID": "",
         "Customer Name": "",
         Items: "",
-        "Total Amount": "",
-        Discount: "",
+        [`Total Amount (${currencySymbol})`]: "",
+        [`Discount (${currencySymbol})`]: "",
         Status: "",
         "Created Date": "",
         "Created Time": "",
@@ -271,8 +272,8 @@ const OrdersView = ({
         "Order ID": "SUMMARY",
         "Customer Name": `Total Orders: ${totalOrders}`,
         Items: "",
-        "Total Amount": `${currencySymbol}${totalEarned.toFixed(2)}`,
-        Discount: `${currencySymbol}${totalDiscount.toFixed(2)}`,
+        [`Total Amount (${currencySymbol})`]: totalEarned.toFixed(2),
+        [`Discount (${currencySymbol})`]: totalDiscount.toFixed(2),
         Status: "",
         "Created Date": getDateFilterLabel(),
         "Created Time": "",
