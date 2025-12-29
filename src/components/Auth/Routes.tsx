@@ -1,5 +1,5 @@
 import React from "react";
-import { Routes as RouterRoutes, Route } from "react-router-dom";
+import { Routes as RouterRoutes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { AppRoutes } from "./AppRoutes";
 import Auth from "@/pages/Auth";
@@ -8,8 +8,6 @@ import LandingWebsite from "@/pages/LandingWebsite";
 
 const Routes = () => {
   const { user, loading } = useAuth();
-
-
 
   if (loading) {
     return (
@@ -20,19 +18,24 @@ const Routes = () => {
   }
 
   if (!user) {
-
+    // Non-authenticated users: Landing page at root, Auth at /auth or /login
     return (
       <RouterRoutes>
-        <Route path="/website" element={<LandingWebsite />} />
-        <Route path="*" element={<Auth />} />
+        <Route path="/" element={<LandingWebsite />} />
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/login" element={<Auth />} />
+        <Route path="/website" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </RouterRoutes>
     );
   }
 
-
+  // Authenticated users: Dashboard at root, landing page still accessible
   return (
     <RouterRoutes>
       <Route path="/website" element={<LandingWebsite />} />
+      <Route path="/auth" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/login" element={<Navigate to="/dashboard" replace />} />
       <Route path="/*" element={<AppRoutes />} />
       <Route path="*" element={<NotFound />} />
     </RouterRoutes>
