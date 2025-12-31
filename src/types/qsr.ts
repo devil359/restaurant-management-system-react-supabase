@@ -4,6 +4,7 @@ export interface QSROrderItem {
   price: number;
   quantity: number;
   category?: string;
+  modifiers?: string[];
 }
 
 export interface QSROrder {
@@ -17,3 +18,6 @@ export interface QSROrder {
   restaurant_id?: string;
   customer_name?: string;
 }
+
+export type ViewMode = 'order' | 'history';
+export type OrderMode = 'dine_in' | 'takeaway' | 'delivery' | 'non_chargeable';
