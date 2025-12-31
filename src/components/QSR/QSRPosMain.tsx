@@ -10,8 +10,9 @@ import { OrderHistory } from './OrderHistory';
 import { QSROrderItem, ViewMode, OrderMode } from '@/types/qsr';
 import { useRestaurantId } from '@/hooks/useRestaurantId';
 import { useQSRMenuItems, QSRMenuItem } from '@/hooks/useQSRMenuItems';
-import { ArrowLeft, History, LogOut, ShoppingBag, Truck, Gift, Zap, LayoutGrid } from 'lucide-react';
+import { ArrowLeft, History, LogOut, ShoppingBag, Truck, Gift, Zap, LayoutGrid, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import PaymentDialog from '@/components/Orders/POS/PaymentDialog';
 import ActiveOrdersList from '@/components/Orders/ActiveOrdersList';
@@ -35,7 +36,7 @@ export const QSRPosMain = () => {
 
 
   const [viewMode, setViewMode] = useState<ViewMode>('order');
-  const [orderMode, setOrderMode] = useState<OrderMode>('takeaway');
+  const [orderMode, setOrderMode] = useState<OrderMode>('dine_in');
   const [selectedTable, setSelectedTable] = useState<{ id: string, name: string } | null>(null);
   const [showPayment, setShowPayment] = useState(false);
   const [showActiveOrders, setShowActiveOrders] = useState(false);
@@ -83,6 +84,7 @@ export const QSRPosMain = () => {
   const { menuItems, categories, isLoading: menuLoading } = useQSRMenuItems();
 
   const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Set first category as default when categories load
   useEffect(() => {
@@ -91,9 +93,12 @@ export const QSRPosMain = () => {
     }
   }, [categories, selectedCategory]);
 
-  const filteredItems = menuItems.filter(
-    (item) => item.category.toLowerCase().replace(/\s+/g, '-') === selectedCategory
-  );
+  const filteredItems = menuItems.filter((item) => {
+    if (searchQuery) {
+      return item.name.toLowerCase().includes(searchQuery.toLowerCase());
+    }
+    return item.category.toLowerCase().replace(/\s+/g, '-') === selectedCategory;
+  });
 
   const subtotal = orderItems.reduce(
     (sum, item) => sum + item.price * item.quantity,
@@ -481,10 +486,24 @@ export const QSRPosMain = () => {
               </div>
             ) : (
               <div className="bg-white border-b shadow-sm z-[5]">
+                <div className="p-3 border-b px-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search items..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-9 bg-slate-50 border-slate-200"
+                    />
+                  </div>
+                </div>
                 <QSRCategoryGrid
                   categories={categories}
                   selectedCategory={selectedCategory}
-                  onSelectCategory={setSelectedCategory}
+                  onSelectCategory={(cat) => {
+                    setSelectedCategory(cat);
+                    setSearchQuery(''); // Clear search when category is selected
+                  }}
                 />
               </div>
             )}
